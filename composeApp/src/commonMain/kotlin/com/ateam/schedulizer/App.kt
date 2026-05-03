@@ -40,5 +40,4 @@ fun App() {
         }
     }
     // Tee Hee
-    //Comment Two
 }
