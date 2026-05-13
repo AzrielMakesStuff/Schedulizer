@@ -13,13 +13,13 @@ object Encryption {
     suspend fun encrypt(data: String): String {
         val cipher = deriveKey().cipher()
         val encrypted = cipher.encrypt(data.encodeToByteArray())
-        return Base64.UrlSafe.encode(encrypted)
+        return Base64.encode(encrypted)
     }
 
     @OptIn(ExperimentalEncodingApi::class)
     suspend fun decrypt(encryptedBase64: String): String {
         val cipher = deriveKey().cipher()
-        val decrypted = cipher.decrypt(Base64.UrlSafe.decode(encryptedBase64))
+        val decrypted = cipher.decrypt(Base64.decode(encryptedBase64))
         return decrypted.decodeToString()
     }
 
