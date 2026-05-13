@@ -8,6 +8,10 @@ plugins {
 }
 
 kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
@@ -21,11 +25,13 @@ kotlin {
     
     sourceSets {
         androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
+            implementation(libs.compose.uiToolingPreview) // Defaults
             implementation(libs.androidx.activity.compose)
+
+            implementation(libs.androidx.security.crypto.ktx) // Storage
         }
         commonMain.dependencies {
-            implementation(libs.compose.runtime)
+            implementation(libs.compose.runtime) // Defaults
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
@@ -33,7 +39,11 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.kotlinx.datetime)
+
+            implementation(libs.kotlinx.datetime) // Data
+
+            implementation(libs.multiplatform.settings) // Storage
+
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

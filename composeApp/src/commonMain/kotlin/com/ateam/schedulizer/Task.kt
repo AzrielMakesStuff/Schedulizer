@@ -8,8 +8,8 @@ data class Task(
     val type: TaskType,
     val title: String,
     val description: String,
-    val start: LocalDateTime,
-    val end: LocalDateTime
+    val dateOne: LocalDateTime,
+    val dateTwo: LocalDateTime
 )
 
 class TaskManager {
