@@ -43,6 +43,7 @@ kotlin {
             implementation(libs.kotlinx.datetime) // Data
 
             implementation(libs.multiplatform.settings) // Storage
+            implementation("org.kotlincrypto.core:0.8.0")
 
         }
         commonTest.dependencies {

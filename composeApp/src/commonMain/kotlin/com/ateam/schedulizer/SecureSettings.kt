@@ -10,13 +10,14 @@ object SecureSettings {
             val fetchedKey = settings!!.getString("private-key", "")
             if (fetchedKey.isEmpty()) { // If key is empty
                 // Generate key and save to storage
-                val newKey = generateSecureRandomBytes(256).toString()
-                settings!!.putString("private-key", newKey)
-                println("Key $newKey")
+                val generatedKey = generateSecureRandomBytes(32).toHexString()
+                settings!!.putString("private-key", generatedKey)
+                key = generatedKey
 
                 // Initialize new database
-                // "REINITIALIZE DATABASE"
+
             } else key = fetchedKey
         }
+        println("Key $key")
     }
 }
