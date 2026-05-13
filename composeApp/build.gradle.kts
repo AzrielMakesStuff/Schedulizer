@@ -44,6 +44,7 @@ kotlin {
 
             implementation(libs.multiplatform.settings) // Storage
             implementation("dev.whyoleg.cryptography:cryptography-core:0.6.0")
+            implementation("dev.whyoleg.cryptography:cryptography-provider-optimal:0.6.0")
 
         }
         commonTest.dependencies {
