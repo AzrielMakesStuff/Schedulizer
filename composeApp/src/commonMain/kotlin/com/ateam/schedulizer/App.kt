@@ -5,10 +5,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 @Preview
@@ -16,7 +22,16 @@ fun App() {
     SecureSettings.verifyKey()
     MaterialTheme {
         Column(modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer).safeContentPadding().fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-
+            var teeeee = "Hello Cruel World"
+            Text(teeeee)
+            CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+                teeeee = Encryption.encrypt(teeeee)
+            }
+            Text(teeeee)
+            CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+                teeeee = Encryption.decrypt(teeeee)
+            }
+            Text(teeeee)
         }
     }
 }

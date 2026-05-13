@@ -18,6 +18,5 @@ object SecureSettings {
 
             } else key = fetchedKey
         }
-        println("Key $key")
     }
 }
