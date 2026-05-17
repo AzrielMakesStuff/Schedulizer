@@ -32,11 +32,6 @@ import androidx.navigation.compose.composable
 @Preview
 fun App() {
     SecureSettings.verifyKey()
-    
-    LaunchedEffect(Unit) {
-        encrypted = Encryption.encrypt(plaintext)
-        decrypted = Encryption.decrypt(encrypted)
-    }
 
     val rootNavController = rememberNavController()
     val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
