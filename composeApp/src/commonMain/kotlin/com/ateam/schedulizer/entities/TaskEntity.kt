@@ -8,9 +8,9 @@ import kotlinx.datetime.LocalDateTime
 @Entity
 data class TaskEntity(
     @PrimaryKey(true) val id: Long = 0,
-    val type: TaskType,
+    val type: String,
     val title: String,
     val description: String,
-    val dateOne: LocalDateTime,
-    val dateTwo: LocalDateTime
+    val dateOne: String,
+    val dateTwo: String
 )
