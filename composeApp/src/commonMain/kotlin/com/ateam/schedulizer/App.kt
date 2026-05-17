@@ -32,10 +32,6 @@ import androidx.navigation.compose.composable
 @Preview
 fun App() {
     SecureSettings.verifyKey()
-
-    var plaintext by remember { mutableStateOf("Hello Cruel World") }
-    var encrypted by remember { mutableStateOf("") }
-    var decrypted by remember { mutableStateOf("") }
     
     LaunchedEffect(Unit) {
         encrypted = Encryption.encrypt(plaintext)
@@ -68,17 +64,6 @@ fun App() {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-//            Column(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .background(MaterialTheme.colorScheme.secondaryContainer)
-//                    .padding(8.dp),
-//                horizontalAlignment = Alignment.CenterHorizontally
-//            ) {
-//                Text("Plaintext: $plaintext")
-//                Text("Encrypted: $encrypted")
-//                Text("Decrypted: $decrypted")
-//            }
 
             NavHost(
                 navController = rootNavController,
