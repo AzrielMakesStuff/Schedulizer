@@ -54,15 +54,12 @@ kotlin {
 
 
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
-            implementation("org.jetbrains.compose.material3:material3:1.9.0")
-            implementation("androidx.compose.material:material-icons-extended")
-            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
-            implementation("org.jetbrains.compose.components:components-resources:1.10.3")
 
             implementation(libs.navigation.compose)
 
             implementation(libs.screen.size)
 
+            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -99,7 +96,7 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
-    add("kspAndroid", libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 }
 
 room {
