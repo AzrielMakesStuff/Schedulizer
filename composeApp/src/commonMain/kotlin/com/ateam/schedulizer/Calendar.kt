@@ -49,7 +49,7 @@ fun Calendar()
         firstDayOfWeek = daysOfWeek.first()
     )
 
-    Column(modifier = Modifier.padding(top = 64.dp)) {
+    Column() {
 
         val light = Color(0xFFF5F5F5)
         val dark = Color(0xFF1E1E24)

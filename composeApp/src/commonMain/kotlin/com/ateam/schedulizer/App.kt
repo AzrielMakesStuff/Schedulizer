@@ -1,36 +1,32 @@
 package com.ateam.schedulizer
 
 import NavigationItem
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBar
-import androidx.compose.ui.Alignment
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.*
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import navigationItemsLists
 import Routes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 
 @Composable
 @Preview
@@ -41,20 +37,28 @@ fun App() {
     var encrypted by remember { mutableStateOf("") }
     var decrypted by remember { mutableStateOf("") }
     
-    var selectedRoute by remember { mutableStateOf(Routes.Home.route) }
-
     LaunchedEffect(Unit) {
         encrypted = Encryption.encrypt(plaintext)
         decrypted = Encryption.decrypt(encrypted)
     }
 
+    val rootNavController = rememberNavController()
+    val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     Scaffold(
         bottomBar = {
             BottomNavigationBar(
                 items = navigationItemsLists,
-                currentRoute = selectedRoute,
+                currentRoute = currentRoute,
                 onItemClick = { item ->
-                    selectedRoute = item.route
+                    rootNavController.navigate(item.route) {
+                        popUpTo(Routes.Home.route) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             )
         }
@@ -63,12 +67,31 @@ fun App() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(plaintext)
-            Text(encrypted)
-            Text(decrypted)
+//            Column(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .background(MaterialTheme.colorScheme.secondaryContainer)
+//                    .padding(8.dp),
+//                horizontalAlignment = Alignment.CenterHorizontally
+//            ) {
+//                Text("Plaintext: $plaintext")
+//                Text("Encrypted: $encrypted")
+//                Text("Decrypted: $decrypted")
+//            }
+
+            NavHost(
+                navController = rootNavController,
+                startDestination = Routes.Home.route,
+                modifier = Modifier.weight(1f)
+            ) {
+                composable(Routes.Home.route) {
+                    HomeScreen()
+                }
+                composable(Routes.Calendar.route) {
+                    Calendar()
+                }
+            }
         }
     }
 }
@@ -105,5 +128,3 @@ fun BottomNavigationBar(
         }
     }
 }
-
-
