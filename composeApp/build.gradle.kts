@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
 }
 
 kotlin {
@@ -47,6 +49,8 @@ kotlin {
             implementation("dev.whyoleg.cryptography:cryptography-provider-optimal:0.6.0")
 
             implementation("com.kizitonwose.calendar:compose-multiplatform:2.10.1")
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
 
 
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
@@ -95,4 +99,9 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+    add("kspAndroid", libs.androidx.room.compiler)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
