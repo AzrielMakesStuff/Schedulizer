@@ -19,8 +19,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextOverflow
 import navigationItemsLists
 import Routes
+import androidx.compose.foundation.Image
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import org.jetbrains.compose.resources.painterResource
+import schedulizer.composeapp.generated.resources.Res
+import schedulizer.composeapp.generated.resources.app_logo
 
 @Composable
 @Preview
@@ -102,4 +106,12 @@ fun BottomNavigationBar(
             )
         }
     }
+}
+
+@Composable
+fun AppLogo() {
+    Image(
+        painter = painterResource(Res.drawable.app_logo),
+        contentDescription = "App Logo"
+    )
 }
