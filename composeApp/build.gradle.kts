@@ -45,8 +45,6 @@ kotlin {
             implementation(libs.kotlinx.datetime) // Data
 
             implementation(libs.multiplatform.settings) // Storage
-            implementation("dev.whyoleg.cryptography:cryptography-core:0.6.0")
-            implementation("dev.whyoleg.cryptography:cryptography-provider-optimal:0.6.0")
 
             implementation("com.kizitonwose.calendar:compose-multiplatform:2.10.1")
             implementation(libs.androidx.room.runtime)

@@ -1,16 +1,11 @@
 package com.ateam.schedulizer
 
-// androidMain
-import android.content.Context
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
-import com.russhwolf.settings.SharedPreferencesSettings
-import com.russhwolf.settings.Settings
-import java.security.SecureRandom
+import android.app.Application
 
 object ContextHolder {
-    lateinit var context : Context
-    fun init(context : Context) {
+    lateinit var context : Application
+    fun init(context : Application) {
+        ContextHolder.context = context
     }
 }
 
