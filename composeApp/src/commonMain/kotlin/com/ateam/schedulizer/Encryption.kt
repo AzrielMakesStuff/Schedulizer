@@ -23,7 +23,7 @@ object Encryption {
         return decrypted.decodeToString()
     }
 
-    private suspend fun deriveKey(): AES.GCM.Key {
+    public suspend fun deriveKey(): AES.GCM.Key {
         val keyBytes = requireNotNull(SecureSettings.key) { "Missing key" }
             .hexToByteArray()
 

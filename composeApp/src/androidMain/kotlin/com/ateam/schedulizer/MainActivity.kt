@@ -1,5 +1,6 @@
 package com.ateam.schedulizer
 
+import android.app.Application
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,8 +13,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        System.loadLibrary("sqlcipher")
         SecureSettings.settings = createAndroidSecureSettings(applicationContext)
-        ContextHolder.init(applicationContext)
+        ContextHolder.init(applicationContext as Application)
         setContent {
             App()
         }

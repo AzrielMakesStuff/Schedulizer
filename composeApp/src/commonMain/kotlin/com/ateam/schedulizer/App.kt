@@ -83,6 +83,7 @@ fun BottomNavigationBar(
     NavigationBar(
         modifier = Modifier.fillMaxWidth(),
     ) {
+
         items.forEach { navigationItem ->
             NavigationBarItem(
                 selected = currentRoute == navigationItem.route,

@@ -29,7 +29,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview) // Defaults
             implementation(libs.androidx.activity.compose)
-
+            implementation(libs.android.sqlcipher)
             implementation(libs.androidx.security.crypto.ktx) // Storage
         }
         commonMain.dependencies {

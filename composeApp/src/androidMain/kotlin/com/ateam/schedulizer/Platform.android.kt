@@ -1,6 +1,7 @@
 package com.ateam.schedulizer
 
 // androidMain
+import android.app.Application
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -30,10 +31,18 @@ actual fun generateSecureRandomBytes(size: Int): ByteArray {
 
 object ContextHolder {
     lateinit var context : Context
-    fun init(context : Context) {
+    fun init(context : Application) {
+        ContextHolder.context = context
     }
 }
 
-actual val databaseInstance: AppDatabase by lazy{
-    return@lazy (getRoomDatabase(getDatabaseBuilder(ContextHolder.context)));
+private var instance : AppDatabase? = null
+
+actual suspend fun getDatabaseInstance() : AppDatabase {
+    if (instance == null) {
+        instance = getRoomDatabase(getDatabaseBuilder(ContextHolder.context));
+    }
+    return instance!!
+
+
 }
