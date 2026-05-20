@@ -8,26 +8,6 @@ import com.russhwolf.settings.SharedPreferencesSettings
 import com.russhwolf.settings.Settings
 import java.security.SecureRandom
 
-fun createAndroidSecureSettings(context: Context): Settings {
-    val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
-
-    val delegate = EncryptedSharedPreferences.create(
-        context,
-        "secure_prefs",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
-    return SharedPreferencesSettings(delegate)
-}
-
-actual fun generateSecureRandomBytes(size: Int): ByteArray {
-    val random = SecureRandom()
-    val bytes = ByteArray(size)
-    random.nextBytes(bytes)
-    return bytes
-}
-
 object ContextHolder {
     lateinit var context : Context
     fun init(context : Context) {

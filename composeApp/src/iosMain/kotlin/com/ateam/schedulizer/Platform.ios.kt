@@ -12,13 +12,6 @@ import platform.posix.arc4random_buf
 @OptIn(ExperimentalSettingsImplementation::class)
 fun createIosSecureSettings(): Settings = KeychainSettings(service = "SecureKeyTasks")
 
-@OptIn(ExperimentalForeignApi::class)
-actual fun generateSecureRandomBytes(size: Int): ByteArray {
-    val bytes = ByteArray(size)
-    bytes.usePinned { pinned -> arc4random_buf(pinned.addressOf(0), size.toULong()) }
-    return bytes
-}
-
 actual val databaseInstance: AppDatabase by lazy {
     return@lazy getRoomDatabase(getDatabaseBuilder());
 }
