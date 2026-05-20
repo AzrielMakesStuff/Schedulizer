@@ -19,3 +19,6 @@ actual fun generateSecureRandomBytes(size: Int): ByteArray {
     return bytes
 }
 
+actual val databaseInstance: AppDatabase by lazy {
+    return@lazy getRoomDatabase(getDatabaseBuilder());
+}
