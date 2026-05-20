@@ -133,12 +133,12 @@ fun Day(day: CalendarDay) {
         color = textColor
     )
     }
-    DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day.date.day.toString())
+    DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day)
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: String)
+fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay)
 {
     if(isVisible) {
         Popup(
@@ -175,12 +175,20 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: String)
                         {
                             Column(
                                 modifier = Modifier
-                                    .padding(24.dp)
-                                    .verticalScroll(rememberScrollState()),
+                                    .padding(24.dp),
+//                                    .verticalScroll(rememberScrollState()),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             )
                             {
-                                Text(text = "Today is the " + {day})
+                                val currentDay = day.date.dayOfWeek.name
+
+                                Text(text = currentDay,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.White)
+
+                                Text(text = "Create Task for $currentDay",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White)
                             }
                         }
                     }
