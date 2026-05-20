@@ -25,8 +25,6 @@ fun getRoomDatabase(
         .build()
 }
 
-expect fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase>
-
 // The Room compiler generates the `actual` implementations.
 @Suppress("KotlinNoActualForExpect")
 expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
