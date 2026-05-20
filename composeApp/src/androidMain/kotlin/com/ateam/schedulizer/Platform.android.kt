@@ -28,3 +28,12 @@ actual fun generateSecureRandomBytes(size: Int): ByteArray {
     return bytes
 }
 
+object ContextHolder {
+    lateinit var context : Context
+    fun init(context : Context) {
+    }
+}
+
+actual val databaseInstance: AppDatabase by lazy{
+    return@lazy (getRoomDatabase(getDatabaseBuilder(ContextHolder.context)));
+}
