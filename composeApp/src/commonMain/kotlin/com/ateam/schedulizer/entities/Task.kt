@@ -1,20 +1,20 @@
-package com.ateam.schedulizer
+package com.ateam.schedulizer.entities
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import kotlinx.datetime.*
 
 enum class TaskType { SET, POOL, DAILY }
+
+@Entity
 data class Task(
-    val id: Long,
+    @PrimaryKey(true) val id: Long = 0,
     val type: TaskType,
-     val title: String,
+    val title: String,
     val description: String,
     val dateOne: LocalDateTime,
     val dateTwo: LocalDateTime
-) {
-    init {
-
-    }
-}
+)
 
 class TaskManager {
     private val tasks = mutableListOf<Task>()

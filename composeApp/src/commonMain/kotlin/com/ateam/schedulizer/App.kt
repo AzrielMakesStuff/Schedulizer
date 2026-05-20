@@ -21,9 +21,48 @@ import navigationItemsLists
 import Routes
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.ateam.schedulizer.entities.Task
+import com.ateam.schedulizer.entities.TaskType
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+
 @Composable
 @Preview
 fun App() {
+    val dao = databaseInstance.getDao()
+    var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        tasks = dao.getAll()
+    }
+
+    fun createTask() {
+        scope.launch {
+            dao.upsert(
+                Task(
+                    type = TaskType.DAILY,
+                    title = "New Task",
+                    description = "Test description",
+                    dateOne = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
+                    dateTwo = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                )
+            )
+            tasks = dao.getAll()
+        }
+    }
+
+    fun deleteTask(task: Task) {
+        scope.launch {
+            dao.delete(task.id)
+            tasks = dao.getAll()
+        }
+    }
 
     val rootNavController = rememberNavController()
     val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
@@ -58,7 +97,7 @@ fun App() {
                 modifier = Modifier.weight(1f)
             ) {
                 composable(Routes.Home.route) {
-                    HomeScreen()
+                    HomeScreen(tasks = tasks, onCreateTask = ::createTask, onDeleteTask = ::deleteTask)
                 }
                 composable(Routes.Calendar.route) {
                     Calendar()

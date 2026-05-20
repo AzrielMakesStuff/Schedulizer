@@ -3,21 +3,20 @@ package com.ateam.schedulizer.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
-import com.ateam.schedulizer.entities.TaskEntity
-import kotlinx.coroutines.flow.Flow
+import androidx.room.Upsert
+import com.ateam.schedulizer.entities.Task
 
 @Dao
 interface TaskDao {
-    @Insert
-    suspend fun storeTasks(vararg task : TaskEntity);
+    @Upsert
+    suspend fun upsert(vararg task : Task);
 
-    @Query("DELETE FROM TaskEntity where id = :id")
-
+    @Query("DELETE FROM Task where id = :id")
     suspend fun delete(id : Long);
 
-    @Query("SELECT * FROM TaskEntity")
-    suspend fun getAll() : List<TaskEntity>
+    @Query("SELECT * FROM Task")
+    suspend fun getAll() : List<Task>
 
-    @Query("Select * FROM TaskEntity where id = :id")
-    suspend fun get(id : Long) : TaskEntity
+    @Query("Select * FROM Task where id = :id")
+    suspend fun get(id : Long) : Task
 }
