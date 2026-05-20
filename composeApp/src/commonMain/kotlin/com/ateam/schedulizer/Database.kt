@@ -13,8 +13,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun getDao(): TaskDao
 }
 
-// The Room compiler generates the `actual` implementations.
-@Suppress("KotlinNoActualForExpect")
 expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
     override fun initialize(): AppDatabase
 }

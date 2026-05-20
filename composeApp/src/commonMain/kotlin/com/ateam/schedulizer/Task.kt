@@ -15,5 +15,7 @@ data class Task(
 class TaskManager {
     private val tasks = mutableListOf<Task>()
 
-
+    fun addTask(task: Task) {
+        
+    }
 }

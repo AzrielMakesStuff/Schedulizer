@@ -19,20 +19,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextOverflow
 import navigationItemsLists
 import Routes
-import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
 @Composable
 @Preview
 fun App() {
-    SecureSettings.verifyKey()
-
     val rootNavController = rememberNavController()
     val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
