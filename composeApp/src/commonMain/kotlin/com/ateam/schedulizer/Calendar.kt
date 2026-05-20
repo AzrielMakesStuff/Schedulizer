@@ -1,53 +1,48 @@
 package com.ateam.schedulizer
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import com.kizitonwose.calendar.compose.rememberCalendarState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.kizitonwose.calendar.compose.HorizontalCalendar
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import com.kizitonwose.calendar.core.CalendarMonth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.foundation.layout.Column
+import com.kizitonwose.calendar.core.CalendarDay
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.background
+import kotlinx.datetime.format.DayOfWeekNames
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.border
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.window.Popup
+import com.kizitonwose.calendar.core.*
+import androidx.compose.ui.draw.shadow
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
-import com.kizitonwose.calendar.compose.rememberCalendarState
-import com.kizitonwose.calendar.compose.HorizontalCalendar
-import com.kizitonwose.calendar.core.*
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.YearMonth
-import kotlinx.datetime.format.DayOfWeekNames
-import com.kizitonwose.calendar.core.CalendarDay
-import com.kizitonwose.calendar.core.CalendarMonth
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
-import schedulizer.composeapp.generated.resources.Res
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
-
 
 @Composable
 fun Calendar()
@@ -55,7 +50,6 @@ fun Calendar()
     val currentMonth = remember { YearMonth.now() }
     val startMonth = remember { currentMonth.minusMonths(100) }
     val endMonth = remember { currentMonth.plusMonths(100) }
-    val firstDayOfWeek = remember { daysOfWeek() }
     val state = rememberCalendarState(
         startMonth = startMonth,
         endMonth = endMonth,
@@ -63,23 +57,16 @@ fun Calendar()
         firstDayOfWeek = daysOfWeek.first()
     )
 
-    Column() {
-
+    Column {
         val light = Color(0xFFF5F5F5)
         val dark = Color(0xFF1E1E24)
 
-        val backgroundColor = if (isSystemInDarkTheme()) {
-            dark
-        } else{
-            light
-        }
+        val backgroundColor = if (isSystemInDarkTheme()) dark else light
 
         state.firstVisibleMonth.toString()
         HorizontalCalendar(
             monthBody = { _, content ->
-                Box(
-                    modifier = Modifier.background(backgroundColor)
-                ) {
+                Box(modifier = Modifier.background(backgroundColor)) {
                     content()
                 }
             },
@@ -128,11 +115,7 @@ fun MonthName(monthName: String, year: Int) {
 
 @Composable
 fun Day(day: CalendarDay) {
-    val textColor = if(isSystemInDarkTheme()) {
-        Color.White
-    } else {
-        Color.Black
-    }
+    val textColor = if(isSystemInDarkTheme()) Color.White else Color.Black
 
     var showOverlay by remember { mutableStateOf(false) }
     Box(
