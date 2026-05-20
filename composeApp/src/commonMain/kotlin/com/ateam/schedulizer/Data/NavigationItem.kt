@@ -19,8 +19,7 @@ object Graph {
 sealed class Routes(var route: String) {
     data object Home : Routes("home")
     data object Calendar : Routes("Calendar")
-    data object HomeDetail : Routes("homeDetail")
-    data object SettingDetail : Routes("settingDetail")
+    data object Settings : Routes("Settings")
 }
 
 val navigationItemsLists = listOf(
@@ -36,4 +35,10 @@ val navigationItemsLists = listOf(
         title = "Calendar",
         route = Routes.Calendar.route,
     ),
+    NavigationItem(
+        unSelectedIcon = Icons.Outlined.Settings,
+        selectedIcon = Icons.Filled.Settings,
+        title = "Settings",
+        route = Routes.Settings.route,
+    )
 )

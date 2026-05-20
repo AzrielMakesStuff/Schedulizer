@@ -28,6 +28,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -37,6 +39,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.DayOfWeek
@@ -44,6 +47,7 @@ import kotlinx.datetime.YearMonth
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun Calendar()
 {
@@ -54,7 +58,8 @@ fun Calendar()
         startMonth = startMonth,
         endMonth = endMonth,
         firstVisibleMonth = currentMonth,
-        firstDayOfWeek = daysOfWeek.first()
+        firstDayOfWeek = daysOfWeek.first(),
+        outDateStyle = OutDateStyle.EndOfGrid,
     )
 
     Column {
@@ -84,6 +89,35 @@ fun Calendar()
                 MonthHeader(daysOfWeek = daysOfWeek)
             }
         )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.08f),
+            contentAlignment = Alignment.Center
+        )
+        {
+            Text(
+                text = "Tasks",
+                style = MaterialTheme.typography.headlineMediumEmphasized,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .padding(15.dp)
+                .clip(RoundedCornerShape(30.dp))
+                .verticalScroll(rememberScrollState())
+                .background(Color.LightGray),
+            contentAlignment = Alignment.TopCenter
+        )
+        {
+
+        }
     }
 }
 
@@ -115,25 +149,29 @@ fun MonthName(monthName: String, year: Int) {
 
 @Composable
 fun Day(day: CalendarDay) {
-    val textColor = if(isSystemInDarkTheme()) Color.White else Color.Black
+    val isMonthDate = day.position == DayPosition.MonthDate
+    val baseColor = if (isSystemInDarkTheme()) Color.White else Color.Black
+    val textColor = if (isMonthDate) baseColor else baseColor.copy(alpha = 0.3f)
 
     var showOverlay by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
-        .aspectRatio(1f)
-        .border(
-            color = Color.Black,
-            width = 0.5.dp,
-            //shape = RoundedCornerShape(8.dp)
-        )
-        .clickable(onClick = {showOverlay = true}),
+            .aspectRatio(1f)
+            .border(
+                color = Color.Black.copy(alpha = 0.1f),
+                width = 0.5.dp,
+            )
+            .clickable(enabled = isMonthDate, onClick = { showOverlay = true }),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = day.date.day.toString(),
-        color = textColor
-    )
+        Text(
+            text = day.date.day.toString(),
+            color = textColor
+        )
     }
-    DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day)
+    if (isMonthDate) {
+        DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day)
+    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -176,7 +214,6 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay)
                             Column(
                                 modifier = Modifier
                                     .padding(24.dp),
-//                                    .verticalScroll(rememberScrollState()),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             )
                             {

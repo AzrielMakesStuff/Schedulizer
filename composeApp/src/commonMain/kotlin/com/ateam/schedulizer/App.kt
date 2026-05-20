@@ -63,6 +63,9 @@ fun App() {
                 composable(Routes.Calendar.route) {
                     Calendar()
                 }
+                composable(Routes.Settings.route) {
+                    Settings()
+                }
             }
         }
     }
