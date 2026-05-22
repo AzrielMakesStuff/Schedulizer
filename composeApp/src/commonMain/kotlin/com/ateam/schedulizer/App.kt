@@ -20,6 +20,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import navigationItemsLists
 import Routes
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import org.jetbrains.compose.resources.painterResource
@@ -29,46 +36,60 @@ import schedulizer.composeapp.generated.resources.app_logo
 @Composable
 @Preview
 fun App() {
-    val rootNavController = rememberNavController()
-    val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    val baseColor = if (isSystemInDarkTheme()) Color(0xFF303030) else Color.LightGray.copy(alpha = 0.5f)
+    val textColoring =
+        if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
+    val background = if (isSystemInDarkTheme()) Color(0xFF000000) else Color.White
 
-    Scaffold(
-        bottomBar = {
-            BottomNavigationBar(
-                items = navigationItemsLists,
-                currentRoute = currentRoute,
-                onItemClick = { item ->
-                    rootNavController.navigate(item.route) {
-                        popUpTo(Routes.Home.route) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Column(
+    MaterialTheme {
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .background(background)
+                .windowInsetsPadding(WindowInsets.systemBars)
         ) {
+            val rootNavController = rememberNavController()
+            val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
 
-            NavHost(
-                navController = rootNavController,
-                startDestination = Routes.Home.route,
-                modifier = Modifier.weight(1f)
-            ) {
-                composable(Routes.Home.route) {
-                    HomeScreen()
+            Scaffold(
+                bottomBar = {
+                    BottomNavigationBar(
+                        items = navigationItemsLists,
+                        currentRoute = currentRoute,
+                        onItemClick = { item ->
+                            rootNavController.navigate(item.route) {
+                                popUpTo(Routes.Home.route) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
                 }
-                composable(Routes.Calendar.route) {
-                    Calendar()
-                }
-                composable(Routes.Settings.route) {
-                    Settings()
+            ) { paddingValues ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+
+                    NavHost(
+                        navController = rootNavController,
+                        startDestination = Routes.Home.route,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        composable(Routes.Home.route) {
+                            HomeScreen()
+                        }
+                        composable(Routes.Calendar.route) {
+                            Calendar()
+                        }
+                        composable(Routes.Settings.route) {
+                            Settings()
+                        }
+                    }
                 }
             }
         }
@@ -106,12 +127,4 @@ fun BottomNavigationBar(
             )
         }
     }
-}
-
-@Composable
-fun AppLogo() {
-    Image(
-        painter = painterResource(Res.drawable.app_logo),
-        contentDescription = "App Logo"
-    )
 }

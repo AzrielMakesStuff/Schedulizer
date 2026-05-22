@@ -136,6 +136,7 @@ fun DaysOfWeekTitle(daysOfWeek: List<DayOfWeek>) {
 
 @Composable
 fun MonthName(monthName: String, year: Int) {
+    val textColoring = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
     Text(
         modifier = Modifier
             .fillMaxWidth()
@@ -143,7 +144,8 @@ fun MonthName(monthName: String, year: Int) {
         textAlign = TextAlign.Center,
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
-        text = ("$monthName $year")
+        text = ("$monthName $year"),
+        color = textColoring
     )
 }
 
