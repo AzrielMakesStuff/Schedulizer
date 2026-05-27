@@ -191,7 +191,7 @@ fun HomeDay(day: CalendarDay) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = day.date.dayOfMonth.toString(),
+            text = day.date.dayOfMonth.toString(), //Ignore Deprecation here, still works :P
             color = textColoring,
             modifier = Modifier
                 .padding(10.dp)
