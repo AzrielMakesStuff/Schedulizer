@@ -21,12 +21,6 @@ import navigationItemsLists
 import Routes
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.ateam.schedulizer.entities.Task
-import com.ateam.schedulizer.entities.TaskType
-import kotlinx.coroutines.launch
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 @Composable
 @Preview
