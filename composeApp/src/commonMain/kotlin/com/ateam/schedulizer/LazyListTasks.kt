@@ -18,11 +18,10 @@ import kotlinx.datetime.LocalDate
 
 @Composable
 fun LazyListTasks() {
-    val dao = databaseInstance.getDao()
-    var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
-
+    var tasks : List<Task> = emptyList()
     LaunchedEffect(Unit) {
-        tasks = dao.getTasksByDate(LocalDate.now())
+        databaseInstance.getAllTasks()
+        tasks = databaseInstance.getTasksByDate(LocalDate.now())
     }
 
     LazyColumn {
