@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +40,7 @@ import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.minusMonths
 import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusMonths
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.YearMonth
@@ -158,18 +160,6 @@ fun HomeScreen() {
                 ) {
                     Text(text = "The Game", fontWeight = FontWeight.Bold, color = textColoring, modifier = Modifier.clickable { createTaskDialog = true })
                 }
-                listOf("Part 5", "Part 6").forEach { partLabel ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(25.dp))
-                            .background(baseColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = partLabel, fontWeight = FontWeight.Bold, color = textColoring)
-                    }
-                }
 
                 Row(
                     modifier = Modifier
@@ -182,15 +172,14 @@ fun HomeScreen() {
                             .padding(8.dp)
                             .height(150.dp)
                             .clip(RoundedCornerShape(25.dp))
-                            .background(baseColor)
-                            .clickable { coroutineScope.launch { databaseInstance.createTask() } },
+                            .background(baseColor),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "Streak Here Maybe??",
                             fontWeight = FontWeight.Bold,
                             color = textColoring,
-                            modifier = Modifier.clickable { coroutineScope.launch { databaseInstance.createTask() } })
+                        )
                     }
                     Box(
                         modifier = Modifier
@@ -198,15 +187,14 @@ fun HomeScreen() {
                             .padding(8.dp)
                             .height(150.dp)
                             .clip(RoundedCornerShape(25.dp))
-                            .background(baseColor)
-                            .clickable { coroutineScope.launch { databaseInstance.createTask() } },
+                            .background(baseColor),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "Something Else",
                             fontWeight = FontWeight.Bold,
                             color = textColoring,
-                            modifier = Modifier.clickable { coroutineScope.launch { databaseInstance.createTask() } })
+                        )
                     }
                 }
             }
