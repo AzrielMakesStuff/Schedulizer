@@ -106,34 +106,6 @@ fun Calendar() {
                 }
             )
 
-            Column {
-                val light = Color(0xFFF5F5F5)
-                val dark = Color(0xFF1E1E24)
-
-                val backgroundColor = if (isSystemInDarkTheme()) dark else light
-
-                state.firstVisibleMonth.toString()
-                HorizontalCalendar(
-                    monthBody = { _, content ->
-                        Box(modifier = Modifier.background(backgroundColor)) {
-                            content()
-                        }
-                    },
-                    state = state,
-                    dayContent = { Day(it) },
-                    monthHeader = { month: CalendarMonth ->
-                        val daysOfWeek = remember(month) {
-                            month.weekDays.first().map { it.date.dayOfWeek }
-                        }
-                        val monthName = month.yearMonth.month.name
-                            .lowercase()
-                            .replaceFirstChar { it.uppercase() }
-                        val year = month.yearMonth.year
-                        MonthName(monthName = monthName, year = year)
-                        MonthHeader(daysOfWeek = daysOfWeek)
-                    }
-                )
-
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -162,7 +134,6 @@ fun Calendar() {
             }
         }
     }
-}
 
 @Composable
 fun DaysOfWeekTitle(daysOfWeek: List<DayOfWeek>) {
