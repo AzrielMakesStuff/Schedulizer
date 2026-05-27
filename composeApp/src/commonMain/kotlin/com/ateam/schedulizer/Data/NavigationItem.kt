@@ -36,4 +36,10 @@ val navigationItemsLists = listOf(
         title = "Calendar",
         route = Routes.Calendar.route,
     ),
+    NavigationItem(
+        unSelectedIcon = Icons.Outlined.Settings,
+        selectedIcon = Icons.Filled.Settings,
+        title = "Settings",
+        route = Routes.SettingDetail.route,
+    )
 )

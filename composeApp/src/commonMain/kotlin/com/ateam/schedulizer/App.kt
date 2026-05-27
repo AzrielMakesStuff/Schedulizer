@@ -73,6 +73,10 @@ fun App() {
                 composable(Routes.Calendar.route) {
                     Calendar()
                 }
+                composable(Routes.SettingDetail.route)
+                {
+                    Settings()
+                }
             }
         }
     }
