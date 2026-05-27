@@ -23,9 +23,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.ateam.schedulizer.entities.Task
 import com.ateam.schedulizer.entities.TaskType
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -97,7 +94,7 @@ fun App() {
                 modifier = Modifier.weight(1f)
             ) {
                 composable(Routes.Home.route) {
-                    HomeScreen(tasks = tasks, onCreateTask = ::createTask, onDeleteTask = ::deleteTask)
+                    HomeScreen(/*tasks = tasks, onCreateTask = ::createTask, onDeleteTask = ::deleteTask*/)
                 }
                 composable(Routes.Calendar.route) {
                     Calendar()

@@ -32,7 +32,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -43,10 +42,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.DayOfWeek
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.todayIn
@@ -55,23 +54,20 @@ import kotlin.time.Clock
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun Calendar() {
-    val baseColor =
-        if (isSystemInDarkTheme()) Color(0xFF303030) else Color.LightGray.copy(alpha = 0.5f)
-    val textColoring =
-        if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
+    val baseColor = if (isSystemInDarkTheme()) Color(0xFF303030) else Color.LightGray.copy(alpha = 0.5f)
+    val textColoring = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
     val background = if (isSystemInDarkTheme()) Color(0xFF000000) else Color.White
 
-    val scrollState = rememberScrollState()
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(background)
             .windowInsetsPadding(WindowInsets.systemBars)
 
-    )
-    {
+    ) {
         val currentMonth = remember { YearMonth.now() }
         val startMonth = remember { currentMonth.minusMonths(100) }
         val endMonth = remember { currentMonth.plusMonths(100) }
@@ -80,36 +76,7 @@ fun Calendar() {
             endMonth = endMonth,
             firstVisibleMonth = currentMonth,
             firstDayOfWeek = daysOfWeek.first(),
-            outDateStyle = OutDateStyle.EndOfGrid,
-
-    Column {
-
-        val light = Color(0xFFF5F5F5)
-        val dark = Color(0xFF1E1E24)
-
-        val backgroundColor = if (isSystemInDarkTheme()) dark else light
-
-        state.firstVisibleMonth.toString()
-        HorizontalCalendar(
-            monthBody = { _, content ->
-                Box(modifier = Modifier.background(backgroundColor)) {
-                    content()
-                }
-            },
-            state = state,
-            dayContent = { Day(it) },
-            monthHeader = { month: CalendarMonth ->
-                val daysOfWeek = remember(month) {
-                    month.weekDays.first().map { it.date.dayOfWeek }
-                }
-                val monthName = month.yearMonth.month.name
-                    .lowercase()
-                    .replaceFirstChar { it.uppercase() }
-                val year = month.yearMonth.year
-                MonthName(monthName = monthName, year = year)
-                MonthHeader(daysOfWeek = daysOfWeek)
-            }
-        )
+            outDateStyle = OutDateStyle.EndOfGrid)
 
         Column {
             val light = Color(0xFFF5F5F5)
@@ -139,33 +106,60 @@ fun Calendar() {
                 }
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.15f),
-                contentAlignment = Alignment.Center
-            )
-            {
-                Text(
-                    text = "Tasks",
-                    style = MaterialTheme.typography.headlineSmallEmphasized,
-                    textAlign = TextAlign.Center,
-                    color = textColoring
+            Column {
+                val light = Color(0xFFF5F5F5)
+                val dark = Color(0xFF1E1E24)
+
+                val backgroundColor = if (isSystemInDarkTheme()) dark else light
+
+                state.firstVisibleMonth.toString()
+                HorizontalCalendar(
+                    monthBody = { _, content ->
+                        Box(modifier = Modifier.background(backgroundColor)) {
+                            content()
+                        }
+                    },
+                    state = state,
+                    dayContent = { Day(it) },
+                    monthHeader = { month: CalendarMonth ->
+                        val daysOfWeek = remember(month) {
+                            month.weekDays.first().map { it.date.dayOfWeek }
+                        }
+                        val monthName = month.yearMonth.month.name
+                            .lowercase()
+                            .replaceFirstChar { it.uppercase() }
+                        val year = month.yearMonth.year
+                        MonthName(monthName = monthName, year = year)
+                        MonthHeader(daysOfWeek = daysOfWeek)
+                    }
                 )
-            }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.15f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Tasks",
+                        style = MaterialTheme.typography.headlineSmallEmphasized,
+                        textAlign = TextAlign.Center,
+                        color = textColoring
+                    )
+                }
 
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .padding(10.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .verticalScroll(rememberScrollState())
-                    .background(Color.LightGray),
-            )
-            {
-                LazyListTasks()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight()
+                        .padding(10.dp)
+                        .clip(RoundedCornerShape(30.dp))
+                        .verticalScroll(rememberScrollState())
+                        .background(Color.LightGray),
+                ) {
+                    LazyListTasks()
+                }
             }
         }
     }
@@ -202,7 +196,6 @@ fun MonthName(monthName: String, year: Int) {
 
 @Composable
 fun Day(day: CalendarDay) {
-    val textColor = if(isSystemInDarkTheme()) Color.White else Color.Black
     val isMonthDate = day.position == DayPosition.MonthDate
     val baseColor = if (isSystemInDarkTheme()) Color.White else Color.Black
     val textColor = if (isMonthDate) baseColor else baseColor.copy(alpha = 0.3f)
