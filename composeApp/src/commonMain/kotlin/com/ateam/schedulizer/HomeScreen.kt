@@ -15,7 +15,7 @@ fun HomeScreen(tasks: List<Task>, onCreateTask: () -> Unit, onDeleteTask: (Task)
             Text("Create Task")
         }
         tasks.forEach { task ->
-            Text(text = "${task.title} - ${task.type} - ${task.dateOne}")
+            Text(text = "${task.title} - ${task.type} - ${task.dateOne} - ${task.dateTwo}")
             Button(onClick = { onDeleteTask(task) }) {
                 Text("Delete")
             }
