@@ -10,13 +10,9 @@ import com.ateam.schedulizer.dao.TaskDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import com.ateam.schedulizer.entities.Task
-import com.ateam.schedulizer.entities.TaskType
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
-@Database(entities = [Task::class], version = 1)
+@Database(entities = [Task::class], version = 2)
 @TypeConverters(Converters::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
