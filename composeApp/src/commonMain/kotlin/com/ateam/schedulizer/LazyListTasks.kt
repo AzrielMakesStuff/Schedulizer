@@ -27,7 +27,6 @@ fun LazyListTasks() {
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        databaseInstance.getAllTasks()
         tasks = databaseInstance.getTasksByDate(LocalDate.now())
     }
 

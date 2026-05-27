@@ -28,20 +28,14 @@ abstract class AppDatabase : RoomDatabase() {
         _tasks = getDao().getAll()
     }
 
-    suspend fun createTask() {
-        getDao().upsert(
-            Task(
-                type = TaskType.DAILY,
-                title = "New Task",
-                description = "Test description",
-                dateOne = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
-                dateTwo = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-            )
-        )
+    suspend fun createTask(task : Task) {
+        getAllTasks()
+        getDao().upsert(task)
         getAllTasks()
     }
 
     suspend fun deleteTask(task: Task) {
+        getAllTasks()
         getDao().delete(task.id)
         getAllTasks()
     }

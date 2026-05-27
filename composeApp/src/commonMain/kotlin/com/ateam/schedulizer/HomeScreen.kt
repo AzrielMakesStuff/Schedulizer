@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,9 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.rememberLifecycleOwner
-import androidx.room.Database
-import com.ateam.schedulizer.entities.Task
 import com.kizitonwose.calendar.compose.WeekCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.compose.weekcalendar.rememberWeekCalendarState
@@ -44,8 +40,6 @@ import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.minusMonths
 import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusMonths
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.yearMonth
@@ -53,11 +47,14 @@ import kotlinx.datetime.yearMonth
 @Composable
 fun HomeScreen() {
     val coroutineScope = rememberCoroutineScope()
+    var createTaskDialog by remember { mutableStateOf(false) }
 
     val baseColor = if (isSystemInDarkTheme()) Color(0xFF303030) else Color.LightGray.copy(alpha = 0.5f)
     val textColoring =
         if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
     val background = if (isSystemInDarkTheme()) Color(0xFF000000) else Color.White
+
+    if (createTaskDialog) CreateTaskDialog { createTaskDialog = false }
 
     Box(
         modifier = Modifier
@@ -170,7 +167,7 @@ fun HomeScreen() {
                         .background(baseColor),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "The Game", fontWeight = FontWeight.Bold, color = textColoring, modifier = Modifier.clickable { coroutineScope.launch { databaseInstance.createTask() } })
+                    Text(text = "The Game", fontWeight = FontWeight.Bold, color = textColoring, modifier = Modifier.clickable { createTaskDialog = true })
                 }
                 listOf("Part 5", "Part 6").forEach { partLabel ->
                     Box(
@@ -211,7 +208,7 @@ fun HomeDay(day: CalendarDay) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = day.date.dayOfMonth.toString(), //Ignore Deprecation here, still works :P
+            text = day.date.day.toString(),
             color = textColoring,
             modifier = Modifier
                 .padding(10.dp)
