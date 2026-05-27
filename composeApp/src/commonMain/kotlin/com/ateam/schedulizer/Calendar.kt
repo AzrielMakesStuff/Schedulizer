@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -128,8 +129,8 @@ fun Calendar() {
                         .fillMaxWidth()
                         .fillMaxHeight()
                         .padding(10.dp)
-                        .clip(RoundedCornerShape(30.dp))
-                        .background(Color.LightGray),
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(Color.White.copy(alpha = 0.9f)),
                 ) {
                     LazyListTasks()
                 }
@@ -181,8 +182,8 @@ fun Day(day: CalendarDay) {
         modifier = Modifier
             .aspectRatio(1f)
             .border(
-                color = if (isToday) Color.White else Color.Black.copy(alpha = 0.1f),
-                width = 0.5.dp,
+                color = if (isToday) Color.White else Color.Black,
+                width = 1.5.dp,
             )
             .clickable(enabled = isMonthDate, onClick = { showOverlay = true }),
         contentAlignment = Alignment.Center
