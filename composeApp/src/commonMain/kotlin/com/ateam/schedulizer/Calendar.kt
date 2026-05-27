@@ -26,14 +26,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -44,7 +37,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.DayOfWeek
@@ -105,33 +97,6 @@ fun Calendar() {
                     MonthHeader(daysOfWeek = daysOfWeek)
                 }
             )
-
-            Spacer(Modifier.height(2.dp))
-
-//                Box(
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .fillMaxHeight(0.15f),
-//                    contentAlignment = Alignment.Center
-//                ) {
-//                    Text(
-//                        text = "Tasks",
-//                        style = MaterialTheme.typography.headlineSmallEmphasized,
-//                        textAlign = TextAlign.Center,
-//                        color = textColoring
-//                    )
-//                }
-
-//                Box(
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .fillMaxHeight()
-//                        .padding(5.dp)
-//                        .clip(RoundedCornerShape(15.dp))
-//                        .background(Color.White.copy(alpha = 0.9f)),
-//                ) {
-//                    LazyListTasks()
-//                }
             }
         }
     }
@@ -194,19 +159,20 @@ fun Day(day: CalendarDay) {
     if (isMonthDate) {
         DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day)
     }
-    DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day)
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay)
-{
+fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay) {
     var createTaskDialog by remember { mutableStateOf(false) }
 
     if (createTaskDialog) {
-        CreateTaskDialog(onDismiss = { createTaskDialog = false })
+        CreateTaskDialog(
+            date = day.date,
+            onDismiss = { createTaskDialog = false }
+        )
     }
-    if(isVisible) {
+
+    if (isVisible) {
         Popup(
             onDismissRequest = onDismiss,
             properties = PopupProperties(focusable = true)
@@ -218,7 +184,7 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay)
                     .clickable { onDismiss() },
                 contentAlignment = Alignment.Center
             ) {
-                Box (
+                Box(
                     modifier = Modifier
                         .padding(9.dp)
                         .widthIn(max = 450.dp)
@@ -237,23 +203,23 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay)
                                 .background(Color(0xFF1E1E1E), shape = RoundedCornerShape(16.dp))
                                 .clickable(enabled = false) { },
                             contentAlignment = Alignment.Center
-                        )
-                        {
+                        ) {
                             Column(
-                                modifier = Modifier
-                                    .padding(24.dp),
-//                                    .verticalScroll(rememberScrollState()),
+                                modifier = Modifier.padding(24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
-                            )
-                            {
+                            ) {
                                 val currentDay = day.date.dayOfWeek.name
 
-                                Text(text = currentDay,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White)
+                                Text(
+                                    text = currentDay,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.White
+                                )
 
-                                Button(onClick = { onDismiss; createTaskDialog = true })
-                                {
+                                Button(onClick = {
+                                    onDismiss()
+                                    createTaskDialog = true
+                                }) {
                                     Text(text = "Create Task for $currentDay")
                                 }
                             }

@@ -52,7 +52,6 @@ fun DateTimePickerField(
         LocalDate(selectedYear, selectedMonth, 1).plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).day
     }
 
-    // Clamp day if month/year change makes it invalid
     LaunchedEffect(daysInMonth) {
         if (selectedDay > daysInMonth) selectedDay = daysInMonth
     }
@@ -60,7 +59,7 @@ fun DateTimePickerField(
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         OutlinedButton(
             onClick = { showDateDialog = true },
-            modifier = Modifier.weight(1f)
+            modifier = if (showTime) Modifier.weight(1f) else Modifier.fillMaxWidth()
         ) {
             Text(
                 dateTimeState.millis?.let {
@@ -201,7 +200,8 @@ fun NumberScrollPicker(
     LazyColumn(
         state = listState,
         modifier = modifier.height(itemHeight * 3),
-        flingBehavior = rememberSnapFlingBehavior(listState)
+        flingBehavior = rememberSnapFlingBehavior(listState),
+        contentPadding = PaddingValues(vertical = itemHeight)
     ) {
         items(range.count()) { index ->
             val value = range.first + index
@@ -242,12 +242,12 @@ class DateTimePickerState(
 fun rememberDateTimePickerState() = remember { DateTimePickerState() }
 
 @OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun CreateTaskDialog(date : LocalDate? = null, onDismiss: () -> Unit) {
     val timeZone = TimeZone.currentSystemDefault()
     val now = remember { Clock.System.now() }
     val today = remember { now.toLocalDateTime(timeZone) }
-    val yesterday = remember { now.minus(1, DateTimeUnit.DAY, timeZone).toLocalDateTime(timeZone) }
     val coroutineScope = rememberCoroutineScope()
 
     var taskType by remember { mutableStateOf(TaskType.SET) }
@@ -256,7 +256,7 @@ fun CreateTaskDialog(date : LocalDate? = null, onDismiss: () -> Unit) {
     var ignoreTime by remember { mutableStateOf(false) }
     var hasExpiry by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
-    var allDay by remember { mutableStateOf(false) }
+    var oneDay by remember { mutableStateOf(false) }
 
     val startState = rememberDateTimePickerState()
     val endState = remember {
@@ -298,7 +298,7 @@ fun CreateTaskDialog(date : LocalDate? = null, onDismiss: () -> Unit) {
                                     taskType = type
                                     ignoreTime = false
                                     hasExpiry = false
-                                    allDay = false
+                                    oneDay = false
                                     expanded = false
                                 }
                             )
@@ -310,44 +310,45 @@ fun CreateTaskDialog(date : LocalDate? = null, onDismiss: () -> Unit) {
                 when (taskType) {
                     TaskType.SET -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = allDay, onCheckedChange = { allDay = it })
-                            Text("All Day")
+                            Checkbox(checked = oneDay, onCheckedChange = { oneDay = it })
+                            Text("One Day")
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = ignoreTime,
-                                onCheckedChange = { ignoreTime = it },
-                                enabled = !allDay
-                            )
-                            Text("Ignore Time")
+                        if (!oneDay) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = ignoreTime,
+                                    onCheckedChange = { ignoreTime = it }
+                                )
+                                Text("Ignore Time")
+                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Start", style = MaterialTheme.typography.labelMedium)
                         DateTimePickerField(
                             label = "Pick start date",
                             dateTimeState = startState,
-                            showTime = !ignoreTime && !allDay
+                            showTime = !ignoreTime && !oneDay
                         )
-                        if (!ignoreTime && !allDay) {
+                        if (!oneDay) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("End", style = MaterialTheme.typography.labelMedium)
                             DateTimePickerField(
                                 label = "Pick end date",
                                 dateTimeState = endState,
-                                showTime = true
+                                showTime = !ignoreTime
                             )
                         }
                     }
                     TaskType.POOL -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = ignoreTime, onCheckedChange = { ignoreTime = it })
-                            Text("Ignore Time")
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = hasExpiry, onCheckedChange = { hasExpiry = it })
                             Text("Expires?")
                         }
                         if (hasExpiry) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = ignoreTime, onCheckedChange = { ignoreTime = it })
+                                Text("Ignore Time")
+                            }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Expiry", style = MaterialTheme.typography.labelMedium)
                             DateTimePickerField(
@@ -398,9 +399,9 @@ fun CreateTaskDialog(date : LocalDate? = null, onDismiss: () -> Unit) {
                                     TaskType.POOL, TaskType.DAILY -> today
                                 },
                                 dateTwo = when (taskType) {
-                                    TaskType.SET -> if (!ignoreTime && !allDay) endState.toLocalDateTime(timeZone) ?: return@Button else null
+                                    TaskType.SET -> if (!ignoreTime && !oneDay) endState.toLocalDateTime(timeZone) ?: return@Button else null
                                     TaskType.POOL -> if (hasExpiry) endState.toLocalDateTime(timeZone) ?: return@Button else null
-                                    TaskType.DAILY -> yesterday
+                                    TaskType.DAILY -> today
                                 }
                             )
                             coroutineScope.launch {
