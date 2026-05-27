@@ -11,7 +11,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.number
 import java.util.Calendar
 
-actual class NotificationSystem {
+actual object NotificationSystem {
     fun createNotification(title: String, body : String): Notification {
     return NotificationCompat.Builder(ContextHolder.context, Constants.NOTIF_CHANNEL_ID).setPriority(
         NotificationManager.IMPORTANCE_DEFAULT).setContentText(body).setContentTitle(title).build()
