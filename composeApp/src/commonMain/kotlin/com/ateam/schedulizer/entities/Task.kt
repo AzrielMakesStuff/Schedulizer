@@ -16,11 +16,3 @@ data class Task(
     val dateOne: LocalDateTime,
     val dateTwo: LocalDateTime?
 )
-
-class TaskManager {
-    private val tasks = mutableListOf<Task>()
-
-    fun addTask(task: Task) {
-        
-    }
-}

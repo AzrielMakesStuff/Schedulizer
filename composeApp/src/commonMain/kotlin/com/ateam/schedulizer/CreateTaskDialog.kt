@@ -239,8 +239,11 @@ fun CreateTaskDialog(onDismiss : () -> Unit) {
             }
         }
     }
-    fun millisToLocalDateTime(millis: Long?): LocalDateTime {
-        val instant = kotlin.time.Instant.fromEpochMilliseconds(millis!!)
-        return instant.toLocalDateTime(timeZone)
-    }
+}
+
+fun millisToLocalDateTime(millis: Long?, zone: TimeZone): LocalDateTime? {
+    if (millis == null) return null
+    return kotlin.time.Instant
+        .fromEpochMilliseconds(millis)
+        .toLocalDateTime(zone)
 }
