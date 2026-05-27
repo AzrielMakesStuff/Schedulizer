@@ -151,11 +151,14 @@ fun DaysOfWeekTitle(daysOfWeek: List<DayOfWeek>) {
 
 @Composable
 fun MonthName(monthName: String, year: Int) {
+    val textColoring =
+        if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
     Text(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp),
         textAlign = TextAlign.Center,
+        color = textColoring,
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
         text = ("$monthName $year")
@@ -255,12 +258,15 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay)
 
 @Composable
 fun MonthHeader(daysOfWeek: List<DayOfWeek>) {
+    val textColoring =
+        if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
     Row(modifier = Modifier.fillMaxWidth()) {
         for (dayOfWeek in daysOfWeek) {
             Text(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
                 text = dayOfWeek.name.take(3),
+                color = textColoring,
                 fontWeight = FontWeight.Bold,
             )
         }
