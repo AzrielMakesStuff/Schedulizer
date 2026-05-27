@@ -14,7 +14,7 @@ data class Task(
     val title: String,
     val description: String,
     val dateOne: LocalDateTime,
-    val dateTwo: LocalDateTime
+    val dateTwo: LocalDateTime?
 )
 
 class TaskManager {
