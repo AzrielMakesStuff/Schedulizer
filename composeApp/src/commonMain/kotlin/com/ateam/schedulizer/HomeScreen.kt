@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +40,8 @@ import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.minusMonths
 import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusMonths
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.yearMonth
@@ -81,7 +84,7 @@ fun HomeScreen() {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillParentMaxHeight()
+                        .wrapContentHeight()
                         .padding(8.dp)
                         .clip(RoundedCornerShape(30.dp))
                         .background(baseColor),
@@ -150,23 +153,48 @@ fun HomeScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(8.dp)
-                        .height(200.dp)
+                        .height(100.dp)
                         .clip(RoundedCornerShape(25.dp))
                         .background(baseColor),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "The Game", fontWeight = FontWeight.Bold, color = textColoring, modifier = Modifier.clickable { createTaskDialog = true })
                 }
-                listOf("Part 5", "Part 6").forEach { partLabel ->
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                ){
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxWidth(0.5f)
                             .padding(8.dp)
+                            .height(150.dp)
                             .clip(RoundedCornerShape(25.dp))
                             .background(baseColor),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = partLabel, fontWeight = FontWeight.Bold, color = textColoring)
+                        Text(
+                            text = "Streak Here Maybe??",
+                            fontWeight = FontWeight.Bold,
+                            color = textColoring,
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                            .height(150.dp)
+                            .clip(RoundedCornerShape(25.dp))
+                            .background(baseColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Something Else",
+                            fontWeight = FontWeight.Bold,
+                            color = textColoring,
+                        )
                     }
                 }
             }
@@ -186,7 +214,7 @@ fun HomeDay(day: CalendarDay) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight()
+            .height(140.dp)
             .border(
                 color = if (isToday) Color.White else Color.White.copy(alpha = 0.6f),
                 width = if(isToday) 0.7.dp else 0.5.dp,

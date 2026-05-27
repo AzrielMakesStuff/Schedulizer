@@ -2,6 +2,7 @@ package com.ateam.schedulizer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,22 +18,45 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun Settings()
-{
+fun Settings() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-    ){
-        Box(
+    ) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.3f)
-                .padding(15.dp)
-                .clip(RoundedCornerShape(30.dp))
-                .background(Color.DarkGray),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
         ) {
-            Text(text = "Put theme settings here or smth", fontWeight = FontWeight.Bold, color = Color.White)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.3f)
+                    .padding(15.dp)
+                    .clip(RoundedCornerShape(30.dp))
+                    .background(Color.DarkGray),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Put theme settings here or smth",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.3f)
+                    .padding(15.dp)
+                    .clip(RoundedCornerShape(30.dp))
+                    .background(Color.DarkGray),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Put something else here, idk I just work here",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
         }
     }
 }
