@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import kotlinx.datetime.*
 
 enum class TaskType { SET, POOL, DAILY }
+fun TaskType.displayName(): String = "${name.lowercase().replaceFirstChar { it.uppercase() }} Task"
 
 @Entity
 data class Task(
