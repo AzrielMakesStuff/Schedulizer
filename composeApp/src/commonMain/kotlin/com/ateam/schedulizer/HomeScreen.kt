@@ -11,10 +11,15 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,7 +54,8 @@ fun HomeScreen() {
     val coroutineScope = rememberCoroutineScope()
     var createTaskDialog by remember { mutableStateOf(false) }
 
-    val baseColor = if (isSystemInDarkTheme()) Color(0xFF303030) else Color.LightGray.copy(alpha = 0.5f)
+    val baseColor =
+        if (isSystemInDarkTheme()) Color(0xFF303030) else Color.LightGray.copy(alpha = 0.5f)
     val textColoring =
         if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
     val background = if (isSystemInDarkTheme()) Color(0xFF000000) else Color.White
@@ -60,7 +66,6 @@ fun HomeScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(background)
-            .windowInsetsPadding(WindowInsets.systemBars)
     ) {
 
         val currentMonth = remember { YearMonth.now() }
@@ -74,95 +79,85 @@ fun HomeScreen() {
             outDateStyle = OutDateStyle.EndOfGrid,
         )
 
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(8.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1.2f)
-                    .padding(8.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(baseColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Weekly Overview",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        modifier = Modifier.padding(bottom = 12.dp),
-                        color = textColoring
-                    )
-
-                    val currentDate = remember { LocalDate.now() }
-                    val startDate = remember { currentDate.minusMonths(12) }
-                    val endDate = remember { currentDate.plusMonths(12) }
-                    val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
-
-                    val state = rememberWeekCalendarState(
-                        startDate = startDate,
-                        endDate = endDate,
-                        firstVisibleWeekDate = currentDate,
-                        firstDayOfWeek = firstDayOfWeek,
-                    )
-
-                    val visibleMonth = remember(state.firstVisibleWeek) {
-                        state.firstVisibleWeek.days.first().date.yearMonth
-                    }
-
-                    val monthName = currentMonth.month.name
-                        .lowercase()
-                        .replaceFirstChar { it.uppercase() }
-                    val year = currentMonth.year
-                    MonthName(
-                        monthName = visibleMonth.month.name.lowercase()
-                            .replaceFirstChar { it.uppercase() }, year = visibleMonth.year
-                    )
-
-                    WeekCalendar(
-                        state = state,
-                        dayContent = { day ->
-                            HomeDay(CalendarDay(day.date, DayPosition.MonthDate))
-                        },
-                        weekHeader = { week ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                for (day in week.days) {
-                                    Text(
-                                        modifier = Modifier
-                                            .weight(1f),
-                                        textAlign = TextAlign.Center,
-                                        text = day.date.dayOfWeek.name.take(3),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = textColoring
-                                    )
-                                }
-                            }
-                        }
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1.4f)
-            ) {
+            item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
+                        .fillParentMaxHeight()
                         .padding(8.dp)
+                        .clip(RoundedCornerShape(30.dp))
+                        .background(baseColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                        val currentDate = remember { LocalDate.now() }
+                        val startDate = remember { currentDate.minusMonths(12) }
+                        val endDate = remember { currentDate.plusMonths(12) }
+                        val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
+
+                        val state = rememberWeekCalendarState(
+                            startDate = startDate,
+                            endDate = endDate,
+                            firstVisibleWeekDate = currentDate,
+                            firstDayOfWeek = firstDayOfWeek,
+                        )
+
+                        val visibleMonth = remember(state.firstVisibleWeek) {
+                            state.firstVisibleWeek.days.first().date.yearMonth
+                        }
+
+                        val monthName = currentMonth.month.name
+                            .lowercase()
+                            .replaceFirstChar { it.uppercase() }
+                        val year = currentMonth.year
+                        MonthName(
+                            monthName = visibleMonth.month.name.lowercase()
+                                .replaceFirstChar { it.uppercase() }, year = visibleMonth.year
+                        )
+
+                        WeekCalendar(
+                            state = state,
+                            dayContent = { day ->
+                                HomeDay(CalendarDay(day.date, DayPosition.MonthDate))
+                            },
+                            weekHeader = { week ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    for (day in week.days) {
+                                        Text(
+                                            modifier = Modifier
+                                                .weight(1f),
+                                            textAlign = TextAlign.Center,
+                                            text = day.date.dayOfWeek.name.take(3),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = textColoring
+                                        )
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .height(200.dp)
                         .clip(RoundedCornerShape(25.dp))
                         .background(baseColor),
                     contentAlignment = Alignment.Center
@@ -173,7 +168,6 @@ fun HomeScreen() {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
                             .padding(8.dp)
                             .clip(RoundedCornerShape(25.dp))
                             .background(baseColor),
