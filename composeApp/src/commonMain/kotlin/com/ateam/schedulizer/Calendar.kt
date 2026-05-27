@@ -5,7 +5,6 @@ import com.kizitonwose.calendar.compose.rememberCalendarState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.heightIn
 import com.kizitonwose.calendar.core.CalendarMonth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.foundation.layout.Column
 import com.kizitonwose.calendar.core.CalendarDay
