@@ -155,7 +155,6 @@ fun Calendar() {
                         .fillMaxHeight()
                         .padding(10.dp)
                         .clip(RoundedCornerShape(30.dp))
-                        .verticalScroll(rememberScrollState())
                         .background(Color.LightGray),
                 ) {
                     LazyListTasks()
