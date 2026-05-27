@@ -42,7 +42,6 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.minus
-import kotlinx.datetime.number
 import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,13 +57,12 @@ fun CreateTaskDialog(onDismiss : () -> Unit) {
     var taskType by remember { mutableStateOf(TaskType.SET) }
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var dateOne by remember { mutableStateOf(today) }
-    var dateTwo by remember { mutableStateOf(today) }
 
     // State tracking
+    var ignoreTime by remember { mutableStateOf(false) }
+    var hasExpiry by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     var allDay by remember { mutableStateOf(false) }
-    var ignoreTime by remember { mutableStateOf(false) }
     val startDateState = rememberDatePickerState()
     val endDateState = rememberDatePickerState()
 
@@ -102,6 +100,9 @@ fun CreateTaskDialog(onDismiss : () -> Unit) {
                                 text = { Text(type.displayName()) },
                                 onClick = {
                                     taskType = type
+                                    ignoreTime = false
+                                    hasExpiry = false
+                                    allDay = false
                                     expanded = false
                                 }
                             )
@@ -113,13 +114,9 @@ fun CreateTaskDialog(onDismiss : () -> Unit) {
                 when (taskType) {
                     TaskType.SET -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = allDay,
-                                onCheckedChange = { allDay = it }
-                            )
+                            Checkbox(checked = allDay, onCheckedChange = { allDay = it })
                             Text("All Day")
                         }
-
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(
                                 checked = ignoreTime,
@@ -128,39 +125,40 @@ fun CreateTaskDialog(onDismiss : () -> Unit) {
                             )
                             Text("Ignore Time")
                         }
-
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text("Start Date")
                         DatePicker(state = startDateState)
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text("End Date")
-                        DatePicker(state = endDateState)
+                        if (!ignoreTime && !allDay) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("End Date")
+                            DatePicker(state = endDateState)
+                        }
                     }
+
                     TaskType.POOL -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = ignoreTime,
-                                onCheckedChange = { ignoreTime = it }
-                            )
+                            Checkbox(checked = ignoreTime, onCheckedChange = { ignoreTime = it })
                             Text("Ignore Time")
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = ignoreTime,
-                                onCheckedChange = { ignoreTime = it },
-                                enabled = !allDay
-                            )
+                            Checkbox(checked = hasExpiry, onCheckedChange = { hasExpiry = it })
                             Text("Expires?")
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
 
-                        Text("Expiry Date")
-                        DatePicker(state = endDateState)
+                        if (hasExpiry) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Expiry Date")
+                            DatePicker(state = endDateState)
+                        }
                     }
-                    else -> {}
+                    TaskType.DAILY -> {
+                        Text(
+                            "Daily tasks automatically start today.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
 
                 OutlinedTextField(
@@ -189,41 +187,23 @@ fun CreateTaskDialog(onDismiss : () -> Unit) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            fun startOfDay(date: LocalDateTime): LocalDateTime {
-                                return LocalDateTime(date.year, date.month.number, date.day, 0, 0)
-                            }
-
-                            fun endOfDay(date: LocalDateTime): LocalDateTime {
-                                return LocalDateTime(date.year, date.month.number, date.day, 23, 59)
-                            }
-
-                            val finalDateOne: LocalDateTime
-                            val finalDateTwo: LocalDateTime
-
-                            if (taskType == TaskType.SET || taskType == TaskType.POOL) {
-
-                                if (allDay) {
-                                    finalDateOne = startOfDay(dateOne)
-                                    finalDateTwo = endOfDay(dateTwo)
-                                } else if (ignoreTime) {
-                                    finalDateOne = dateOne
-                                    finalDateTwo = endOfDay(dateTwo)
-                                } else {
-                                    finalDateOne = dateOne
-                                    finalDateTwo = dateTwo
-                                }
-
-                            } else {
-                                finalDateOne = dateOne
-                                finalDateTwo = dateTwo
-                            }
+                            val startMillis = startDateState.selectedDateMillis
+                            val endMillis = endDateState.selectedDateMillis
 
                             val task = Task(
                                 type = taskType,
                                 title = title,
                                 description = description,
-                                dateOne = if (taskType == TaskType.SET) finalDateOne else today,
-                                dateTwo = if (taskType == TaskType.DAILY) yesterday else finalDateTwo
+                                completed = false,
+                                dateOne = when (taskType) {
+                                    TaskType.SET -> millisToLocalDateTime(startMillis, timeZone) ?: return@Button
+                                    TaskType.POOL, TaskType.DAILY -> today
+                                },
+                                dateTwo = when (taskType) {
+                                    TaskType.SET -> if (!ignoreTime && !allDay) millisToLocalDateTime(endMillis, timeZone) ?: return@Button else null
+                                    TaskType.POOL -> if (hasExpiry) millisToLocalDateTime(endMillis, timeZone) ?: return@Button else null
+                                    TaskType.DAILY -> yesterday
+                                }
                             )
                             coroutineScope.launch {
                                 databaseInstance.createTask(task)

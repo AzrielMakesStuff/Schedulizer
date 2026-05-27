@@ -12,7 +12,7 @@ import kotlinx.coroutines.IO
 import com.ateam.schedulizer.entities.Task
 import kotlinx.datetime.LocalDate
 
-@Database(entities = [Task::class], version = 2)
+@Database(entities = [Task::class], version = 3)
 @TypeConverters(Converters::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {

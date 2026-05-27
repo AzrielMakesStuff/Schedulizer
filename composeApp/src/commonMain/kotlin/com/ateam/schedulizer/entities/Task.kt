@@ -13,6 +13,7 @@ data class Task(
     val type: TaskType,
     val title: String,
     val description: String,
+    val completed: Boolean = false,
     val dateOne: LocalDateTime,
     val dateTwo: LocalDateTime?
 )
