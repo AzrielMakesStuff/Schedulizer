@@ -26,8 +26,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
@@ -103,6 +105,8 @@ fun Calendar() {
                     MonthHeader(daysOfWeek = daysOfWeek)
                 }
             )
+
+            Spacer(Modifier.height(2.dp))
 
                 Box(
                     modifier = Modifier
