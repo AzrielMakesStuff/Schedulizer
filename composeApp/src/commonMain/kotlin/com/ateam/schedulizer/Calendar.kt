@@ -5,7 +5,6 @@ import com.kizitonwose.calendar.compose.rememberCalendarState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.heightIn
 import com.kizitonwose.calendar.core.CalendarMonth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.foundation.layout.Column
 import com.kizitonwose.calendar.core.CalendarDay
@@ -153,11 +151,14 @@ fun DaysOfWeekTitle(daysOfWeek: List<DayOfWeek>) {
 
 @Composable
 fun MonthName(monthName: String, year: Int) {
+    val textColoring =
+        if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
     Text(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp),
         textAlign = TextAlign.Center,
+        color = textColoring,
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
         text = ("$monthName $year")
@@ -257,12 +258,15 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay)
 
 @Composable
 fun MonthHeader(daysOfWeek: List<DayOfWeek>) {
+    val textColoring =
+        if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
     Row(modifier = Modifier.fillMaxWidth()) {
         for (dayOfWeek in daysOfWeek) {
             Text(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
                 text = dayOfWeek.name.take(3),
+                color = textColoring,
                 fontWeight = FontWeight.Bold,
             )
         }

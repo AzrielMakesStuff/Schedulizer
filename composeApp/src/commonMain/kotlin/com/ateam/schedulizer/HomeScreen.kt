@@ -176,6 +176,7 @@ fun HomeDay(day: CalendarDay) {
     val baseColor = if (isSystemInDarkTheme()) Color.Black else Color.White
     val textColor = if (isMonthDate) baseColor else baseColor
     val textColoring = if (isSystemInDarkTheme()) Color.White else Color.Black
+    val isToday = day.date == today
 
     var showOverlay by remember { mutableStateOf(false) }
     Box(
@@ -183,8 +184,8 @@ fun HomeDay(day: CalendarDay) {
             .fillMaxWidth()
             .fillMaxHeight()
             .border(
-                color = textColoring.copy(alpha = 0.8f),
-                width = 0.5.dp,
+                color = if (isToday) Color.White else Color.White.copy(alpha = 0.6f),
+                width = if(isToday) 0.7.dp else 0.5.dp,
             )
             .clickable(enabled = isMonthDate, onClick = { showOverlay = true }),
         contentAlignment = Alignment.Center
