@@ -31,34 +31,8 @@ import kotlin.time.Clock
 @Composable
 @Preview
 fun App() {
-    val dao = databaseInstance.getDao()
-    var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
-    val scope = rememberCoroutineScope()
-
     LaunchedEffect(Unit) {
-        tasks = dao.getAll()
-    }
-
-    fun createTask() {
-        scope.launch {
-            dao.upsert(
-                Task(
-                    type = TaskType.DAILY,
-                    title = "New Task",
-                    description = "Test description",
-                    dateOne = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
-                    dateTwo = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                )
-            )
-            tasks = dao.getAll()
-        }
-    }
-
-    fun deleteTask(task: Task) {
-        scope.launch {
-            dao.delete(task.id)
-            tasks = dao.getAll()
-        }
+        databaseInstance.getAllTasks()
     }
 
     val rootNavController = rememberNavController()
@@ -94,7 +68,7 @@ fun App() {
                 modifier = Modifier.weight(1f)
             ) {
                 composable(Routes.Home.route) {
-                    HomeScreen(/*tasks = tasks, onCreateTask = ::createTask, onDeleteTask = ::deleteTask*/)
+                    HomeScreen()
                 }
                 composable(Routes.Calendar.route) {
                     Calendar()
