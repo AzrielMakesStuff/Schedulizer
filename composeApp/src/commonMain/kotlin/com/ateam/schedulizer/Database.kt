@@ -11,9 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import com.ateam.schedulizer.entities.Task
 import com.ateam.schedulizer.entities.TaskType
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -24,7 +21,7 @@ import kotlin.time.Clock
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     private var _tasks : List<Task> = emptyList()
-    val Tasks : List<Task> get() = _tasks
+    val tasks : List<Task> get() = _tasks
     abstract fun getDao(): TaskDao
 
     suspend fun getAllTasks() {
