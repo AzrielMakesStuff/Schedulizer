@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
@@ -66,8 +67,6 @@ fun Calendar() {
         modifier = Modifier
             .fillMaxSize()
             .background(background)
-            .windowInsetsPadding(WindowInsets.systemBars)
-
     ) {
         val currentMonth = remember { YearMonth.now() }
         val startMonth = remember { currentMonth.minusMonths(100) }
@@ -109,31 +108,30 @@ fun Calendar() {
 
             Spacer(Modifier.height(2.dp))
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.15f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Tasks",
-                        style = MaterialTheme.typography.headlineSmallEmphasized,
-                        textAlign = TextAlign.Center,
-                        color = textColoring
-                    )
-                }
+//                Box(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .fillMaxHeight(0.15f),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    Text(
+//                        text = "Tasks",
+//                        style = MaterialTheme.typography.headlineSmallEmphasized,
+//                        textAlign = TextAlign.Center,
+//                        color = textColoring
+//                    )
+//                }
 
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight()
-                        .padding(10.dp)
-                        .clip(RoundedCornerShape(15.dp))
-                        .background(Color.White.copy(alpha = 0.9f)),
-                ) {
-                    LazyListTasks()
-                }
+//                Box(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .fillMaxHeight()
+//                        .padding(5.dp)
+//                        .clip(RoundedCornerShape(15.dp))
+//                        .background(Color.White.copy(alpha = 0.9f)),
+//                ) {
+//                    LazyListTasks()
+//                }
             }
         }
     }
@@ -203,6 +201,11 @@ fun Day(day: CalendarDay) {
 @Composable
 fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay)
 {
+    var createTaskDialog by remember { mutableStateOf(false) }
+
+    if (createTaskDialog) {
+        CreateTaskDialog(onDismiss = { createTaskDialog = false })
+    }
     if(isVisible) {
         Popup(
             onDismissRequest = onDismiss,
@@ -249,9 +252,10 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay)
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = Color.White)
 
-                                Text(text = "Create Task for $currentDay",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White)
+                                Button(onClick = { onDismiss; createTaskDialog = true })
+                                {
+                                    Text(text = "Create Task for $currentDay")
+                                }
                             }
                         }
                     }
