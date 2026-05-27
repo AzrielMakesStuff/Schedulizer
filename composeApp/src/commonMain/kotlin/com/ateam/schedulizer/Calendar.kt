@@ -28,15 +28,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
-<<<<<<< Updated upstream
-=======
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
->>>>>>> Stashed changes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -59,18 +56,6 @@ val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
 @Composable
-<<<<<<< Updated upstream
-fun Calendar()
-{
-    val currentMonth = remember { YearMonth.now() }
-    val startMonth = remember { currentMonth.minusMonths(100) }
-    val endMonth = remember { currentMonth.plusMonths(100) }
-    val state = rememberCalendarState(
-        startMonth = startMonth,
-        endMonth = endMonth,
-        firstVisibleMonth = currentMonth,
-        firstDayOfWeek = daysOfWeek.first()
-=======
 fun Calendar() {
     val baseColor =
         if (isSystemInDarkTheme()) Color(0xFF303030) else Color.LightGray.copy(alpha = 0.5f)
@@ -85,7 +70,6 @@ fun Calendar() {
             .background(background)
             .windowInsetsPadding(WindowInsets.systemBars)
 
->>>>>>> Stashed changes
     )
     {
         val currentMonth = remember { YearMonth.now() }
@@ -97,9 +81,35 @@ fun Calendar() {
             firstVisibleMonth = currentMonth,
             firstDayOfWeek = daysOfWeek.first(),
             outDateStyle = OutDateStyle.EndOfGrid,
+
+    Column {
+
+        val light = Color(0xFFF5F5F5)
+        val dark = Color(0xFF1E1E24)
+
+        val backgroundColor = if (isSystemInDarkTheme()) dark else light
+
+        state.firstVisibleMonth.toString()
+        HorizontalCalendar(
+            monthBody = { _, content ->
+                Box(modifier = Modifier.background(backgroundColor)) {
+                    content()
+                }
+            },
+            state = state,
+            dayContent = { Day(it) },
+            monthHeader = { month: CalendarMonth ->
+                val daysOfWeek = remember(month) {
+                    month.weekDays.first().map { it.date.dayOfWeek }
+                }
+                val monthName = month.yearMonth.month.name
+                    .lowercase()
+                    .replaceFirstChar { it.uppercase() }
+                val year = month.yearMonth.year
+                MonthName(monthName = monthName, year = year)
+                MonthHeader(daysOfWeek = daysOfWeek)
+            }
         )
-<<<<<<< Updated upstream
-=======
 
         Column {
             val light = Color(0xFFF5F5F5)
@@ -158,7 +168,6 @@ fun Calendar() {
                 LazyListTasks()
             }
         }
->>>>>>> Stashed changes
     }
 }
 
@@ -193,32 +202,15 @@ fun MonthName(monthName: String, year: Int) {
 
 @Composable
 fun Day(day: CalendarDay) {
-<<<<<<< Updated upstream
     val textColor = if(isSystemInDarkTheme()) Color.White else Color.Black
-=======
     val isMonthDate = day.position == DayPosition.MonthDate
     val baseColor = if (isSystemInDarkTheme()) Color.White else Color.Black
     val textColor = if (isMonthDate) baseColor else baseColor.copy(alpha = 0.3f)
     val isToday = day.date == today
->>>>>>> Stashed changes
 
     var showOverlay by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
-<<<<<<< Updated upstream
-        .aspectRatio(1f)
-        .border(
-            color = Color.Black,
-            width = 0.5.dp,
-            //shape = RoundedCornerShape(8.dp)
-        )
-        .clickable(onClick = {showOverlay = true}),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = day.date.day.toString(),
-        color = textColor
-    )
-=======
             .aspectRatio(1f)
             .border(
                 color = if (isToday) Color.White else Color.Black.copy(alpha = 0.1f),
@@ -234,7 +226,6 @@ fun Day(day: CalendarDay) {
     }
     if (isMonthDate) {
         DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day)
->>>>>>> Stashed changes
     }
     DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day)
 }

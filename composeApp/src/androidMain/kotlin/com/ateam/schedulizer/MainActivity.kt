@@ -1,5 +1,6 @@
 package com.ateam.schedulizer
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,9 +12,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        SecureSettings.settings = createAndroidSecureSettings(applicationContext)
-
+        ContextHolder.init(applicationContext as Application)
         setContent {
             App()
         }
