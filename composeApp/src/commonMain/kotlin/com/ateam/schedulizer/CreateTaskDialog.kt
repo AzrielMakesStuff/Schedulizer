@@ -1,12 +1,16 @@
 package com.ateam.schedulizer
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
 import com.ateam.schedulizer.entities.Task
 import com.ateam.schedulizer.entities.TaskType
@@ -33,16 +37,18 @@ fun CreateTaskDialog(onDismiss : () -> Unit) {
 
     // Inputs
     Dialog(onDismissRequest = onDismiss) {
-        Column {
-            Text("Task Type")
-            DropdownMenu(expanded, { expanded = false }) {
-                TaskType.entries.toTypedArray().forEach { type ->
-                    DropdownMenuItem({
-                        Text(type.toString())
-                    }, {
-                        taskType = type
-                        expanded = false
-                    })
+        Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
+            Column {
+                Text("Task Type")
+                DropdownMenu(expanded, { expanded = false }) {
+                    TaskType.entries.toTypedArray().forEach { type ->
+                        DropdownMenuItem({
+                            Text(type.toString())
+                        }, {
+                            taskType = type
+                            expanded = false
+                        })
+                    }
                 }
             }
         }
