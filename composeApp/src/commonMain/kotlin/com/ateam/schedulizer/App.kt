@@ -26,7 +26,7 @@ import androidx.navigation.compose.composable
 @Preview
 fun App() {
     LaunchedEffect(Unit) {
-        databaseInstance.getAllTasks()
+        databaseInstance.refresh()
     }
 
     val rootNavController = rememberNavController()
