@@ -1,6 +1,8 @@
 package com.ateam.schedulizer
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,6 +15,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         ContextHolder.init(applicationContext as Application)
+        val notificationChannel = NotificationChannel(Constants.NOTIF_CHANNEL_ID, Constants.NOTIF_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_DEFAULT);
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager;
+        notificationManager.createNotificationChannel(notificationChannel);
         setContent {
             App()
         }
