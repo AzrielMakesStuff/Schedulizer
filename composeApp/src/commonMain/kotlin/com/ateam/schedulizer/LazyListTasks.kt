@@ -22,7 +22,7 @@ fun LazyListTasks() {
     var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
 
     LaunchedEffect(Unit) {
-        tasks = dao.getTaskByDate(LocalDate.now())
+        tasks = dao.getTasksByDate(LocalDate.now())
     }
 
     LazyColumn {
