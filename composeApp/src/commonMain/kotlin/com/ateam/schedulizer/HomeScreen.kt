@@ -1,16 +1,31 @@
 package com.ateam.schedulizer
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -18,90 +33,64 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kizitonwose.calendar.compose.WeekCalendar
 import com.kizitonwose.calendar.compose.weekcalendar.rememberWeekCalendarState
-import com.kizitonwose.calendar.core.*
+import com.kizitonwose.calendar.core.WeekDay
+import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
+import com.kizitonwose.calendar.core.minusMonths
+import com.kizitonwose.calendar.core.now
+import com.kizitonwose.calendar.core.plusMonths
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.yearMonth
 
 @Composable
 fun HomeScreen() {
     var createTaskDialog by remember { mutableStateOf(false) }
-
-    val baseColor =
-        if (isSystemInDarkTheme()) Color(0xFF303030) else Color.LightGray.copy(alpha = 0.5f)
-    val textColoring =
-        if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
-    val background = if (isSystemInDarkTheme()) Color(0xFF000000) else Color.White
-
     if (createTaskDialog) CreateTaskDialog { createTaskDialog = false }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(background)
-    ) {
+    val today = remember { LocalDate.now() }
+
+    val startDate = remember { today.minusMonths(12) }
+    val endDate = remember { today.plusMonths(12) }
+    val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
+
+    val state = rememberWeekCalendarState(
+        startDate = startDate,
+        endDate = endDate,
+        firstVisibleWeekDate = today,
+        firstDayOfWeek = firstDayOfWeek,
+    )
+
+    val visibleMonth = remember(state.firstVisibleWeek) {
+        state.firstVisibleWeek.days.first().date.yearMonth
+    }
+
+    Box {
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(8.dp)
         ) {
-            Box(
+            MonthName(
+                monthName = visibleMonth.month.name.lowercase().replaceFirstChar { it.uppercase() },
+                year = visibleMonth.year
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight()
-                    .padding(8.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(baseColor),
-                contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(top = 12.dp, bottom = 4.dp, end = 8.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    val currentDate = remember { LocalDate.now() }
-                    val startDate = remember { currentDate.minusMonths(12) }
-                    val endDate = remember { currentDate.plusMonths(12) }
-                    val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
+                Spacer(modifier = Modifier.width(60.dp))
 
-                    val state = rememberWeekCalendarState(
-                        startDate = startDate,
-                        endDate = endDate,
-                        firstVisibleWeekDate = currentDate,
-                        firstDayOfWeek = firstDayOfWeek,
-                    )
-
-                    val visibleMonth = remember(state.firstVisibleWeek) {
-                        state.firstVisibleWeek.days.first().date.yearMonth
-                    }
-
-                    MonthName(
-                        monthName = visibleMonth.month.name.lowercase()
-                            .replaceFirstChar { it.uppercase() },
-                        year = visibleMonth.year
-                    )
-
+                Box(modifier = Modifier.weight(1f)) {
                     WeekCalendar(
                         state = state,
-                        dayContent = { day ->
-                            HomeDay(CalendarDay(day.date, DayPosition.MonthDate))
-                        },
-                        weekHeader = { week ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                for (day in week.days) {
-                                    Text(
-                                        modifier = Modifier
-                                            .weight(1f),
-                                        textAlign = TextAlign.Center,
-                                        text = day.date.dayOfWeek.name.take(3),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = textColoring
-                                    )
-                                }
-                            }
+                        dayContent = { weekDay ->
+                            CompactHomeDayHeader(
+                                date = weekDay.date,
+                                isToday = weekDay.date == today
+                            )
                         }
                     )
                 }
@@ -109,29 +98,17 @@ fun HomeScreen() {
 
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-                    .height(100.dp)
-                    .clip(RoundedCornerShape(25.dp))
-                    .background(baseColor),
-                contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                Text(
-                    text = "The Game",
-                    fontWeight = FontWeight.Bold,
-                    color = textColoring,
-                    modifier = Modifier.clickable { createTaskDialog = true }
-                )
+                WeeklyScheduleGrid(visibleDays = state.firstVisibleWeek.days)
             }
-
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
                     .padding(8.dp)
                     .clip(RoundedCornerShape(25.dp))
-                    .background(baseColor)
             ) {
                 Box(
                     modifier = Modifier.fillMaxWidth()
@@ -147,7 +124,7 @@ fun HomeScreen() {
                 }
                 Box(
                     modifier = Modifier.fillMaxSize()
-                    .padding(top = 30.dp),
+                        .padding(top = 30.dp),
                 )
                 {
                     LazyListTasks()
@@ -158,32 +135,131 @@ fun HomeScreen() {
 }
 
 @Composable
-fun HomeDay(day: CalendarDay) {
-    val isMonthDate = day.position == DayPosition.MonthDate
-    val textColoring = if (isSystemInDarkTheme()) Color.White else Color.Black
-    val isToday = day.date == today
+fun CompactHomeDayHeader(date: LocalDate, isToday: Boolean) {
+    val dayOfWeekName = date.dayOfWeek.name.take(3)
 
-    var showOverlay by remember { mutableStateOf(false) }
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(140.dp)
-            .border(
-                color = if (isToday) Color.White else Color.White.copy(alpha = 0.6f),
-                width = if (isToday) 0.7.dp else 0.5.dp,
+            .padding(2.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (isToday) MaterialTheme.colorScheme.primaryContainer
+                else Color.Transparent
             )
-            .clickable(enabled = isMonthDate, onClick = { showOverlay = true }),
-        contentAlignment = Alignment.Center
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = day.date.day.toString(),
-            color = textColoring,
-            modifier = Modifier
-                .padding(10.dp)
-                .align(Alignment.TopCenter)
+            text = dayOfWeekName,
+            fontWeight = FontWeight.Bold,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = date.day.toString(),
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
-    if (isMonthDate) {
-        DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day)
+}
+
+@Composable
+fun WeeklyScheduleGrid(visibleDays: List<WeekDay>) {
+    val scrollState = rememberScrollState()
+    val hours = remember { (0..23).toList() }
+    val hourHeight = 18.dp
+
+    Row(
+        modifier = Modifier
+            .verticalScroll(scrollState)
+            .padding(bottom = 16.dp, start = 8.dp, end = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .width(60.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            hours.forEach { hour ->
+                val timeString = "${hour.toString().padStart(2, '0')}:00"
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(hourHeight)
+                        .drawWithContent {
+                            drawContent()
+                            val strokeWidth = 0.5.dp.toPx()
+                            if (hour < 23) {
+                                drawLine(
+                                    color = Color.Gray.copy(alpha = 0.15f),
+                                    start = Offset(x = 0f, y = size.height),
+                                    end = Offset(x = size.width, y = size.height),
+                                    strokeWidth = strokeWidth
+                                )
+                            }
+                            drawLine(
+                                color = Color.Gray.copy(alpha = 0.1f),
+                                start = Offset(x = size.width, y = 0f),
+                                end = Offset(x = size.width, y = size.height),
+                                strokeWidth = strokeWidth
+                            )
+                        },
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Text(
+                        text = timeString,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Light,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) {
+            visibleDays.forEach { weekDay ->
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
+                    hours.forEach { hour ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(hourHeight)
+                                .drawWithContent {
+                                    drawContent()
+                                    val strokeWidth = 0.5.dp.toPx()
+                                    if (hour < 23) {
+                                        drawLine(
+                                            color = Color.Gray.copy(alpha = 0.15f),
+                                            start = Offset(x = 0f, y = size.height),
+                                            end = Offset(x = size.width, y = size.height),
+                                            strokeWidth = strokeWidth
+                                        )
+                                    }
+                                    if (weekDay.date.dayOfWeek.ordinal != 5) {
+                                        drawLine(
+                                            color = Color.Gray.copy(alpha = 0.1f),
+                                            start = Offset(x = size.width, y = 0f),
+                                            end = Offset(x = size.width, y = size.height),
+                                            strokeWidth = strokeWidth
+                                        )
+                                    }
+                                }
+                                .padding(2.dp)
+                        ) {
+                            // Populate individual
+                        }
+                    }
+                }
+            }
+        }
     }
 }
