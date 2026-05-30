@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -100,6 +101,7 @@ fun HomeScreen() {
                 modifier = Modifier
                     .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .heightIn(max = 350.dp)
             ) {
                 WeeklyScheduleGrid(visibleDays = state.firstVisibleWeek.days)
             }
@@ -178,8 +180,7 @@ fun WeeklyScheduleGrid(visibleDays: List<WeekDay>) {
             .padding(bottom = 16.dp, start = 8.dp, end = 8.dp)
     ) {
         Column(
-            modifier = Modifier
-                .width(60.dp),
+            modifier = Modifier.width(60.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             hours.forEach { hour ->
