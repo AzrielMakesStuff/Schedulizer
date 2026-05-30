@@ -187,10 +187,8 @@ fun HomeScreen() {
 
     Box {
         Column(modifier = Modifier.padding(8.dp)) {
-
             Column(
                 modifier = Modifier
-                    .weight(2f)
                     .fillMaxWidth()
             ) {
                 MonthName(
@@ -256,7 +254,6 @@ fun HomeScreen() {
 
             Box(
                 modifier = Modifier
-                    .weight(1f)
                     .fillMaxWidth()
                     .padding(8.dp)
                     .clip(RoundedCornerShape(25.dp))
