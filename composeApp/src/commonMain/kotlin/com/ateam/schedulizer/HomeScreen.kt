@@ -69,45 +69,52 @@ fun HomeScreen() {
             modifier = Modifier
                 .padding(8.dp)
         ) {
-            MonthName(
-                monthName = visibleMonth.month.name.lowercase().replaceFirstChar { it.uppercase() },
-                year = visibleMonth.year
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
+            Column(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(top = 12.dp, bottom = 4.dp, end = 8.dp)
+                    .weight(2f)
+                    .fillMaxWidth()
             ) {
-                Spacer(modifier = Modifier.width(60.dp))
+                MonthName(
+                    monthName = visibleMonth.month.name.lowercase().replaceFirstChar { it.uppercase() },
+                    year = visibleMonth.year
+                )
 
-                Box(modifier = Modifier.weight(1f)) {
-                    WeekCalendar(
-                        state = state,
-                        dayContent = { weekDay ->
-                            CompactHomeDayHeader(
-                                date = weekDay.date,
-                                isToday = weekDay.date == today
-                            )
-                        }
-                    )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(top = 12.dp, bottom = 4.dp, end = 8.dp)
+                ) {
+                    Spacer(modifier = Modifier.width(60.dp))
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        WeekCalendar(
+                            state = state,
+                            dayContent = { weekDay ->
+                                CompactHomeDayHeader(
+                                    date = weekDay.date,
+                                    isToday = weekDay.date == today
+                                )
+                            }
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .heightIn(max = 350.dp)
+                ) {
+                    WeeklyScheduleGrid(visibleDays = state.firstVisibleWeek.days)
                 }
             }
 
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .heightIn(max = 350.dp)
-            ) {
-                WeeklyScheduleGrid(visibleDays = state.firstVisibleWeek.days)
-            }
-
-            Box(
-                modifier = Modifier
+                    .weight(1f)
                     .fillMaxWidth()
                     .padding(8.dp)
                     .clip(RoundedCornerShape(25.dp))
