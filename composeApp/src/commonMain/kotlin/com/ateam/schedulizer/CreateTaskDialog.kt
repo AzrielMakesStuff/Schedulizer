@@ -254,7 +254,7 @@ fun CreateTaskDialog(date : LocalDate? = null, onDismiss: () -> Unit) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var ignoreTime by remember { mutableStateOf(false) }
-    var hasExpiry by remember { mutableStateOf(false) }
+    var hasExpiry by remember { mutableStateOf(date != null) }
     var expanded by remember { mutableStateOf(false) }
     var oneDay by remember { mutableStateOf(false) }
 

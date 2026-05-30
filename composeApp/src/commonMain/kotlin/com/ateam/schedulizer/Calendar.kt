@@ -44,9 +44,10 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock
+import kotlin.time.Clock.System
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
-val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+val today = System.todayIn(TimeZone.currentSystemDefault())
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

@@ -19,6 +19,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextOverflow
 import navigationItemsLists
 import Routes
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
@@ -33,43 +36,50 @@ fun App() {
     val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    Scaffold(
-        bottomBar = {
-            BottomNavigationBar(
-                items = navigationItemsLists,
-                currentRoute = currentRoute,
-                onItemClick = { item ->
-                    rootNavController.navigate(item.route) {
-                        popUpTo(Routes.Home.route) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+    val isDarkMode = isSystemInDarkTheme()
+    val colorScheme = remember(isDarkMode) {
+        if (isDarkMode) darkColorScheme()
+        else lightColorScheme()
+    }
 
-            NavHost(
-                navController = rootNavController,
-                startDestination = Routes.Home.route,
-                modifier = Modifier.weight(1f)
+    MaterialTheme(colorScheme = colorScheme) {
+        Scaffold(
+            bottomBar = {
+                BottomNavigationBar(
+                    items = navigationItemsLists,
+                    currentRoute = currentRoute,
+                    onItemClick = { item ->
+                        rootNavController.navigate(item.route) {
+                            popUpTo(Routes.Home.route) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
-                composable(Routes.Home.route) {
-                    HomeScreen()
-                }
-                composable(Routes.Calendar.route) {
-                    Calendar()
-                }
-                composable(Routes.SettingDetail.route)
-                {
-                    Settings()
+                NavHost(
+                    navController = rootNavController,
+                    startDestination = Routes.Home.route,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    composable(Routes.Home.route) {
+                        HomeScreen()
+                    }
+                    composable(Routes.Calendar.route) {
+                        Calendar()
+                    }
+                    composable(Routes.SettingDetail.route)
+                    {
+                        Settings()
+                    }
                 }
             }
         }
