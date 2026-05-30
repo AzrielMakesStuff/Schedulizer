@@ -43,7 +43,6 @@ import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.todayIn
-import kotlin.time.Clock
 import kotlin.time.Clock.System
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
@@ -168,7 +167,7 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay) 
 
     if (createTaskDialog) {
         CreateTaskDialog(
-            date = day.date,
+            dateTwo = day.date,
             onDismiss = { createTaskDialog = false }
         )
     }

@@ -238,13 +238,10 @@ class DateTimePickerState(
     }
 }
 
-@Composable
-fun rememberDateTimePickerState() = remember { DateTimePickerState() }
-
 @OptIn(ExperimentalMaterial3Api::class)
 
 @Composable
-fun CreateTaskDialog(date : LocalDate? = null, onDismiss: () -> Unit) {
+fun CreateTaskDialog(dateOne : LocalDate? = null, dateTwo : LocalDate? = null, onDismiss: () -> Unit) {
     val timeZone = TimeZone.currentSystemDefault()
     val now = remember { Clock.System.now() }
     val today = remember { now.toLocalDateTime(timeZone) }
@@ -254,14 +251,18 @@ fun CreateTaskDialog(date : LocalDate? = null, onDismiss: () -> Unit) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var ignoreTime by remember { mutableStateOf(false) }
-    var hasExpiry by remember { mutableStateOf(date != null) }
+    var hasExpiry by remember { mutableStateOf(dateTwo != null) }
     var expanded by remember { mutableStateOf(false) }
     var oneDay by remember { mutableStateOf(false) }
 
-    val startState = rememberDateTimePickerState()
+    val startState = remember {
+        DateTimePickerState(
+            initialMillis = dateOne?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
+        )
+    }
     val endState = remember {
         DateTimePickerState(
-            initialMillis = date?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
+            initialMillis = dateTwo?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
         )
     }
 
