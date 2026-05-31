@@ -19,12 +19,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextOverflow
 import navigationItemsLists
 import Routes
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
+val screenOrder = listOf("home", "calendar", "settings")
+
+fun getScreenOrderIndex(backStackEntry: NavBackStackEntry): Int {
+    val route = backStackEntry.destination.route
+    return screenOrder.indexOf(route).coerceAtLeast(0)
+}
 @Composable
 @Preview
 fun App() {
@@ -68,7 +78,7 @@ fun App() {
                 NavHost(
                     navController = rootNavController,
                     startDestination = Routes.Home.route,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 ) {
                     composable(Routes.Home.route) {
                         HomeScreen()

@@ -158,10 +158,11 @@ fun Day(day: CalendarDay, tasks: List<Task>) {
         modifier = Modifier
             .aspectRatio(0.55f)
             .border(
-                color = if (isToday) Color.White else Color.Black,
+                color = if ((isToday) && (isMonthDate)) textColor.copy(alpha = 0.8f) else Color.Transparent.copy(alpha = 0.2f),
                 width = 1.5.dp,
             )
-            .clickable(enabled = isMonthDate, onClick = { showOverlay = true }),
+            .clickable(enabled = isMonthDate, onClick = { showOverlay = true })
+            .background(color = if ((isToday) && (isMonthDate)) Color.Transparent.copy(alpha = 0.3f) else Color.Transparent),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -202,6 +203,7 @@ fun Day(day: CalendarDay, tasks: List<Task>) {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay, tasks: List<Task>) {
     var createTaskDialog by remember { mutableStateOf(false) }
@@ -264,6 +266,7 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay, 
                                 Text(
                                     text = "Tasks for Today",
                                     style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     modifier = Modifier.padding(bottom = 4.dp)
                                 )
