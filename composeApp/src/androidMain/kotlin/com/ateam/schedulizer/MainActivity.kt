@@ -35,7 +35,7 @@ class MainActivity : ComponentActivity() {
         val timeT = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val actualTime = timeT.toInstant(TimeZone.currentSystemDefault()).plus(10.seconds).toLocalDateTime(
             TimeZone.currentSystemDefault())
-        NotificationSystem.scheduleNotification("PENIS","SUCKI MY DICK", actualTime)
+        NotificationSystem.scheduleNotification("Demo","Demo", actualTime)
         setContent {
             App()
         }

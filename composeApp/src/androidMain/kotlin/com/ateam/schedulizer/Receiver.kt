@@ -10,9 +10,7 @@ import com.ateam.schedulizer.NotificationSystem.createNotification
 class Receiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-
         val notificationManager = context.getSystemService(NotificationManager::class.java)
-
         val notification = createNotification(intent.getStringExtra("title_key") as String,intent.getStringExtra("body_key") as String)
         notificationManager.notify(Constants.REMIND_ID,notification)
     }

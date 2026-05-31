@@ -14,7 +14,7 @@ import java.util.Calendar
 actual object NotificationSystem {
     fun createNotification(title: String, body : String): Notification {
     return NotificationCompat.Builder(ContextHolder.context, Constants.NOTIF_CHANNEL_ID).setPriority(
-        NotificationManager.IMPORTANCE_DEFAULT).setContentText(body).setContentTitle(title).build()
+        NotificationManager.IMPORTANCE_DEFAULT).setContentText(body).setContentTitle(title).setSmallIcon(R.drawable.ic_launcher_background).build()
     }
 
     actual fun scheduleNotification(title: String, body: String, time : LocalDateTime) {
@@ -25,9 +25,9 @@ actual object NotificationSystem {
             PendingIntent.FLAG_MUTABLE)
         val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val calendar = Calendar.getInstance()
-        calendar.set(time.year,time.month.number, time.day,time.hour,time.minute)
+        calendar.set(time.year,time.month.number - 1, time.day,time.hour,time.minute,time.second)
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,calendar.timeInMillis,pendingIntent)
-        println("BIG BALLS");
+
     }
 
 
