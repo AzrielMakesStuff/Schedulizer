@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ateam.schedulizer.entities.Task
 import com.kizitonwose.calendar.compose.WeekCalendar
 import com.kizitonwose.calendar.compose.weekcalendar.rememberWeekCalendarState
 import com.kizitonwose.calendar.core.WeekDay
@@ -39,7 +40,12 @@ import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.minusMonths
 import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusMonths
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearMonth
 
 @Composable
@@ -106,7 +112,6 @@ fun HomeScreen() {
                     modifier = Modifier
                         .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .heightIn(max = 350.dp)
                 ) {
                     WeeklyScheduleGrid(visibleDays = state.firstVisibleWeek.days)
                 }
@@ -177,9 +182,35 @@ fun CompactHomeDayHeader(date: LocalDate, isToday: Boolean) {
 
 @Composable
 fun WeeklyScheduleGrid(visibleDays: List<WeekDay>) {
+    val tasks by databaseInstance.tasks.collectAsState()
     val scrollState = rememberScrollState()
     val hours = remember { (0..23).toList() }
     val hourHeight = 18.dp
+
+    val tasksByDateTimeSlot = remember(tasks, visibleDays) {
+        val map = mutableMapOf<Pair<LocalDate, Int>, MutableList<Task>>()
+        val tz = TimeZone.currentSystemDefault()
+
+        tasks.forEach { task ->
+            if (task.dateTwo != null) {
+                var current = task.dateOne
+                val end = task.dateTwo
+
+                while (current <= end) {
+                    val slotKey = Pair(current.date, current.hour)
+                    map.getOrPut(slotKey) { mutableListOf() }.add(task)
+
+                    val instant = current.toInstant(tz)
+                    val advancedInstant = instant.plus(1, DateTimeUnit.HOUR)
+                    current = advancedInstant.toLocalDateTime(tz)
+                }
+            } else {
+                val slotKey = Pair(task.dateOne.date, task.dateOne.hour)
+                map.getOrPut(slotKey) { mutableListOf() }.add(task)
+            }
+        }
+        map
+    }
 
     Row(
         modifier = Modifier
@@ -237,6 +268,8 @@ fun WeeklyScheduleGrid(visibleDays: List<WeekDay>) {
                         .fillMaxHeight()
                 ) {
                     hours.forEach { hour ->
+                        val tasksInSlot = tasksByDateTimeSlot[Pair(weekDay.date, hour)]
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -261,9 +294,16 @@ fun WeeklyScheduleGrid(visibleDays: List<WeekDay>) {
                                         )
                                     }
                                 }
-                                .padding(2.dp)
                         ) {
-                            // Populate individual
+                            if (!tasksInSlot.isNullOrEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(1.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(MaterialTheme.colorScheme.primary)
+                                )
+                            }
                         }
                     }
                 }
