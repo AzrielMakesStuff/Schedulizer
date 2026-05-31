@@ -124,15 +124,34 @@ fun HomeScreen() {
                 )
             }
 
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(8.dp)
                     .clip(RoundedCornerShape(25.dp))
-                    .background(Color.White.copy(alpha = 0.9f))
+                    .background(baseColor)
             ) {
-                LazyListTasks()
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Tasks",
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp
+                    )
+                }
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                    .padding(top = 30.dp),
+                )
+                {
+                    LazyListTasks()
+                }
             }
         }
     }

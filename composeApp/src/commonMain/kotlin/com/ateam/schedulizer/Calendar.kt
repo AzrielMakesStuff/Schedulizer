@@ -143,15 +143,16 @@ fun Day(day: CalendarDay) {
     var showOverlay by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
-            .aspectRatio(1f)
+            .aspectRatio(0.55f)
             .border(
                 color = if (isToday) Color.White else Color.Black,
                 width = 1.5.dp,
             )
             .clickable(enabled = isMonthDate, onClick = { showOverlay = true }),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.TopCenter
     ) {
         Text(
+            modifier = Modifier.padding(top = 10.dp),
             text = day.date.day.toString(),
             color = if (isToday) textColor.copy(alpha = 0.8f) else textColor
         )
