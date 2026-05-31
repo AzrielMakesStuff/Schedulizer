@@ -16,10 +16,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Create
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,7 +55,6 @@ import kotlinx.datetime.format.DayOfWeekNames
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock.System
 import com.ateam.schedulizer.entities.Task
-import kotlinx.coroutines.launch
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 val today = System.todayIn(TimeZone.currentSystemDefault())
