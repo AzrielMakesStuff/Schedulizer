@@ -14,8 +14,15 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Create
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,6 +59,7 @@ import kotlinx.datetime.format.DayOfWeekNames
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock.System
 import com.ateam.schedulizer.entities.Task
+import kotlinx.coroutines.launch
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 val today = System.todayIn(TimeZone.currentSystemDefault())
@@ -263,15 +271,15 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay, 
                                     modifier = Modifier.padding(bottom = 16.dp)
                                 )
 
-                                Text(
-                                    text = "Tasks for Today",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
 
                                 if (tasks.isNotEmpty()) {
+                                    Text(
+                                        text = "Tasks for Today",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
                                     tasks.forEach { task ->
                                         Text(
                                             text = "${task.title} - ${task.type}",
@@ -280,12 +288,30 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay, 
                                         )
                                     }
                                 }
-                                Button(onClick = {
-                                    onDismiss()
-                                    createTaskDialog = true
-                                }) {
-                                    Text(text = "Create Task for $currentDay")
+                                else
+                                {
+                                    Text(
+                                        text = "Add Task?",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
                                 }
+                                IconButton(onClick = {
+                                    onDismiss()
+                                    createTaskDialog = true}) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Add,
+                                        contentDescription = "Create Task"
+                                    )
+                                }
+//                                Button(onClick = {
+//                                    onDismiss()
+//                                    createTaskDialog = true
+//                                }) {
+//                                    Text(text = "Create Task for $currentDay")
+//                                }
                             }
                         }
                     }
