@@ -27,6 +27,7 @@ actual object NotificationSystem {
         val calendar = Calendar.getInstance()
         calendar.set(time.year,time.month.number, time.day,time.hour,time.minute)
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,calendar.timeInMillis,pendingIntent)
+        println("BIG BALLS");
     }
 
 
