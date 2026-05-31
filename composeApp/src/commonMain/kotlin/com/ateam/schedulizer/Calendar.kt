@@ -19,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +30,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
@@ -49,6 +51,7 @@ import kotlinx.datetime.YearMonth
 import kotlinx.datetime.format.DayOfWeekNames
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock.System
+import com.ateam.schedulizer.entities.Task
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 val today = System.todayIn(TimeZone.currentSystemDefault())
@@ -56,6 +59,11 @@ val today = System.todayIn(TimeZone.currentSystemDefault())
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun Calendar() {
+    val tasks by databaseInstance.tasks.collectAsState()
+    val tasksByEndDate = remember(tasks) {
+        tasks.filter { it.dateTwo != null }
+            .groupBy { it.dateTwo!!.date }
+    }
     val baseColor = if (isSystemInDarkTheme()) Color(0xFF303030) else Color.LightGray.copy(alpha = 0.5f)
     val textColoring = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
     val background = if (isSystemInDarkTheme()) Color(0xFF000000) else Color.White
@@ -89,7 +97,7 @@ fun Calendar() {
                     }
                 },
                 state = state,
-                dayContent = { Day(it) },
+                dayContent = { Day(it, tasksByEndDate[it.date] ?: emptyList()) },
                 monthHeader = { month: CalendarMonth ->
                     val daysOfWeek = remember(month) {
                         month.weekDays.first().map { it.date.dayOfWeek }
@@ -139,7 +147,7 @@ fun MonthName(monthName: String, year: Int) {
 }
 
 @Composable
-fun Day(day: CalendarDay) {
+fun Day(day: CalendarDay, tasks: List<Task>) {
     val isMonthDate = day.position == DayPosition.MonthDate
     val baseColor = if (isSystemInDarkTheme()) Color.White else Color.Black
     val textColor = if (isMonthDate) baseColor else baseColor.copy(alpha = 0.3f)
@@ -156,19 +164,46 @@ fun Day(day: CalendarDay) {
             .clickable(enabled = isMonthDate, onClick = { showOverlay = true }),
         contentAlignment = Alignment.TopCenter
     ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             modifier = Modifier.padding(top = 10.dp),
             text = day.date.day.toString(),
-            color = if (isToday) textColor.copy(alpha = 0.8f) else textColor
+            color = if (isToday) textColor.copy(alpha = 0.8f) else textColor,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp
         )
+
+        tasks.take(3).forEach { task ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 1.dp, horizontal = 2.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(2.dp)
+                    )
+                    .padding(horizontal = 4.dp, vertical = 1.dp)
+            ) {
+                Text(
+                    text = task.title,
+                    fontSize = 7.sp,
+                    lineHeight = 8.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = textColor,
+                    modifier = Modifier.padding(horizontal = 2.dp)
+                )
+            }
+        }
+            }
     }
     if (isMonthDate) {
-        DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day)
+        DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day, tasks = tasks)
     }
 }
 
 @Composable
-fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay) {
+fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay, tasks: List<Task>) {
     var createTaskDialog by remember { mutableStateOf(false) }
 
     if (createTaskDialog) {
@@ -196,7 +231,10 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay) 
                         .widthIn(max = 450.dp)
                         .heightIn(max = 800.dp)
                         .padding(16.dp)
-                        .background(Color(0xFF1E1E1E).copy(alpha = 0.94f), shape = RoundedCornerShape(50.dp))
+                        .background(
+                            Color(0xFF1E1E1E).copy(alpha = 0.94f),
+                            shape = RoundedCornerShape(50.dp)
+                        )
                         .clickable(enabled = false) { },
                     contentAlignment = Alignment.Center
                 ) {
@@ -217,11 +255,28 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay) 
                                 val currentDay = day.date.dayOfWeek.name
 
                                 Text(
-                                    text = currentDay,
+                                    text = "$currentDay - ${day.date}",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = Color.White
+                                    color = Color.White,
+                                    modifier = Modifier.padding(bottom = 16.dp)
                                 )
 
+                                Text(
+                                    text = "Tasks for Today",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+
+                                if (tasks.isNotEmpty()) {
+                                    tasks.forEach { task ->
+                                        Text(
+                                            text = "${task.title} - ${task.type}",
+                                            color = Color.White,
+                                            modifier = Modifier.padding(vertical = 4.dp)
+                                        )
+                                    }
+                                }
                                 Button(onClick = {
                                     onDismiss()
                                     createTaskDialog = true
@@ -234,25 +289,25 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay) 
                 }
             }
         }
-    }
-}
-
-@Composable
-fun MonthHeader(daysOfWeek: List<DayOfWeek>) {
-    val textColoring =
-        if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
-    Row(modifier = Modifier.fillMaxWidth()) {
-        for (dayOfWeek in daysOfWeek) {
-            Text(
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-                text = dayOfWeek.name.take(3),
-                color = textColoring,
-                fontWeight = FontWeight.Bold,
-            )
         }
     }
-}
+
+    @Composable
+    fun MonthHeader(daysOfWeek: List<DayOfWeek>) {
+        val textColoring =
+            if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
+        Row(modifier = Modifier.fillMaxWidth()) {
+            for (dayOfWeek in daysOfWeek) {
+                Text(
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    text = dayOfWeek.name.take(3),
+                    color = textColoring,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
 
 
 //The Game
