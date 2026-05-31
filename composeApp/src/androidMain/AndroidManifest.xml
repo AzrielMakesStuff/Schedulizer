@@ -22,7 +22,8 @@
         </activity>
         <receiver
             android:name=".Receiver"
-            android:enabled="true" />
+            android:enabled="true"
+            android:exported="false"/>
     </application>
 
 </manifest>

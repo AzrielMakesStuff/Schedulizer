@@ -19,6 +19,7 @@ actual object NotificationSystem {
 
     actual fun scheduleNotification(title: String, body: String, time : LocalDateTime) {
         val intent = Intent(ContextHolder.context, Receiver::class.java);
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         intent.putExtra("title_key",title)
         intent.putExtra("body_key",body)
         val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, Constants.REMIND_ID,intent,
