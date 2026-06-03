@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -22,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.serialization.Serializable;
 
 @Composable
 fun Settings() {
@@ -49,29 +52,38 @@ fun Settings() {
                             .fillMaxWidth(),
                     )
                     {
+                        Text(text = "Theme")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, alignment = Alignment.CenterHorizontally),
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                    )
+                    {
                         Box(
                             modifier = Modifier
                                 .size(50.dp)
                                 .background(Color.White.copy(alpha = 0.5f), shape = CircleShape)
-                                .border(1.dp, Color.Black, shape = CircleShape)
+                                .border(2.dp, Color.Black, shape = CircleShape)
                                 .clip(CircleShape),
                             contentAlignment = Alignment.Center
                         )
                         {
-                            Text(text = "A", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "A", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                         Box(
                             modifier = Modifier
                                 .size(50.dp)
                                 .background(Color.White, shape = CircleShape)
-                                .border(1.dp, Color.Black, shape = CircleShape)
+                                .border(2.dp, Color.Black, shape = CircleShape)
                                 .clip(CircleShape)
                         )
                         Box(
                             modifier = Modifier
                                 .size(50.dp)
-                                .background(Color.Black, shape = CircleShape)
-                                .border(1.dp, Color.Black, shape = CircleShape)
+                                .background(Color.Black.copy(alpha = 0.2f), shape = CircleShape)
+                                .border(2.dp, Color.Black, shape = CircleShape)
                                 .clip(CircleShape)
                         )
                     }
