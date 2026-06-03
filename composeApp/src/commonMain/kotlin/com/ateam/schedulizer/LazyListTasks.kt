@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -17,11 +18,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ateam.schedulizer.entities.Task
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,13 +55,22 @@ fun LazyListTasks() {
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
+                var editingTask by remember { mutableStateOf<Task?>(null) }
+                IconButton(onClick = {editingTask = task}) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = "Delete Item"
+                    )
+                }
                 IconButton(onClick = { scope.launch {databaseInstance.deleteTask(task)}}) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
                         contentDescription = "Delete Item"
                     )
                 }
+                editingTask?.let { taskToEdit -> EditTaskDialog(task = taskToEdit, onDismiss = { editingTask = null }) }
             }
         }
     }
 }
+

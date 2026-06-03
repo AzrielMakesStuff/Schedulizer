@@ -11,8 +11,8 @@ fun TaskType.displayName(): String = "${name.lowercase().replaceFirstChar { it.u
 data class Task(
     @PrimaryKey(true) val id: Long = 0,
     val type: TaskType,
-    val title: String,
-    val description: String,
+    var title: String,
+    var description: String,
     val completed: Boolean = false,
     val dateOne: LocalDateTime,
     val dateTwo: LocalDateTime?
