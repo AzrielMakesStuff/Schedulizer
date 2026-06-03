@@ -5,11 +5,13 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
@@ -23,6 +25,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -32,14 +35,12 @@ class MainActivity : ComponentActivity() {
             NotificationManager.IMPORTANCE_DEFAULT);
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager;
         notificationManager.createNotificationChannel(notificationChannel);
-        val timeT = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        val actualTime = timeT.toInstant(TimeZone.currentSystemDefault()).plus(10.seconds).toLocalDateTime(
-            TimeZone.currentSystemDefault())
-        NotificationSystem.scheduleNotification("Demo","Demo", actualTime)
+        NotificationSystem.requestPermission(this);
         setContent {
             App()
         }
     }
+
 }
 
 @Preview

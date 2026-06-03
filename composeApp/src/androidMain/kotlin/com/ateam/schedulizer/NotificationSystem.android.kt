@@ -1,11 +1,17 @@
 package com.ateam.schedulizer
 
+import android.Manifest
+import android.app.Activity
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.app.NotificationCompat
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.number
@@ -29,6 +35,18 @@ actual object NotificationSystem {
         calendar.set(time.year,time.month.number - 1, time.day,time.hour,time.minute,time.second)
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,calendar.timeInMillis,pendingIntent)
 
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    fun requestPermission(activity: Activity) {
+        when {
+            ContextHolder.context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {
+            }
+            else -> {
+                requestPermissions(activity,
+                     arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2323)
+            }
+        }
     }
 
 
