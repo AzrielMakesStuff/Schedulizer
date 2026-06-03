@@ -212,7 +212,7 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay, 
     var createTaskDialog by remember { mutableStateOf(false) }
 
     if (createTaskDialog) {
-        CreateTaskDialog(
+        TaskDialog(
             dateTwo = day.date,
             onDismiss = { createTaskDialog = false }
         )

@@ -68,7 +68,7 @@ fun LazyListTasks() {
                         contentDescription = "Delete Item"
                     )
                 }
-                editingTask?.let { taskToEdit -> EditTaskDialog(task = taskToEdit, onDismiss = { editingTask = null }) }
+                editingTask?.let { taskToEdit -> TaskDialog(task = taskToEdit, onDismiss = { editingTask = null }) }
             }
         }
     }

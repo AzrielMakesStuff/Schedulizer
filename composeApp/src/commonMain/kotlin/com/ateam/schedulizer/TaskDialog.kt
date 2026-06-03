@@ -434,32 +434,60 @@ private fun OrdinalPicker(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateTaskDialog(dateOne : LocalDate? = null, dateTwo : LocalDate? = null, hourOne : Int? = null, hourTwo : Int? = null, onDismiss: () -> Unit) {
+fun TaskDialog(
+    dateOne: LocalDate? = null,
+    hourOne: Int? = null,
+    minuteOne: Int? = null,
+    dateTwo: LocalDate? = null,
+    hourTwo: Int? = null,
+    minuteTwo: Int? = null,
+    onDismiss: () -> Unit,
+    task: Task? = null
+) {
+    val isEditing = task != null
     val timeZone = TimeZone.currentSystemDefault()
     val now = remember { Clock.System.now() }
     val today = remember { now.toLocalDateTime(timeZone) }
     val coroutineScope = rememberCoroutineScope()
 
-    var taskType by remember { mutableStateOf(TaskType.SET) }
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var ignoreTime by remember { mutableStateOf(false) }
-    var hasExpiry by remember { mutableStateOf(dateTwo != null) }
     var expanded by remember { mutableStateOf(false) }
-    var reminderSchedule by remember { mutableStateOf<ReminderSchedule>(ReminderSchedule.None) }
-    var oneDay by remember { mutableStateOf(false) }
+    var taskType by remember { mutableStateOf(task?.type ?: TaskType.SET) }
+    var title by remember { mutableStateOf(task?.title ?: "") }
+    var description by remember { mutableStateOf(task?.description ?: "") }
+    var reminderSchedule by remember { mutableStateOf(task?.reminderSchedule ?: ReminderSchedule.None) }
 
+    var ignoreTime by remember {
+        mutableStateOf(when (task?.type) {
+            TaskType.SET -> task.dateOne.hour == 0 && task.dateOne.minute == 0
+                    && task.dateTwo?.hour == 23 && task.dateTwo.minute == 59
+            TaskType.POOL -> task.dateTwo?.hour == 23 && task.dateTwo.minute == 59
+            else -> false
+        })
+    }
+    var oneDay by remember {
+        mutableStateOf(
+            task?.type == TaskType.SET
+                    && task.dateTwo != null
+                    && task.dateOne.date == task.dateTwo.date
+                    && task.dateOne.hour == 0 && task.dateTwo.hour == 23
+        )
+    }
+    var hasExpiry by remember { mutableStateOf(task?.dateTwo != null) }
 
     val startState = remember {
         DateTimePickerState(
-            initialMillis = dateOne?.atStartOfDayIn(timeZone)?.toEpochMilliseconds(),
-            initialHour = hourOne ?: 0
+            initialMillis = task?.dateOne?.date?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
+                ?: dateOne?.atStartOfDayIn(timeZone)?.toEpochMilliseconds(),
+            initialHour = task?.dateOne?.hour ?: hourOne ?: 0,
+            initialMinute = task?.dateOne?.minute ?: minuteOne ?: 0
         )
     }
     val endState = remember {
         DateTimePickerState(
-            initialMillis = dateTwo?.atStartOfDayIn(timeZone)?.toEpochMilliseconds(),
-            initialHour = hourTwo ?: 0
+            initialMillis = task?.dateTwo?.date?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
+                ?: dateTwo?.atStartOfDayIn(timeZone)?.toEpochMilliseconds(),
+            initialHour = task?.dateTwo?.hour ?: hourTwo ?: 0,
+            initialMinute = task?.dateTwo?.minute ?: minuteTwo ?: 0
         )
     }
 
@@ -471,7 +499,10 @@ fun CreateTaskDialog(dateOne : LocalDate? = null, dateTwo : LocalDate? = null, h
                 .padding(16.dp)
         ) {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text("Create New Task", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (isEditing) "Edit Task" else "Create New Task",
+                    style = MaterialTheme.typography.titleMedium
+                )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 ExposedDropdownMenuBox(
@@ -513,10 +544,7 @@ fun CreateTaskDialog(dateOne : LocalDate? = null, dateTwo : LocalDate? = null, h
                         }
                         if (!oneDay) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(
-                                    checked = ignoreTime,
-                                    onCheckedChange = { ignoreTime = it }
-                                )
+                                Checkbox(checked = ignoreTime, onCheckedChange = { ignoreTime = it })
                                 Text("Ignore Time")
                             }
                         }
@@ -584,7 +612,6 @@ fun CreateTaskDialog(dateOne : LocalDate? = null, dateTwo : LocalDate? = null, h
                     schedule = reminderSchedule,
                     onScheduleChange = { reminderSchedule = it }
                 )
-
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(modifier = Modifier.fillMaxWidth()) {
@@ -594,31 +621,67 @@ fun CreateTaskDialog(dateOne : LocalDate? = null, dateTwo : LocalDate? = null, h
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            val task = Task(
-                                type = taskType,
-                                title = title,
-                                description = description,
-                                completed = false,
-                                reminderSchedule = reminderSchedule,
-                                dateOne = when (taskType) {
-                                    TaskType.SET -> startState.toLocalDateTime(timeZone) ?: return@Button
-                                    TaskType.POOL, TaskType.DAILY -> today
-                                },
-                                dateTwo = when (taskType) {
-                                    TaskType.SET -> if (!ignoreTime && !oneDay) endState.toLocalDateTime(timeZone) ?: return@Button else null
-                                    TaskType.POOL -> if (hasExpiry) endState.toLocalDateTime(timeZone) ?: return@Button else null
-                                    TaskType.DAILY -> today
+                            fun DateTimePickerState.toStartOfDay(zone: TimeZone): LocalDateTime? {
+                                val base = millisToLocalDateTime(millis, zone) ?: return null
+                                return LocalDateTime(base.date, LocalTime(0, 0))
+                            }
+                            fun DateTimePickerState.toEndOfDay(zone: TimeZone): LocalDateTime? {
+                                val base = millisToLocalDateTime(millis, zone) ?: return null
+                                return LocalDateTime(base.date, LocalTime(23, 59))
+                            }
+
+                            val resolvedDateOne = when (taskType) {
+                                TaskType.SET -> when {
+                                    oneDay -> startState.toStartOfDay(timeZone) ?: return@Button
+                                    ignoreTime -> startState.toStartOfDay(timeZone) ?: return@Button
+                                    else -> startState.toLocalDateTime(timeZone) ?: return@Button
                                 }
-                            )
+                                TaskType.POOL, TaskType.DAILY -> today
+                            }
+                            val resolvedDateTwo = when (taskType) {
+                                TaskType.SET -> when {
+                                    oneDay -> startState.toEndOfDay(timeZone) ?: return@Button
+                                    ignoreTime -> endState.toEndOfDay(timeZone) ?: return@Button
+                                    else -> endState.toLocalDateTime(timeZone) ?: return@Button
+                                }
+                                TaskType.POOL -> when {
+                                    hasExpiry && ignoreTime -> endState.toEndOfDay(timeZone) ?: return@Button
+                                    hasExpiry -> endState.toLocalDateTime(timeZone) ?: return@Button
+                                    else -> null
+                                }
+                                TaskType.DAILY -> today
+                            }
+
                             coroutineScope.launch {
-                                databaseInstance.createTask(task)
+                                if (isEditing) {
+                                    databaseInstance.refresh()
+
+                                    databaseInstance.createTask(task.copy(
+                                        type = taskType,
+                                        title = title,
+                                        description = description,
+                                        reminderSchedule = reminderSchedule,
+                                        dateOne = resolvedDateOne,
+                                        dateTwo = resolvedDateTwo
+                                    ))
+                                } else {
+                                    databaseInstance.createTask(Task(
+                                        type = taskType,
+                                        title = title,
+                                        description = description,
+                                        completed = false,
+                                        reminderSchedule = reminderSchedule,
+                                        dateOne = resolvedDateOne,
+                                        dateTwo = resolvedDateTwo
+                                    ))
+                                }
                                 onDismiss()
                             }
                         },
                         modifier = Modifier.weight(1f),
                         enabled = title.isNotBlank()
                     ) {
-                        Text("Save")
+                        Text(if (isEditing) "Save Changes" else "Save")
                     }
                 }
             }

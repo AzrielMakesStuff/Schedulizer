@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,15 +53,13 @@ import androidx.compose.ui.unit.sp
 import com.ateam.schedulizer.entities.Task
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.now
+import kotlinx.coroutines.flow.first
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearMonth
-import kotlin.time.Clock
 
 data class PositionedTask(
     val task: Task,
@@ -158,20 +157,23 @@ fun HomeScreen() {
     var pendingDateTwo by remember { mutableStateOf<LocalDateTime?>(null) }
 
     if (showCreateDialog) {
-        CreateTaskDialog(
+        TaskDialog(
             dateOne = selectedDateOne!!.date,
             hourOne = selectedDateOne!!.hour,
+            minuteOne = selectedDateOne!!.minute,
             dateTwo = pendingDateTwo?.date,
-            hourTwo = pendingDateTwo?.hour
-        ) {
-            showCreateDialog = false
-            selectedDateOne = null
-            pendingDateTwo = null
-        }
+            hourTwo = pendingDateTwo?.hour,
+            minuteTwo = pendingDateTwo?.minute,
+            onDismiss = {
+                showCreateDialog = false
+                selectedDateOne = null
+                pendingDateTwo = null
+            }
+        )
     }
 
-    fun onCellTapped(date: LocalDate, hour: Int) {
-        val tapped = LocalDateTime(date.year, date.month, date.day, hour, 0)
+    fun onCellTapped(date: LocalDate, hour: Int, minute: Int = 0) {
+        val tapped = LocalDateTime(date.year, date.month, date.day, hour, minute)
         if (selectedDateOne == null) {
             selectedDateOne = tapped
         } else {
@@ -288,11 +290,11 @@ fun WeeklyScheduleGrid(
     visibleDates: List<LocalDate>,
     today: LocalDate,
     selectedDateOne: LocalDateTime?,
-    onCellTapped: (LocalDate, Int) -> Unit
+    onCellTapped: (LocalDate, Int, Int) -> Unit
 ) {
     val tasks by databaseInstance.tasks.collectAsState(initial = emptyList())
     val hours = remember { (0..23).toList() }
-    val dayHeight: Dp = 52.dp
+    val dayHeight: Dp = 64.dp
     val headerHeight: Dp = 18.dp
     val labelWidth: Dp = 44.dp
     val visibleHours = 10
@@ -307,15 +309,13 @@ fun WeeklyScheduleGrid(
         val totalWidth = hourWidth * 24
 
         LaunchedEffect(hourWidth) {
-            val currentHour = Clock.System.now()
-                .toLocalDateTime(TimeZone.currentSystemDefault()).hour
-            val targetPx = with(density) {
-                (hourWidth * maxOf(0, currentHour - 1)).toPx().toInt()
-            }
-            hScroll.scrollTo(targetPx)
+            snapshotFlow { hScroll.maxValue }
+                .first { it > 0 }
+            hScroll.scrollTo(hScroll.maxValue)
         }
 
         Row(modifier = Modifier.fillMaxWidth()) {
+            // Day label column
             Column(modifier = Modifier.width(labelWidth)) {
                 Spacer(modifier = Modifier.height(headerHeight))
                 visibleDates.forEach { date ->
@@ -350,11 +350,13 @@ fun WeeklyScheduleGrid(
                 }
             }
 
+            // Scrollable grid
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .horizontalScroll(hScroll)
             ) {
+                // Hour header row
                 Row(modifier = Modifier.width(totalWidth).height(headerHeight)) {
                     hours.forEach { hour ->
                         Box(
@@ -371,6 +373,7 @@ fun WeeklyScheduleGrid(
                     }
                 }
 
+                // Day rows
                 visibleDates.forEach { date ->
                     val primaryColor = MaterialTheme.colorScheme.primary
                     val dayTasks = tasksForDate(tasks, date, laneOf, totalLanesOf)
@@ -380,30 +383,29 @@ fun WeeklyScheduleGrid(
                             .width(totalWidth)
                             .height(dayHeight)
                     ) {
+                        // Tappable cells — each hour split into two half-hour halves
                         Row(modifier = Modifier.fillMaxSize()) {
                             hours.forEach { hour ->
-                                val isPendingStart = selectedDateOne?.let {
-                                    it.date == date && it.hour == hour
+                                val isHourPending = selectedDateOne?.let {
+                                    it.date == date && it.hour == hour && it.minute == 0
+                                } ?: false
+                                val isHalfPending = selectedDateOne?.let {
+                                    it.date == date && it.hour == hour && it.minute == 30
                                 } ?: false
 
+                                // :00 half
                                 Box(
                                     modifier = Modifier
-                                        .width(hourWidth)
+                                        .width(hourWidth / 2)
                                         .fillMaxHeight()
-                                        .clickable { onCellTapped(date, hour) }
+                                        .clickable { onCellTapped(date, hour, 0) }
                                         .background(
-                                            if (isPendingStart)
-                                                primaryColor.copy(alpha = 0.12f)
+                                            if (isHourPending) primaryColor.copy(alpha = 0.12f)
                                             else Color.Transparent
                                         )
                                         .drawWithContent {
                                             drawContent()
-                                            drawLine(
-                                                color = Color.Gray.copy(alpha = 0.15f),
-                                                start = Offset(size.width, 0f),
-                                                end = Offset(size.width, size.height),
-                                                strokeWidth = 0.5.dp.toPx()
-                                            )
+                                            // Bottom border
                                             drawLine(
                                                 color = Color.Gray.copy(alpha = 0.15f),
                                                 start = Offset(0f, size.height),
@@ -412,52 +414,109 @@ fun WeeklyScheduleGrid(
                                             )
                                         }
                                 )
+
+                                // :30 half — dotted left edge + solid right edge
+                                Box(
+                                    modifier = Modifier
+                                        .width(hourWidth / 2)
+                                        .fillMaxHeight()
+                                        .clickable { onCellTapped(date, hour, 30) }
+                                        .background(
+                                            if (isHalfPending) primaryColor.copy(alpha = 0.12f)
+                                            else Color.Transparent
+                                        )
+                                        .drawWithContent {
+                                            drawContent()
+                                            // Dotted half-hour divider on left edge
+                                            val dotSize = 2.dp.toPx()
+                                            val gap = 3.dp.toPx()
+                                            var y = 0f
+                                            while (y < size.height) {
+                                                drawLine(
+                                                    color = Color.Gray.copy(alpha = 0.25f),
+                                                    start = Offset(0f, y),
+                                                    end = Offset(0f, (y + dotSize).coerceAtMost(size.height)),
+                                                    strokeWidth = 0.5.dp.toPx()
+                                                )
+                                                y += dotSize + gap
+                                            }
+                                            // Bottom border
+                                            drawLine(
+                                                color = Color.Gray.copy(alpha = 0.15f),
+                                                start = Offset(0f, size.height),
+                                                end = Offset(size.width, size.height),
+                                                strokeWidth = 0.5.dp.toPx()
+                                            )
+                                            // Solid hour border on right
+                                            drawLine(
+                                                color = Color.Gray.copy(alpha = 0.15f),
+                                                start = Offset(size.width, 0f),
+                                                end = Offset(size.width, size.height),
+                                                strokeWidth = 0.5.dp.toPx()
+                                            )
+                                        }
+                                )
                             }
                         }
 
+                        // Task pills
                         dayTasks.forEach { positioned ->
                             val task = positioned.task
 
-                            val startHour = if (task.dateOne.date < date) 0
-                            else task.dateOne.hour
-                            val endHour = if (task.dateTwo != null && task.dateTwo.date > date) 23
-                            else (task.dateTwo?.hour ?: task.dateOne.hour)
-                            val spanHours = (endHour - startHour + 1).coerceAtLeast(1)
+                            val startHour = if (task.dateOne.date < date) 0 else task.dateOne.hour
+                            val startMinute = if (task.dateOne.date < date) 0 else task.dateOne.minute
+                            val endHour = if (task.dateTwo != null && task.dateTwo.date > date) 24
+                            else (task.dateTwo?.hour?.plus(1) ?: (task.dateOne.hour + 1))
+                            val endMinute = if (task.dateTwo != null && task.dateTwo.date > date) 0
+                            else (task.dateTwo?.minute ?: 0)
 
-                            val laneH = dayHeight / positioned.totalLanes
-                            val laneTop = laneH * positioned.laneIndex
+                            val startFraction = startHour + startMinute / 60f
+                            val endFraction = endHour + endMinute / 60f
+                            val spanHours = (endFraction - startFraction).coerceAtLeast(0.5f)
+
+                            val pillHeight = 18.dp
+                            val pillSpacing = 2.dp
+                            val laneTop = (pillHeight + pillSpacing) * positioned.laneIndex
+
+                            val pillPaddingPx = with(density) { 2.dp.toPx() }
+                            val pillStartPx = with(density) { (hourWidth * startFraction).toPx() } + pillPaddingPx
+                            val pillWidthPx = with(density) { (hourWidth * spanHours).toPx() } - pillPaddingPx * 2
+                            val scrollOffset = hScroll.value.toFloat()
+
+                            val visibleLeft = (scrollOffset - pillStartPx).coerceAtLeast(0f)
+                            val maxTextOffset = (pillWidthPx - with(density) { 11.dp.toPx() }).coerceAtLeast(0f)
+                            val textOffsetPx = visibleLeft.coerceAtMost(maxTextOffset)
 
                             Box(
                                 modifier = Modifier
-                                    .offset(
-                                        x = hourWidth * startHour,
-                                        y = laneTop
-                                    )
+                                    .offset(x = hourWidth * startFraction, y = laneTop)
                                     .width(hourWidth * spanHours)
-                                    .height(laneH)
-                                    .padding(horizontal = 2.dp, vertical = 2.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(primaryColor.copy(alpha = 0.15f))
+                                    .height(pillHeight)
+                                    .padding(horizontal = 2.dp)
+                                    .clip(RoundedCornerShape(15))
+                                    .background(primaryColor.copy(alpha = 0.18f))
                                     .drawWithContent {
                                         drawContent()
                                         drawLine(
                                             color = primaryColor,
-                                            start = Offset(0f, 0f),
-                                            end = Offset(0f, size.height),
-                                            strokeWidth = 3.dp.toPx()
+                                            start = Offset(0f, 4.dp.toPx()),
+                                            end = Offset(0f, size.height - 4.dp.toPx()),
+                                            strokeWidth = 3.dp.toPx(),
+                                            cap = androidx.compose.ui.graphics.StrokeCap.Round
                                         )
                                     }
-                                    .padding(start = 6.dp, top = 2.dp, end = 4.dp)
                             ) {
                                 Text(
                                     text = task.title,
-                                    fontSize = 9.sp,
+                                    fontSize = 8.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    lineHeight = 11.sp,
-                                    maxLines = 2,
+                                    maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     color = primaryColor,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .align(Alignment.CenterStart)
+                                        .offset(x = with(density) { textOffsetPx.toDp() } + 7.dp)
+                                        .padding(end = 4.dp)
                                 )
                             }
                         }
