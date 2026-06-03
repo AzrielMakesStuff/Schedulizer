@@ -2,6 +2,7 @@ package com.ateam.schedulizer.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.ateam.schedulizer.ReminderSchedule
 import kotlinx.datetime.*
 
 enum class TaskType { SET, POOL, DAILY }
@@ -14,6 +15,7 @@ data class Task(
     var title: String,
     var description: String,
     val completed: Boolean = false,
+    val reminderSchedule: ReminderSchedule,
     val dateOne: LocalDateTime,
     val dateTwo: LocalDateTime?
 )
