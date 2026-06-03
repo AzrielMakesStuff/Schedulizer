@@ -272,7 +272,167 @@ class DateTimePickerState(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReminderSchedulePicker(
+    schedule: ReminderSchedule,
+    onScheduleChange: (ReminderSchedule) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val types = listOf("None", "Daily", "Every N Days", "Weekly",
+        "Fortnightly", "Monthly by Date", "Monthly by Weekday")
 
+    fun scheduleToType(s: ReminderSchedule) = when (s) {
+        is ReminderSchedule.None -> "None"
+        is ReminderSchedule.EveryNDays -> if (s.days == 1) "Daily" else "Every N Days"
+        is ReminderSchedule.Weekly -> "Weekly"
+        is ReminderSchedule.Fortnightly -> "Fortnightly"
+        is ReminderSchedule.MonthlyByDate -> "Monthly by Date"
+        is ReminderSchedule.MonthlyByWeekday -> "Monthly by Weekday"
+    }
+
+    var expanded by remember { mutableStateOf(false) }
+    var selectedType by remember { mutableStateOf(scheduleToType(schedule)) }
+
+    // Sub-fields
+    var nDays by remember { mutableStateOf(
+        (schedule as? ReminderSchedule.EveryNDays)?.days?.toString() ?: "2") }
+    var weeklyDay by remember { mutableStateOf(
+        (schedule as? ReminderSchedule.Weekly)?.dayOfWeek
+            ?: (schedule as? ReminderSchedule.Fortnightly)?.dayOfWeek ?: 1) }
+    var monthDay by remember { mutableStateOf(
+        (schedule as? ReminderSchedule.MonthlyByDate)?.dayOfMonth ?: 1) }
+    var ordinal by remember { mutableStateOf(
+        (schedule as? ReminderSchedule.MonthlyByWeekday)?.ordinal ?: 1) }
+    var ordinalDay by remember { mutableStateOf(
+        (schedule as? ReminderSchedule.MonthlyByWeekday)?.dayOfWeek ?: 1) }
+
+    // Emit updated schedule whenever sub fields change
+    fun emit() {
+        val s = when (selectedType) {
+            "Daily" -> ReminderSchedule.EveryNDays(1)
+            "Every N Days" -> ReminderSchedule.EveryNDays(nDays.toIntOrNull()?.coerceAtLeast(2) ?: 2)
+            "Weekly" -> ReminderSchedule.Weekly(weeklyDay)
+            "Fortnightly" -> ReminderSchedule.Fortnightly(weeklyDay, 0)
+            "Monthly by Date" -> ReminderSchedule.MonthlyByDate(monthDay)
+            "Monthly by Weekday" -> ReminderSchedule.MonthlyByWeekday(ordinal, ordinalDay)
+            else -> ReminderSchedule.None
+        }
+        onScheduleChange(s)
+    }
+
+    val dayNames = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
+    val ordinalLabels = listOf("1st","2nd","3rd","4th","Last")
+    val ordinalValues = listOf(1, 2, 3, 4, -1)
+
+    Column(modifier = modifier) {
+        // Type selector
+        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+            OutlinedTextField(
+                value = selectedType,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Reminder Frequency") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier = Modifier
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                    .fillMaxWidth()
+            )
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                types.forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(type) },
+                        onClick = { selectedType = type; expanded = false; emit() }
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        when (selectedType) {
+            "Every N Days" -> {
+                OutlinedTextField(
+                    value = nDays,
+                    onValueChange = { nDays = it; emit() },
+                    label = { Text("Every N days") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            "Weekly", "Fortnightly" -> {
+                DayOfWeekPicker(selected = weeklyDay) { weeklyDay = it; emit() }
+            }
+            "Monthly by Date" -> {
+                NumberScrollPicker(
+                    range = 1..31,
+                    selected = monthDay,
+                    onSelected = { monthDay = it; emit() }
+                )
+                Text(
+                    "Clamped to last day in shorter months.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+            "Monthly by Weekday" -> {
+                // Ordinal picker (1st–4th, Last)
+                OrdinalPicker(
+                    labels  = ordinalLabels,
+                    values  = ordinalValues,
+                    selected = ordinal,
+                    onSelected = { ordinal = it; emit() }
+                )
+                Spacer(Modifier.height(8.dp))
+                DayOfWeekPicker(selected = ordinalDay) { ordinalDay = it; emit() }
+            }
+        }
+    }
+}
+
+/** Segmented-style row for day of week (Mon–Sun, 1–7). */
+@Composable
+private fun DayOfWeekPicker(selected: Int, onSelected: (Int) -> Unit) {
+    val days = listOf("M","T","W","T","F","S","S")
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        days.forEachIndexed { i, label ->
+            val iso = i + 1
+            val active = selected == iso
+            OutlinedButton(
+                onClick = { onSelected(iso) },
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(0.dp),
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (active)
+                        MaterialTheme.colorScheme.primaryContainer else
+                        MaterialTheme.colorScheme.surface
+                )
+            ) { Text(label, style = MaterialTheme.typography.labelSmall) }
+        }
+    }
+}
+
+/** Row of ordinal buttons: 1st, 2nd, 3rd, 4th, Last. */
+@Composable
+private fun OrdinalPicker(
+    labels: List<String>, values: List<Int>,
+    selected: Int, onSelected: (Int) -> Unit
+) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        labels.zip(values).forEach { (label, value) ->
+            val active = selected == value
+            OutlinedButton(
+                onClick = { onSelected(value) },
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(0.dp),
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (active)
+                        MaterialTheme.colorScheme.primaryContainer else
+                        MaterialTheme.colorScheme.surface
+                )
+            ) { Text(label, style = MaterialTheme.typography.labelSmall) }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateTaskDialog(dateOne : LocalDate? = null, dateTwo : LocalDate? = null, hourOne : Int? = null, hourTwo : Int? = null, onDismiss: () -> Unit) {
     val timeZone = TimeZone.currentSystemDefault()
@@ -286,7 +446,9 @@ fun CreateTaskDialog(dateOne : LocalDate? = null, dateTwo : LocalDate? = null, h
     var ignoreTime by remember { mutableStateOf(false) }
     var hasExpiry by remember { mutableStateOf(dateTwo != null) }
     var expanded by remember { mutableStateOf(false) }
+    var reminderSchedule by remember { mutableStateOf<ReminderSchedule>(ReminderSchedule.None) }
     var oneDay by remember { mutableStateOf(false) }
+
 
     val startState = remember {
         DateTimePickerState(
@@ -418,6 +580,13 @@ fun CreateTaskDialog(dateOne : LocalDate? = null, dateTwo : LocalDate? = null, h
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
+                ReminderSchedulePicker(
+                    schedule = reminderSchedule,
+                    onScheduleChange = { reminderSchedule = it }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Button(onClick = onDismiss, modifier = Modifier.weight(1f)) {
                         Text("Cancel")
@@ -430,6 +599,7 @@ fun CreateTaskDialog(dateOne : LocalDate? = null, dateTwo : LocalDate? = null, h
                                 title = title,
                                 description = description,
                                 completed = false,
+                                reminderSchedule = reminderSchedule,
                                 dateOne = when (taskType) {
                                     TaskType.SET -> startState.toLocalDateTime(timeZone) ?: return@Button
                                     TaskType.POOL, TaskType.DAILY -> today
