@@ -1,0 +1,7 @@
+package com.ateam.schedulizer
+
+import kotlinx.datetime.LocalDateTime
+
+expect object NotificationSystem {
+    fun scheduleNotification(title : String, body: String, time : LocalDateTime);
+}
