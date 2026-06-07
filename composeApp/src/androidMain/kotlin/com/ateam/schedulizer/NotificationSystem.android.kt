@@ -52,6 +52,22 @@ actual object NotificationSystem {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    actual fun clearAllNotifications() {
+        val alarmManager =
+            ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val tasks = databaseInstance.tasks;
+        tasks.value.forEach {
+            val intent = Intent(ContextHolder.context, Receiver::class.java);
+            intent.putExtra("title_key",it.reminderSchedule.displayName())
+            intent.putExtra("body_key",it.description)
+            val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, Constants.REMIND_ID,intent,
+                PendingIntent.FLAG_MUTABLE)
+            alarmManager.cancel(pendingIntent)
+        }
+        }
+
+
 
     actual fun clearAllNotifications() {
         val alarmManager =
@@ -83,6 +99,16 @@ actual object NotificationSystem {
         val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(ContextHolder.context, Receiver::class.java);
         val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, id,intent,
+            PendingIntent.FLAG_MUTABLE)
+        alarmManager.cancel(pendingIntent)
+    }
+    actual fun clearNotification(task : Task) {
+        val alarmManager =
+            ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(ContextHolder.context, Receiver::class.java);
+        intent.putExtra("title_key",task.reminderSchedule.displayName())
+        intent.putExtra("body_key",task.description)
+        val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, Constants.REMIND_ID,intent,
             PendingIntent.FLAG_MUTABLE)
         alarmManager.cancel(pendingIntent)
     }

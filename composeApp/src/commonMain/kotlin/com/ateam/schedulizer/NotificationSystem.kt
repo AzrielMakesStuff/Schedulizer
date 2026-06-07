@@ -11,5 +11,4 @@ expect object NotificationSystem {
     fun clearAllNotifications()
     fun clearNotification(task : Task)
     fun clearNotificationById(id : Int)
-
 }
