@@ -35,8 +35,10 @@ fun getScreenOrderIndex(backStackEntry: NavBackStackEntry): Int {
 @Composable
 @Preview
 fun App() {
+
     LaunchedEffect(Unit) {
         databaseInstance.refresh()
+        Utils.init();
     }
 
     val rootNavController = rememberNavController()
