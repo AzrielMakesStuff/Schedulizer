@@ -43,11 +43,15 @@ fun App() {
     val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val isDarkMode = isSystemInDarkTheme()
-    val colorScheme = remember(isDarkMode) {
-        if (isDarkMode) darkColorScheme()
-        else lightColorScheme()
+    val systemIsDark = isSystemInDarkTheme()
+    val isDarkMode = when (currentThemeMode) {
+        ThemeMode.SYSTEM -> systemIsDark
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
     }
+
+    val colorScheme = if (isDarkMode) darkColorScheme() else lightColorScheme()
+
 
     MaterialTheme(colorScheme = colorScheme) {
         Scaffold(

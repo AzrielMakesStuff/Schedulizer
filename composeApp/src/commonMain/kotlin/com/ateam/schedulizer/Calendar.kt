@@ -67,9 +67,7 @@ fun Calendar() {
         tasks.filter { it.dateTwo != null }
             .groupBy { it.dateTwo!!.date }
     }
-    val baseColor = if (isSystemInDarkTheme()) Color(0xFF303030) else Color.LightGray.copy(alpha = 0.5f)
-    val textColoring = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
-    val background = if (isSystemInDarkTheme()) Color(0xFF000000) else Color.White
+    val background = MaterialTheme.colorScheme.background
 
     Box(
         modifier = Modifier
@@ -90,7 +88,7 @@ fun Calendar() {
             val light = Color(0xFFF5F5F5)
             val dark = Color(0xFF1E1E24)
 
-            val backgroundColor = if (isSystemInDarkTheme()) dark else light
+            val backgroundColor = MaterialTheme.colorScheme.surface
 
             state.firstVisibleMonth.toString()
             HorizontalCalendar(
@@ -119,8 +117,7 @@ fun Calendar() {
 
 @Composable
 fun DaysOfWeekTitle(daysOfWeek: List<DayOfWeek>) {
-    val textColoring =
-        if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
+    val textColoring = MaterialTheme.colorScheme.onBackground
     Row(modifier = Modifier.fillMaxWidth()) {
         for (dayOfWeek in daysOfWeek) {
             Text(
@@ -135,8 +132,7 @@ fun DaysOfWeekTitle(daysOfWeek: List<DayOfWeek>) {
 
 @Composable
 fun MonthName(monthName: String, year: Int) {
-    val textColoring =
-        if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.8f) else Color.Black
+    val textColoring = MaterialTheme.colorScheme.onBackground
     Text(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,7 +148,7 @@ fun MonthName(monthName: String, year: Int) {
 @Composable
 fun Day(day: CalendarDay, tasks: List<Task>) {
     val isMonthDate = day.position == DayPosition.MonthDate
-    val baseColor = if (isSystemInDarkTheme()) Color.White else Color.Black
+    val baseColor = MaterialTheme.colorScheme.onSurface
     val textColor = if (isMonthDate) baseColor else baseColor.copy(alpha = 0.3f)
     val isToday = day.date == today
 
@@ -165,17 +161,17 @@ fun Day(day: CalendarDay, tasks: List<Task>) {
                 width = 1.5.dp,
             )
             .clickable(enabled = isMonthDate, onClick = { showOverlay = true })
-            .background(color = if ((isToday) && (isMonthDate)) Color.Transparent.copy(alpha = 0.3f) else Color.Transparent),
+            .background(color = if ((isToday) && (isMonthDate)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            modifier = Modifier.padding(top = 10.dp),
-            text = day.date.day.toString(),
-            color = if (isToday) textColor.copy(alpha = 0.8f) else textColor,
-            fontWeight = FontWeight.Bold,
-            fontSize = 12.sp
-        )
+            Text(
+                modifier = Modifier.padding(top = 10.dp),
+                text = day.date.day.toString(),
+                color = if (isToday) textColor.copy(alpha = 0.8f) else textColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
+            )
 
         tasks.take(3).forEach { task ->
             Box(
@@ -194,7 +190,7 @@ fun Day(day: CalendarDay, tasks: List<Task>) {
                     lineHeight = 8.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = textColor,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.padding(horizontal = 2.dp)
                 )
             }
