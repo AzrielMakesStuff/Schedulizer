@@ -6,10 +6,13 @@ import android.app.NotificationManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.tooling.preview.Preview
 
 class MainActivity : ComponentActivity() {
@@ -25,6 +28,24 @@ class MainActivity : ComponentActivity() {
         notificationManager.createNotificationChannel(notificationChannel)
         NotificationSystem.requestPermission(this)
         setContent {
+            val systemIsDark = isSystemInDarkTheme()
+            val isDarkMode = when (currentThemeMode) {
+                ThemeMode.SYSTEM -> systemIsDark
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            LaunchedEffect(isDarkMode) {
+                enableEdgeToEdge(
+                    statusBarStyle = if (isDarkMode) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    }
+                )
+            }
             App()
         }
     }
