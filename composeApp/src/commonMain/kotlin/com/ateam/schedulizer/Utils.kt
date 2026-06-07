@@ -8,10 +8,9 @@ object Utils {
     suspend fun init() {
         val tasks = databaseInstance.tasks.value
         tasks.forEach {
-
+            NotificationSystem.clearNotification(it)
             val currentDate = LocalDate.now()
             val nextDate = it.reminderSchedule.nextFireDate(currentDate);
-            NotificationSystem.clearNotification(it);
             NotificationSystem.scheduleNotification(it.reminderSchedule.displayName(),it.description,
                 nextDate?.atTime(12,0,0) ?: LocalDate.now().atTime(12,0,0)
             )
