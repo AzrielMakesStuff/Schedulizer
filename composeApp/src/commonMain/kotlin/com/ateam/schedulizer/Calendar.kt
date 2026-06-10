@@ -6,9 +6,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -54,6 +56,9 @@ import kotlinx.datetime.format.DayOfWeekNames
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock.System
 import com.ateam.schedulizer.entities.Task
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 val today = System.todayIn(TimeZone.currentSystemDefault())
@@ -61,11 +66,54 @@ val today = System.todayIn(TimeZone.currentSystemDefault())
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun Calendar() {
-    val tasks by databaseInstance.tasks.collectAsState()
-    val tasksByEndDate = remember(tasks) {
-        tasks.filter { it.dateTwo != null }
-            .groupBy { it.dateTwo!!.date }
+    val tasks by databaseInstance.tasks.collectAsState(initial = emptyList())
+
+    val laneOf = remember(tasks) {
+        val sorted = tasks.sortedBy { it.dateOne }
+        val lanes = mutableListOf<MutableList<Task>>()
+        val laneMap = mutableMapOf<Task, Int>()
+
+        sorted.forEach { task ->
+            val tStart = task.dateOne.date
+            val tEnd = task.dateTwo?.date ?: tStart
+            var placed = false
+            for (laneIdx in lanes.indices) {
+                val conflict = lanes[laneIdx].any { existing ->
+                    val eStart = existing.dateOne.date
+                    val eEnd = existing.dateTwo?.date ?: eStart
+                    tStart <= eEnd && tEnd >= eStart
+                }
+                if (!conflict) {
+                    lanes[laneIdx].add(task)
+                    laneMap[task] = laneIdx
+                    placed = true
+                    break
+                }
+            }
+            if (!placed) {
+                lanes.add(mutableListOf(task))
+                laneMap[task] = lanes.lastIndex
+            }
+        }
+        laneMap
     }
+
+    val taskByDate = remember(tasks) {
+        val map = mutableMapOf<LocalDate, MutableList<Task>>()
+        tasks.forEach { task ->
+            val start = task.dateOne.date
+            val end = task.dateTwo?.date ?: start
+            var current = start
+            while (current <= end) {
+                map.getOrPut(current) {
+                    mutableListOf()
+                }.add(task)
+                current = current.plus(1, DateTimeUnit.DAY)
+            }
+        }
+        map
+    }
+
     val background = MaterialTheme.colorScheme.background
 
     Box(
@@ -93,7 +141,7 @@ fun Calendar() {
                     }
                 },
                 state = state,
-                dayContent = { Day(it, tasksByEndDate[it.date] ?: emptyList()) },
+                dayContent = { Day(it, taskByDate[it.date] ?: emptyList(), laneOf) },
                 monthHeader = { month: CalendarMonth ->
                     val daysOfWeek = remember(month) {
                         month.weekDays.first().map { it.date.dayOfWeek }
@@ -141,7 +189,7 @@ fun MonthName(monthName: String, year: Int) {
 }
 
 @Composable
-fun Day(day: CalendarDay, tasks: List<Task>) {
+fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
     val isMonthDate = day.position == DayPosition.MonthDate
     val baseColor = MaterialTheme.colorScheme.onSurface
     val textColor = if (isMonthDate) baseColor else baseColor.copy(alpha = 0.3f)
@@ -152,11 +200,17 @@ fun Day(day: CalendarDay, tasks: List<Task>) {
         modifier = Modifier
             .aspectRatio(0.55f)
             .border(
-                color = if ((isToday) && (isMonthDate)) textColor.copy(alpha = 0.8f) else Color.Transparent.copy(alpha = 0.2f),
+                color = if ((isToday) && (isMonthDate)) textColor.copy(alpha = 0.8f) else Color.Transparent.copy(
+                    alpha = 0.2f
+                ),
                 width = 1.5.dp,
             )
             .clickable(enabled = isMonthDate, onClick = { showOverlay = true })
-            .background(color = if ((isToday) && (isMonthDate)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent),
+            .background(
+                color = if ((isToday) && (isMonthDate)) MaterialTheme.colorScheme.primaryContainer.copy(
+                    alpha = 0.3f
+                ) else Color.Transparent
+            ),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -168,128 +222,162 @@ fun Day(day: CalendarDay, tasks: List<Task>) {
                 fontSize = 12.sp
             )
 
-            tasks.take(3).forEach { task ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 1.dp, horizontal = 2.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
-                            shape = RoundedCornerShape(2.dp)
-                        )
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = task.title,
-                        fontSize = 7.sp,
-                        lineHeight = 8.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 2.dp)
-                    )
+            for (laneIndex in 0..2) {
+                val task = tasks.find { laneOf[it] == laneIndex }
+                if (task != null) {
+                    val isStart = task.dateOne.date == day.date
+                    val isEnd = (task.dateTwo?.date ?: task.dateOne.date) == day.date
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(14.dp)
+                            .padding(vertical = 1.dp)
+                            .padding(
+                                start = if (isStart) 2.dp else 0.dp,
+                                end = if (isEnd) 2.dp else 0.dp
+                            )
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(
+                                    topStart = if (isStart) 2.dp else 0.dp,
+                                    bottomStart = if (isStart) 2.dp else 0.dp,
+                                    topEnd = if (isEnd) 2.dp else 0.dp,
+                                    bottomEnd = if (isEnd) 2.dp else 0.dp
+                                )
+                            ),
+                            contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (isStart || day.date.dayOfWeek == daysOfWeek.first() || day.date.day == 1) {
+                            Text(
+                                text = task.title,
+                                fontSize = 7.sp,
+                                lineHeight = 8.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(14.dp))
                 }
             }
         }
-    }
-    if (isMonthDate) {
-        DetailsOverlay(isVisible = showOverlay, onDismiss = { showOverlay = false }, day = day, tasks = tasks)
+        if (isMonthDate) {
+            DetailsOverlay(
+                isVisible = showOverlay,
+                onDismiss = { showOverlay = false },
+                day = day,
+                tasks = tasks
+            )
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay, tasks: List<Task>) {
-    var createTaskDialog by remember { mutableStateOf(false) }
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    @Composable
+    fun DetailsOverlay(
+        isVisible: Boolean,
+        onDismiss: () -> Unit,
+        day: CalendarDay,
+        tasks: List<Task>
+    ) {
+        var createTaskDialog by remember { mutableStateOf(false) }
 
-    if (createTaskDialog) {
-        TaskDialog(
-            dateTwo = day.date,
-            onDismiss = { createTaskDialog = false }
-        )
-    }
+        if (createTaskDialog) {
+            TaskDialog(
+                dateTwo = day.date,
+                onDismiss = { createTaskDialog = false }
+            )
+        }
 
-    if (isVisible) {
-        Popup(
-            onDismissRequest = onDismiss,
-            properties = PopupProperties(focusable = true)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .clickable { onDismiss() },
-                contentAlignment = Alignment.Center
+        if (isVisible) {
+            Popup(
+                onDismissRequest = onDismiss,
+                properties = PopupProperties(focusable = true)
             ) {
                 Box(
                     modifier = Modifier
-                        .padding(9.dp)
-                        .widthIn(max = 450.dp)
-                        .heightIn(max = 800.dp)
-                        .padding(16.dp)
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.94f),
-                            shape = RoundedCornerShape(50.dp)
-                        )
-                        .clickable(enabled = false) { },
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .clickable { onDismiss() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
-                            modifier = Modifier
-                                .padding(24.dp)
-                                .widthIn(max = 450.dp)
-                                .shadow(12.dp, shape = RoundedCornerShape(16.dp))
-                                .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp))
-                                .clickable(enabled = false) { },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                val currentDay = day.date.dayOfWeek.name
-
-                                Text(
-                                    text = "$currentDay - ${day.date}",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-
-                                if (tasks.isNotEmpty()) {
-                                    Text(
-                                        text = "Tasks for Today",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.padding(bottom = 4.dp)
+                    Box(
+                        modifier = Modifier
+                            .padding(9.dp)
+                            .widthIn(max = 450.dp)
+                            .heightIn(max = 800.dp)
+                            .padding(8.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.99f),
+                                shape = RoundedCornerShape(25.dp)
+                            )
+                            .clickable(enabled = false) { },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(24.dp)
+                                    .widthIn(max = 450.dp)
+                                    .shadow(12.dp, shape = RoundedCornerShape(16.dp))
+                                    .background(
+                                        MaterialTheme.colorScheme.surface,
+                                        shape = RoundedCornerShape(16.dp)
                                     )
-                                    tasks.forEach { task ->
+                                    .clickable(enabled = false) { },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    val currentDay = day.date.dayOfWeek.name
+
+                                    Text(
+                                        text = "$currentDay - ${day.date}",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.padding(bottom = 16.dp)
+                                    )
+
+                                    if (tasks.isNotEmpty()) {
                                         Text(
-                                            text = "${task.title} - ${task.type}",
+                                            text = "Tasks for Today",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.padding(vertical = 4.dp)
+                                            modifier = Modifier.padding(bottom = 4.dp)
+                                        )
+                                        tasks.forEach { task ->
+                                            Text(
+                                                text = "${task.title} - ${task.type}",
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                modifier = Modifier.padding(vertical = 4.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Text(
+                                            text = "Add Task?",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            modifier = Modifier.padding(bottom = 4.dp)
                                         )
                                     }
-                                } else {
-                                    Text(
-                                        text = "Add Task?",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.padding(bottom = 4.dp)
-                                    )
-                                }
-                                IconButton(onClick = {
-                                    onDismiss()
-                                    createTaskDialog = true
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Add,
-                                        contentDescription = "Create Task",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
+                                    IconButton(onClick = {
+                                        onDismiss()
+                                        createTaskDialog = true
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Add,
+                                            contentDescription = "Create Task",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -298,7 +386,6 @@ fun DetailsOverlay(isVisible: Boolean, onDismiss: () -> Unit, day: CalendarDay, 
             }
         }
     }
-}
 
 @Composable
 fun MonthHeader(daysOfWeek: List<DayOfWeek>) {
