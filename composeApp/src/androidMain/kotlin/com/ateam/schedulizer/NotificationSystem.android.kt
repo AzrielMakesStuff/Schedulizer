@@ -52,7 +52,7 @@ actual object NotificationSystem {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+
     actual fun clearAllNotifications() {
         val alarmManager =
             ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -103,12 +103,19 @@ actual object NotificationSystem {
         alarmManager.cancel(pendingIntent)
     }
     actual fun clearNotification(task : Task) {
-        val alarmManager =
-            ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(ContextHolder.context, Receiver::class.java);
         intent.putExtra("title_key",task.reminderSchedule.displayName())
         intent.putExtra("body_key",task.description)
-        val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, Constants.REMIND_ID,intent,
+        val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, task.id.toInt(),intent,
+            PendingIntent.FLAG_MUTABLE)
+        alarmManager.cancel(pendingIntent)
+    }
+
+    actual fun clearNotificationById(id: Int) {
+        val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(ContextHolder.context, Receiver::class.java);
+        val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, id,intent,
             PendingIntent.FLAG_MUTABLE)
         alarmManager.cancel(pendingIntent)
     }
