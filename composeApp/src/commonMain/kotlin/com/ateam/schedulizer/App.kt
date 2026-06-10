@@ -19,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextOverflow
 import navigationItemsLists
 import Routes
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -73,6 +75,10 @@ fun App() {
                 NavHost(
                     navController = rootNavController,
                     startDestination = Routes.Home.route,
+                    enterTransition = { EnterTransition.None },
+                    exitTransition = { ExitTransition.None },
+                    popEnterTransition = { EnterTransition.None },
+                    popExitTransition = {ExitTransition.None},
                     modifier = Modifier.weight(1f),
                 ) {
                     composable(Routes.Home.route) {
