@@ -26,12 +26,6 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 
-val screenOrder = listOf("home", "calendar", "settings")
-
-fun getScreenOrderIndex(backStackEntry: NavBackStackEntry): Int {
-    val route = backStackEntry.destination.route
-    return screenOrder.indexOf(route).coerceAtLeast(0)
-}
 @Composable
 @Preview
 fun App() {
@@ -83,6 +77,9 @@ fun App() {
                 ) {
                     composable(Routes.Home.route) {
                         HomeScreen()
+                    }
+                    composable(Routes.Tasks.route) {
+                        TaskScreen()
                     }
                     composable(Routes.Calendar.route) {
                         Calendar()

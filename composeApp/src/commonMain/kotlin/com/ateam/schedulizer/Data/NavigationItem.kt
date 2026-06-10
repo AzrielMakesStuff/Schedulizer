@@ -17,7 +17,9 @@ object Graph {
 }
 
 sealed class Routes(var route: String) {
+
     data object Home : Routes("home")
+    data object Tasks : Routes("tasks")
     data object Calendar : Routes("Calendar")
     data object HomeDetail : Routes("homeDetail")
     data object SettingDetail : Routes("settingDetail")
@@ -29,6 +31,12 @@ val navigationItemsLists = listOf(
         selectedIcon = Icons.Filled.Home,
         title = "Home",
         route = Routes.Home.route,
+    ),
+    NavigationItem(
+        unSelectedIcon = Icons.Outlined.AddTask,
+        selectedIcon = Icons.Filled.AddTask,
+        title = "Tasks",
+        route = Routes.Tasks.route,
     ),
     NavigationItem(
         unSelectedIcon = Icons.Outlined.CalendarMonth,

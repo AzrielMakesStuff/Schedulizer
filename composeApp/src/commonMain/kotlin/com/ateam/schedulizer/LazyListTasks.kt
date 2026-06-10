@@ -1,4 +1,3 @@
-@file:Suppress("AssignedValueIsNeverRead")
 package com.ateam.schedulizer
 
 import androidx.compose.foundation.layout.Column
