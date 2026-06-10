@@ -7,8 +7,9 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.atTime
 
 expect object NotificationSystem {
-    fun scheduleNotification(title : String, body: String, time : LocalDateTime);
+    fun scheduleNotification(title : String, body: String, time : LocalDateTime,code : Int);
     fun clearAllNotifications()
     fun clearNotification(task : Task)
+    fun clearNotificationById(id : Int)
 
 }
