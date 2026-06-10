@@ -28,13 +28,27 @@ class Converters {
     @TypeConverter
     fun toSchedule(s: String): ReminderSchedule {
         val parts = s.split(":")
-        return when (parts[0]) {
-            "every_n_days" -> ReminderSchedule.EveryNDays(parts[1].toInt())
-            "weekly" -> ReminderSchedule.Weekly(parts[1].toInt())
-            "fortnightly" -> ReminderSchedule.Fortnightly(parts[1].toInt(), parts[2].toInt())
-            "monthly_date" -> ReminderSchedule.MonthlyByDate(parts[1].toInt())
-            "monthly_weekday" -> ReminderSchedule.MonthlyByWeekday(parts[1].toInt(), parts[2].toInt())
+
+        if (parts.size < 2 && parts[0] != "none") return ReminderSchedule.None
+
+        return try {
+            when (parts[0]) {
+            "every_n_days" -> ReminderSchedule.EveryNDays(parts[1].toIntOrNull() ?: 1)
+            "weekly" -> ReminderSchedule.Weekly(parts[1].toIntOrNull() ?: 1)
+            "fortnightly" -> ReminderSchedule.Fortnightly(
+                parts.getOrNull(1) ?. toIntOrNull() ?: 1,
+                parts.getOrNull(2) ?. toIntOrNull() ?: 0
+            )
+            "monthly_date" -> ReminderSchedule.MonthlyByDate(parts[1].toIntOrNull() ?: 1)
+            "monthly_weekday" -> ReminderSchedule.MonthlyByWeekday(
+                parts.getOrNull(1)?.toIntOrNull() ?: 1,
+                parts.getOrNull(2)?.toIntOrNull() ?: 1
+            )
             else -> ReminderSchedule.None
+        }
+        } catch (e: Exception)
+        {
+            ReminderSchedule.None
         }
     }
 }
