@@ -14,8 +14,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 class MainActivity : ComponentActivity() {
+
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -29,7 +35,10 @@ class MainActivity : ComponentActivity() {
         notificationManager.createNotificationChannel(notificationChannel);
         NotificationSystem.requestPermission(this);
 
-
+        val currentTime = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault());
+        val newTime = currentTime.toJavaLocalDateTime().plusSeconds(10,).toKotlinLocalDateTime();
+        val newTime2 = currentTime.toJavaLocalDateTime().plusSeconds(15,).toKotlinLocalDateTime();
+        val newTime3 = currentTime.toJavaLocalDateTime().plusSeconds(20,).toKotlinLocalDateTime();
         setContent {
             val systemIsDark = isSystemInDarkTheme()
             val isDarkMode = when (currentThemeMode) {
@@ -38,6 +47,7 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
             }
             LaunchedEffect(isDarkMode) {
+                NotificationSystem.clearAllNotifications()
                 enableEdgeToEdge(
                     statusBarStyle = if (isDarkMode) {
                         SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
