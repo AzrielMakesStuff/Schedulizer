@@ -1,5 +1,6 @@
 package com.ateam.schedulizer
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,10 +13,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.DirectionsWalk
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Fireplace
+import androidx.compose.material.icons.filled.Task
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,10 +32,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.painterResource
+import schedulizer.composeapp.generated.resources.Res
+import schedulizer.composeapp.generated.resources.streakbackground
+import schedulizer.composeapp.generated.resources.flame_icon
 
 @Composable
 fun HomeScreen()
@@ -55,14 +65,56 @@ fun HomeScreen()
                 .fillMaxWidth()
                 .fillMaxHeight(0.3f)
                 .padding(15.dp)
-                .clip(RoundedCornerShape(30.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .clip(RoundedCornerShape(30.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "Streak System Here",
-                fontWeight = FontWeight.Bold,
+            Image(
+                painter = painterResource(Res.drawable.streakbackground),
+                alpha = 0.5f,
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
             )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .padding(15.dp),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.Top
+            )
+            {
+                //THIS IS A PLACEHOLDER IMAGE
+                Image(
+                    painter = painterResource(Res.drawable.flame_icon),
+                    contentDescription = "Streak",
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .padding(
+                        start = 15.dp,
+                        end = 60.dp,
+                        top = 15.dp,
+                        bottom = 15.dp,
+                    ),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center
+            )
+            {
+                Text(
+                    text = "[Num] Days",
+                    autoSize = TextAutoSize.StepBased(
+                        minFontSize = 10.sp,
+                        maxFontSize = 20.sp,
+                    ),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
 
         Row(
@@ -160,57 +212,91 @@ fun HomeScreen()
         }
         Box(
             modifier = Modifier
-                .fillMaxHeight(0.45f)
+                .fillMaxHeight()
                 .fillMaxWidth()
                 .padding(15.dp)
                 .clip(RoundedCornerShape(30.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         )
         {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-            )
+            Column(modifier = Modifier.fillMaxSize())
             {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth(0.5f)
-                        .fillMaxHeight()
-                        .padding(15.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Top
-                )
-                {
-                    Icon(
-                        imageVector = Icons.Default.Whatshot,
-                        contentDescription = "Calories",
-                    )
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Text(
-                        text = "[Num] Calories Burned",
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight()
-                        .padding(15.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Top
                 )
                 {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.DirectionsWalk,
-                        contentDescription = "Steps",
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(15.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Top
                     )
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Text(
-                        text = "[Num] Steps Today",
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold,
+                    {
+                        Icon(
+                            imageVector = Icons.Default.Task,
+                            contentDescription = "Tasks",
+                        )
+                        Spacer(modifier = Modifier.height(5.dp))
+                        Text(
+                            text = "Total Tasks",
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Spacer(modifier = Modifier.height(5.dp))
+                        Text(
+                            text = "00",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(15.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Top
                     )
+                    {
+                        Icon(
+                            imageVector = Icons.Default.Today,
+                            contentDescription = "tasksToday",
+                        )
+                        Spacer(modifier = Modifier.height(5.dp))
+                        Text(
+                            text = "Tasks Today",
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Spacer(modifier = Modifier.height(5.dp))
+                        Text(
+                            text = "00",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                )
+                {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Top
+                    )
+                    {
+                        Text(
+                            text = "Tasks",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
                 }
             }
         }
