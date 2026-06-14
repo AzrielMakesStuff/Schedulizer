@@ -7,15 +7,15 @@ import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.ateam.schedulizer.dao.TaskDao
+import com.ateam.schedulizer.entities.Task
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import com.ateam.schedulizer.entities.Task
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.LocalDate
 
-@Database(entities = [Task::class], version = 4)
+@Database(entities = [Task::class], version = 5)
 @TypeConverters(Converters::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {

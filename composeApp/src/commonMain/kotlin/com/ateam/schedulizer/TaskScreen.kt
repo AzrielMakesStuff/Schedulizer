@@ -22,8 +22,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -51,15 +61,21 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ateam.schedulizer.entities.Task
+import com.ateam.schedulizer.entities.TaskType
+import com.ateam.schedulizer.entities.displayName
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.now
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearMonth
+import kotlin.time.Clock
 
 data class PositionedTask(
     val task: Task,
@@ -128,8 +144,13 @@ private fun tasksForDate(
     totalLanesOf: Map<Task, Int>
 ): List<PositionedTask> = tasks
     .filter { task ->
-        if (task.dateTwo != null) task.dateOne.date <= date && task.dateTwo.date >= date
-        else task.dateOne.date == date
+        when (task.type) {
+            TaskType.DAILY -> false
+            TaskType.POOL -> task.dateTwo != null && task.dateTwo.date == date
+            TaskType.SET ->
+                if (task.dateTwo != null) task.dateOne.date <= date && task.dateTwo.date >= date
+                else task.dateOne.date == date
+        }
     }
     .map { PositionedTask(it, laneOf[it] ?: 0, totalLanesOf[it] ?: 1) }
 
@@ -188,11 +209,48 @@ fun TaskScreen() {
     var weekChangedThisDrag by remember { mutableStateOf(false) }
 
     Box {
-        Column(modifier = Modifier.padding(8.dp)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-            ) {
+        val tasks by databaseInstance.tasks.collectAsState()
+        val filteredTasks = remember(tasks) {
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            val today = now.date
+            tasks.filter { task ->
+                when (task.type) {
+                    TaskType.DAILY -> true
+                    TaskType.SET -> {
+                        if (task.completed) {
+                            task.completionDate?.date?.let { it >= today } ?: false
+                        } else {
+                            true // show all incomplete SET tasks including expired
+                        }
+                    }
+
+                    TaskType.POOL -> {
+                        if (task.completed) {
+                            task.completionDate?.date?.let { it >= today } ?: false
+                        } else {
+                            true // show all incomplete POOL tasks including expired
+                        }
+                    }
+                }
+            }.sortedWith(compareBy(
+                { if (it.completed || (it.type == TaskType.DAILY &&
+                            it.dateOne.date == now.date)) 1 else 0 },
+                { if (it.type == TaskType.DAILY) 0 else 1 },
+                {
+                    when {
+                        it.type == TaskType.POOL && it.dateTwo == null ->
+                            LocalDateTime(today, kotlinx.datetime.LocalTime(23, 30))
+                        else -> it.dateOne
+                    }
+                }
+            ))
+        }
+        val listState = rememberLazyListState()
+        val scope = rememberCoroutineScope()
+
+        LaunchedEffect(Unit) { databaseInstance.refresh() }
+        LazyColumn(modifier = Modifier.padding(8.dp), listState) {
+            item {
                 MonthName(
                     monthName = visibleMonth.month.name
                         .lowercase()
@@ -248,22 +306,20 @@ fun TaskScreen() {
                             visibleDates = dates,
                             today = today,
                             selectedDateOne = selectedDateOne,
-                            onCellTapped = ::onCellTapped
+                            onCellTapped = ::onCellTapped,
+                            onTaskTapped = { task ->
+                                weekAnchor = task.dateOne.date
+                                val index = filteredTasks.indexOf(task)
+                                if (index >= 0) scope.launch { listState.animateScrollToItem(index + 1) }
+                            }
                         )
                     }
                 }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-                    .clip(RoundedCornerShape(25.dp))
-            ) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(10.dp),
+                        .padding(5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -273,24 +329,217 @@ fun TaskScreen() {
                         fontSize = 24.sp
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 30.dp)
+            }
+            items(filteredTasks) { task ->
+                val isCompletedToday = task.type == TaskType.DAILY &&
+                        task.dateOne.date == Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+
+                val isExpired = !task.completed && when (task.type) {
+                    TaskType.SET -> task.dateTwo != null && task.dateTwo < now
+                    TaskType.POOL -> task.dateTwo != null && task.dateTwo < now
+                    TaskType.DAILY -> false
+                }
+
+                val isChecked = when (task.type) {
+                    TaskType.DAILY -> isCompletedToday
+                    else -> task.completed
+                }
+
+                val alpha = if (isChecked) 0.4f else 1f
+
+                val textColor = when {
+                    isChecked -> MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)
+                    isExpired -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+
+                val subtleColor = when {
+                    isChecked -> MaterialTheme.colorScheme.onSurface.copy(alpha = alpha * 0.6f)
+                    isExpired -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                }
+
+                val cardBackground = when {
+                    isChecked -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    isExpired -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                }
+
+                fun LocalDateTime.fmt(): String {
+                    val hour = hour.toString().padStart(2, '0')
+                    val min = minute.toString().padStart(2, '0')
+                    return "${dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
+                            "${date.day} ${month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
+                            "$year $hour:$min"
+                }
+
+                fun LocalDate.fmt(): String =
+                    "${dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
+                            "$day ${month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} $year"
+
+                var editingTask by remember { mutableStateOf<Task?>(null) }
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(cardBackground)
+                        .clickable {
+                            if (task.type != TaskType.DAILY && task.type != TaskType.POOL) {
+                                weekAnchor = task.dateOne.date
+                                scope.launch { listState.animateScrollToItem(0) }
+                            }
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    LazyListTasks()
+                    Checkbox(
+                        checked = isChecked,
+                        onCheckedChange = { checked ->
+                            scope.launch {
+                                val updated = when (task.type) {
+                                    TaskType.DAILY -> {
+                                        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                                        task.copy(dateOne = if (checked) now else task.dateOne)
+                                    }
+                                    else -> task.copy(
+                                        completed = checked,
+                                        completionDate = if (checked)
+                                            Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                                        else null
+                                    )
+                                }
+                                databaseInstance.createTask(updated)
+                            }
+                        }
+                    )
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = task.title,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = textColor,
+                                textDecoration = if (isChecked) androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                else androidx.compose.ui.text.style.TextDecoration.None
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = task.type.displayName(),
+                                fontSize = 10.sp,
+                                color = when {
+                                    isExpired -> MaterialTheme.colorScheme.error
+                                    else -> MaterialTheme.colorScheme.primary.copy(alpha = alpha)
+                                },
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(when {
+                                        isExpired -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                                        else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = alpha * 0.5f)
+                                    })
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        if (task.description.isNotBlank()) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = task.description,
+                                fontSize = 12.sp,
+                                color = subtleColor,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Spacer(Modifier.height(4.dp))
+
+                        when (task.type) {
+                            TaskType.SET -> {
+                                if (task.dateTwo != null) {
+                                    Text("${task.dateOne.fmt()} to ${task.dateTwo.fmt()}",
+                                        fontSize = 11.sp, color = subtleColor)
+                                } else {
+                                    Text(task.dateOne.fmt(), fontSize = 11.sp, color = subtleColor)
+                                }
+                            }
+                            TaskType.POOL -> {
+                                if (task.dateTwo != null) {
+                                    Text("Expires ${task.dateTwo.fmt()}", fontSize = 11.sp, color = subtleColor)
+                                } else {
+                                    Text("No expiry", fontSize = 11.sp, color = subtleColor)
+                                }
+                            }
+                            TaskType.DAILY -> {
+                                Text("Daily task", fontSize = 11.sp, color = subtleColor)
+                            }
+                        }
+
+                        if (isChecked && task.completionDate != null) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "Completed ${task.completionDate.fmt()}",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            )
+                        }
+                        if (isChecked && task.type == TaskType.DAILY) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "Completed today",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            )
+                        }
+                        if (isExpired) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "Expired",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+
+                    IconButton(onClick = { editingTask = task }, enabled = !isChecked) {
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "Edit Task",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (isChecked) 0.3f else 0.8f)
+                        )
+                    }
+                    IconButton(onClick = { scope.launch { databaseInstance.deleteTask(task) } }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "Delete Task",
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = alpha)
+                        )
+                    }
+                }
+
+                editingTask?.let { taskToEdit ->
+                    TaskDialog(task = taskToEdit, onDismiss = { editingTask = null })
                 }
             }
         }
     }
 }
 
+@Suppress("FrequentlyChangingValue")
 @Composable
 fun WeeklyScheduleGrid(
     visibleDates: List<LocalDate>,
     today: LocalDate,
     selectedDateOne: LocalDateTime?,
-    onCellTapped: (LocalDate, Int, Int) -> Unit
+    onCellTapped: (LocalDate, Int, Int) -> Unit,
+    onTaskTapped: (task: Task) -> Unit
 ) {
     val tasks by databaseInstance.tasks.collectAsState(initial = emptyList())
     val hours = remember { (0..23).toList() }
@@ -311,7 +560,12 @@ fun WeeklyScheduleGrid(
         LaunchedEffect(hourWidth) {
             snapshotFlow { hScroll.maxValue }
                 .first { it > 0 }
-            hScroll.scrollTo(hScroll.maxValue)
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            val currentFraction = now.hour + now.minute / 60f
+            val density = density
+            val targetPx = with(density) { (hourWidth * currentFraction).toPx() }
+            val halfVisiblePx = with(density) { (hourWidth * visibleHours / 2f).toPx() }
+            hScroll.scrollTo((targetPx - halfVisiblePx).toInt().coerceIn(0, hScroll.maxValue))
         }
 
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -459,16 +713,55 @@ fun WeeklyScheduleGrid(
                             }
                         }
 
+                        if (date == today) {
+                            var now by remember {
+                                mutableStateOf(Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()))
+                            }
+                            LaunchedEffect(Unit) {
+                                while (true) {
+                                    now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                                    kotlinx.coroutines.delay(60_000)
+                                }
+                            }
+
+                            val currentFraction = now.hour + now.minute / 60f
+                            val lineX = hourWidth * currentFraction
+
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = lineX)
+                                    .width(2.dp)
+                                    .fillMaxHeight()
+                                    .background(MaterialTheme.colorScheme.error)
+                            )
+                        }
+
                         // Task pills
                         dayTasks.forEach { positioned ->
                             val task = positioned.task
 
-                            val startHour = if (task.dateOne.date < date) 0 else task.dateOne.hour
-                            val startMinute = if (task.dateOne.date < date) 0 else task.dateOne.minute
-                            val endHour = if (task.dateTwo != null && task.dateTwo.date > date) 24
-                            else (task.dateTwo?.hour?.plus(1) ?: (task.dateOne.hour + 1))
-                            val endMinute = if (task.dateTwo != null && task.dateTwo.date > date) 0
-                            else (task.dateTwo?.minute ?: 0)
+                            val startHour = when (task.type) {
+                                TaskType.POOL -> task.dateTwo!!.hour
+                                TaskType.SET -> if (task.dateOne.date < date) 0 else task.dateOne.hour
+                                else -> 0
+                            }
+                            val startMinute = when (task.type) {
+                                TaskType.POOL -> task.dateTwo!!.minute
+                                TaskType.SET -> if (task.dateOne.date < date) 0 else task.dateOne.minute
+                                else -> 0
+                            }
+                            val endHour = when (task.type) {
+                                TaskType.POOL -> task.dateTwo!!.hour + 1
+                                TaskType.SET -> if (task.dateTwo != null && task.dateTwo.date > date) 24
+                                else (task.dateTwo?.hour?.plus(1) ?: (task.dateOne.hour + 1))
+                                else -> 0
+                            }
+                            val endMinute = when (task.type) {
+                                TaskType.POOL -> task.dateTwo!!.minute
+                                TaskType.SET -> if (task.dateTwo != null && task.dateTwo.date > date) 0
+                                else (task.dateTwo?.minute ?: 0)
+                                else -> 0
+                            }
 
                             val startFraction = startHour + startMinute / 60f
                             val endFraction = endHour + endMinute / 60f
@@ -487,6 +780,16 @@ fun WeeklyScheduleGrid(
                             val maxTextOffset = (pillWidthPx - with(density) { 11.dp.toPx() }).coerceAtLeast(0f)
                             val textOffsetPx = visibleLeft.coerceAtMost(maxTextOffset)
 
+                            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+
+                            val pillColor = when {
+                                task.completed && task.type == TaskType.SET ->
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                !task.completed && task.dateTwo != null && task.dateTwo < now ->
+                                    MaterialTheme.colorScheme.error
+                                else -> primaryColor
+                            }
+
                             Box(
                                 modifier = Modifier
                                     .offset(x = hourWidth * startFraction, y = laneTop)
@@ -494,17 +797,18 @@ fun WeeklyScheduleGrid(
                                     .height(pillHeight)
                                     .padding(horizontal = 2.dp)
                                     .clip(RoundedCornerShape(15))
-                                    .background(primaryColor.copy(alpha = 0.18f))
+                                    .background(pillColor.copy(alpha = 0.18f))
                                     .drawWithContent {
                                         drawContent()
                                         drawLine(
-                                            color = primaryColor,
+                                            color = pillColor,
                                             start = Offset(0f, 4.dp.toPx()),
                                             end = Offset(0f, size.height - 4.dp.toPx()),
                                             strokeWidth = 3.dp.toPx(),
                                             cap = androidx.compose.ui.graphics.StrokeCap.Round
                                         )
                                     }
+                                    .clickable { onTaskTapped(task) }
                             ) {
                                 Text(
                                     text = task.title,
@@ -512,7 +816,7 @@ fun WeeklyScheduleGrid(
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    color = primaryColor,
+                                    color = pillColor,
                                     modifier = Modifier
                                         .align(Alignment.CenterStart)
                                         .offset(x = with(density) { textOffsetPx.toDp() } + 7.dp)
