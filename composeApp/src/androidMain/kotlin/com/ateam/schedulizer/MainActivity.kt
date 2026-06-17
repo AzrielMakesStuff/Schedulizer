@@ -14,8 +14,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 class MainActivity : ComponentActivity() {
+
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -37,8 +43,10 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
-            LaunchedEffect(isDarkMode) {
+            LaunchedEffect(Unit) {
                 NotificationSystem.clearAllNotifications()
+            }
+            LaunchedEffect(isDarkMode) {
                 enableEdgeToEdge(
                     statusBarStyle = if (isDarkMode) {
                         SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
