@@ -35,10 +35,6 @@ class MainActivity : ComponentActivity() {
         notificationManager.createNotificationChannel(notificationChannel);
         NotificationSystem.requestPermission(this);
 
-        val currentTime = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault());
-        val newTime = currentTime.toJavaLocalDateTime().plusSeconds(10,).toKotlinLocalDateTime();
-        val newTime2 = currentTime.toJavaLocalDateTime().plusSeconds(15,).toKotlinLocalDateTime();
-        val newTime3 = currentTime.toJavaLocalDateTime().plusSeconds(20,).toKotlinLocalDateTime();
         setContent {
             val systemIsDark = isSystemInDarkTheme()
             val isDarkMode = when (currentThemeMode) {
@@ -46,8 +42,10 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
-            LaunchedEffect(isDarkMode) {
+            LaunchedEffect(Unit) {
                 NotificationSystem.clearAllNotifications()
+            }
+            LaunchedEffect(isDarkMode) {
                 enableEdgeToEdge(
                     statusBarStyle = if (isDarkMode) {
                         SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
