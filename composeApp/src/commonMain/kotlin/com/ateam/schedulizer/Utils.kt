@@ -12,7 +12,7 @@ object Utils {
             val currentDate = LocalDate.now()
             val nextDate = it.reminderSchedule.nextFireDate(currentDate);
             NotificationSystem.scheduleNotification(
-                it.reminderSchedule.displayName(),
+                it.title,
                 it.description,
                 nextDate?.atTime(12,0,0) ?: LocalDate.now().atTime(12,0,0),
                 it.id.toInt()

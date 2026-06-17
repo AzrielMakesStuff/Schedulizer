@@ -38,7 +38,6 @@ actual object NotificationSystem {
         val calendar = Calendar.getInstance()
         calendar.set(time.year,time.month.number - 1, time.day,time.hour,time.minute,time.second)
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,calendar.timeInMillis,pendingIntent)
-
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
