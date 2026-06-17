@@ -14,11 +14,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.tooling.preview.Preview
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toKotlinLocalDateTime
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 class MainActivity : ComponentActivity() {
 
@@ -30,10 +25,10 @@ class MainActivity : ComponentActivity() {
 
         val notificationChannel = NotificationChannel(Constants.NOTIF_CHANNEL_ID, Constants.NOTIF_CHANNEL_NAME,
 
-            NotificationManager.IMPORTANCE_DEFAULT);
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager;
-        notificationManager.createNotificationChannel(notificationChannel);
-        NotificationSystem.requestPermission(this);
+            NotificationManager.IMPORTANCE_DEFAULT)
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(notificationChannel)
+        NotificationSystem.requestPermission(this)
 
 
         setContent {
