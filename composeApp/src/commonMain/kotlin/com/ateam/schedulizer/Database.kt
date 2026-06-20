@@ -8,12 +8,14 @@ import androidx.room.TypeConverters
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.ateam.schedulizer.dao.TaskDao
 import com.ateam.schedulizer.entities.Task
+import com.kizitonwose.calendar.core.now
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.atTime
 
 @Database(entities = [Task::class], version = 5)
 @TypeConverters(Converters::class)
@@ -32,11 +34,21 @@ abstract class AppDatabase : RoomDatabase() {
         getDao().getTasksByDate(date)
 
     suspend fun createTask(task: Task) {
+        NotificationSystem.clearNotification(task)
+        val currentDate = LocalDate.now()
+        val nextDate = task.reminderSchedule.nextFireDate(currentDate);
+        NotificationSystem.scheduleNotification(
+            task.title,
+            task.description,
+            nextDate?.atTime(12,0,0) ?: LocalDate.now().atTime(12,0,0),
+            task.id.toInt()
+        )
         getDao().upsert(task)
         refresh()
     }
 
     suspend fun deleteTask(task: Task) {
+        NotificationSystem.clearNotification(task)
         getDao().delete(task.id)
         refresh()
     }

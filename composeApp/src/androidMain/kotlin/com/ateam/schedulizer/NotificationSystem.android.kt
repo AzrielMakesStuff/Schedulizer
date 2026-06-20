@@ -32,6 +32,7 @@ actual object NotificationSystem {
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         intent.putExtra("title_key",title)
         intent.putExtra("body_key",body)
+        intent.putExtra("task_id",code)
         val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, code,intent,
             PendingIntent.FLAG_MUTABLE)
         val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -72,7 +73,7 @@ actual object NotificationSystem {
     actual fun clearNotification(task : Task) {
         val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(ContextHolder.context, Receiver::class.java);
-        intent.putExtra("title_key",task.reminderSchedule.displayName())
+        intent.putExtra("title_key",task.title)
         intent.putExtra("body_key",task.description)
         val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, task.id.toInt(),intent,
             PendingIntent.FLAG_MUTABLE)
