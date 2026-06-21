@@ -35,41 +35,42 @@ fun LazyListTasks() {
 
     LaunchedEffect(Unit) { databaseInstance.refresh() }
 
+    var editingTask by remember { mutableStateOf<Task?>(null) }
+
     LazyColumn {
         items(tasks) { task ->
             Row(Modifier.fillMaxWidth().padding(15.dp)) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "${task.title} - ${task.type}",
+                        text = "${task.title} - ${task.displayName()}",
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text(task.description,
+                    Text(
+                        task.description,
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text("${task.dateOne} - ${task.dateTwo.toString()}",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    val dateText = when (task) {
+                        is Task.Set -> "${task.start} - ${task.end}"
+                        is Task.Pool -> "Expiry: ${task.expiry}"
+                        is Task.Daily -> "Last completed: ${task.lastCompleted}"
+                    }
+                    Text(dateText, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
-                var editingTask by remember { mutableStateOf<Task?>(null) }
-                IconButton(onClick = {editingTask = task}) {
-                    Icon(
-                        imageVector = Icons.Outlined.Edit,
-                        contentDescription = "Delete Item"
-                    )
+                IconButton(onClick = { editingTask = task }) {
+                    Icon(Icons.Outlined.Edit, contentDescription = "Edit Item")
                 }
-                IconButton(onClick = { scope.launch {databaseInstance.deleteTask(task)}}) {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = "Delete Item"
-                    )
+                IconButton(onClick = { scope.launch { databaseInstance.deleteTask(task) } }) {
+                    Icon(Icons.Outlined.Delete, contentDescription = "Delete Item")
                 }
-                editingTask?.let { taskToEdit -> TaskDialog(task = taskToEdit, onDismiss = { editingTask = null }) }
             }
         }
+    }
+
+    editingTask?.let { taskToEdit ->
+        TaskDialog(task = taskToEdit, onDismiss = { editingTask = null })
     }
 }
 

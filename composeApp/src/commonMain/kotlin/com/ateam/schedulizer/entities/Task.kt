@@ -5,18 +5,47 @@ import androidx.room.PrimaryKey
 import com.ateam.schedulizer.ReminderSchedule
 import kotlinx.datetime.LocalDateTime
 
-enum class TaskType { SET, POOL, DAILY }
-fun TaskType.displayName(): String = "${name.lowercase().replaceFirstChar { it.uppercase() }} Task"
+sealed class Task {
+    abstract val id: Long
+    abstract val title: String
+    abstract val description: String
+    abstract val reminderSchedule: ReminderSchedule
 
-@Entity
-data class Task(
-    @PrimaryKey(true) val id: Long = 0,
-    val type: TaskType,
-    var title: String,
-    var description: String,
-    val completed: Boolean = false,
-    val completionDate: LocalDateTime? = null,
-    val reminderSchedule: ReminderSchedule,
-    val dateOne: LocalDateTime,
-    val dateTwo: LocalDateTime?
-)
+    fun displayName(): String = when (this) {
+        is Set -> "Set Task"
+        is Pool -> "Pool Task"
+        is Daily -> "Daily Task"
+    }
+
+    @Entity(tableName = "SetTask")
+    data class Set(
+        @PrimaryKey(autoGenerate = true) override val id: Long = 0,
+        override val title: String,
+        override val description: String,
+        override val reminderSchedule: ReminderSchedule,
+        val start: LocalDateTime,
+        val end: LocalDateTime?,
+        val completed: Boolean = false,
+        val completionDate: LocalDateTime? = null,
+    ) : Task()
+
+    @Entity(tableName = "PoolTask")
+    data class Pool(
+        @PrimaryKey(autoGenerate = true) override val id: Long = 0,
+        override val title: String,
+        override val description: String,
+        override val reminderSchedule: ReminderSchedule,
+        val expiry: LocalDateTime?,
+        val completed: Boolean = false,
+        val completionDate: LocalDateTime? = null,
+    ) : Task()
+
+    @Entity(tableName = "DailyTask")
+    data class Daily(
+        @PrimaryKey(autoGenerate = true) override val id: Long = 0,
+        override val title: String,
+        override val description: String,
+        override val reminderSchedule: ReminderSchedule,
+        val lastCompleted: LocalDateTime?,
+    ) : Task()
+}

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.ateam.schedulizer.entities.Task
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
@@ -49,16 +50,15 @@ import com.kizitonwose.calendar.core.daysOfWeek
 import com.kizitonwose.calendar.core.minusMonths
 import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusMonths
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.format.DayOfWeekNames
+import kotlinx.datetime.plus
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock.System
-import com.ateam.schedulizer.entities.Task
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.plus
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 val today = System.todayIn(TimeZone.currentSystemDefault())
@@ -69,18 +69,40 @@ fun Calendar() {
     val tasks by databaseInstance.tasks.collectAsState(initial = emptyList())
 
     val laneOf = remember(tasks) {
-        val sorted = tasks.sortedBy { it.dateOne }
+        val sorted = tasks.sortedBy { task ->
+            when (task) {
+                is Task.Set -> task.start
+                is Task.Pool -> task.expiry
+                is Task.Daily -> null
+            }
+        }
         val lanes = mutableListOf<MutableList<Task>>()
         val laneMap = mutableMapOf<Task, Int>()
 
         sorted.forEach { task ->
-            val tStart = task.dateOne.date
-            val tEnd = task.dateTwo?.date ?: tStart
+            val tStart = when (task) {
+                is Task.Set -> task.start.date
+                is Task.Pool -> task.expiry?.date ?: today
+                is Task.Daily -> return@forEach  // dailies don't appear on calendar
+            }
+            val tEnd = when (task) {
+                is Task.Set -> task.end?.date ?: tStart
+                is Task.Pool -> task.expiry?.date ?: tStart
+                is Task.Daily -> return@forEach
+            }
             var placed = false
             for (laneIdx in lanes.indices) {
                 val conflict = lanes[laneIdx].any { existing ->
-                    val eStart = existing.dateOne.date
-                    val eEnd = existing.dateTwo?.date ?: eStart
+                    val eStart = when (existing) {
+                        is Task.Set -> existing.start.date
+                        is Task.Pool -> existing.expiry?.date ?: today
+                        is Task.Daily -> return@any false
+                    }
+                    val eEnd = when (existing) {
+                        is Task.Set -> existing.end?.date ?: eStart
+                        is Task.Pool -> existing.expiry?.date ?: eStart
+                        is Task.Daily -> return@any false
+                    }
                     tStart <= eEnd && tEnd >= eStart
                 }
                 if (!conflict) {
@@ -101,13 +123,14 @@ fun Calendar() {
     val taskByDate = remember(tasks) {
         val map = mutableMapOf<LocalDate, MutableList<Task>>()
         tasks.forEach { task ->
-            val start = task.dateOne.date
-            val end = task.dateTwo?.date ?: start
+            val (start, end) = when (task) {
+                is Task.Set -> task.start.date to (task.end?.date ?: task.start.date)
+                is Task.Pool -> task.expiry?.date?.let { it to it } ?: return@forEach
+                is Task.Daily -> return@forEach
+            }
             var current = start
             while (current <= end) {
-                map.getOrPut(current) {
-                    mutableListOf()
-                }.add(task)
+                map.getOrPut(current) { mutableListOf() }.add(task)
                 current = current.plus(1, DateTimeUnit.DAY)
             }
         }
@@ -225,8 +248,16 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
             for (laneIndex in 0..2) {
                 val task = tasks.find { laneOf[it] == laneIndex }
                 if (task != null) {
-                    val isStart = task.dateOne.date == day.date
-                    val isEnd = (task.dateTwo?.date ?: task.dateOne.date) == day.date
+                    val isStart = when (task) {
+                        is Task.Set -> task.start.date == day.date
+                        is Task.Pool -> task.expiry?.date == day.date
+                        is Task.Daily -> false
+                    }
+                    val isEnd = when (task) {
+                        is Task.Set -> (task.end?.date ?: task.start.date) == day.date
+                        is Task.Pool -> task.expiry?.date == day.date
+                        is Task.Daily -> false
+                    }
 
                     Box(
                         modifier = Modifier
@@ -288,7 +319,7 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
 
         if (createTaskDialog) {
             TaskDialog(
-                dateTwo = day.date,
+                initialDate = day.date,
                 onDismiss = { createTaskDialog = false }
             )
         }
@@ -354,7 +385,7 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
                                         )
                                         tasks.forEach { task ->
                                             Text(
-                                                text = "${task.title} - ${task.type}",
+                                                text = "${task.title} - ${task.displayName()}",
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 modifier = Modifier.padding(vertical = 4.dp)
                                             )
