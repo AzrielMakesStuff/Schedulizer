@@ -3,48 +3,44 @@ package com.ateam.schedulizer.dao
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
+import com.ateam.schedulizer.entities.Streak
 import com.ateam.schedulizer.entities.Task
 
 @Dao
-interface SetTaskDao {
+interface TaskDao {
+    // Set tasks
     @Upsert
     suspend fun upsert(task: Task.Set)
-
     @Query("DELETE FROM SetTask WHERE id = :id")
-    suspend fun delete(id: Long)
-
+    suspend fun deleteSet(id: Long)
     @Query("SELECT * FROM SetTask")
-    suspend fun getAll(): List<Task.Set>
-
+    suspend fun getAllSet(): List<Task.Set>
     @Query("SELECT * FROM SetTask WHERE id = :id")
-    suspend fun get(id: Long): Task.Set}
+    suspend fun getSet(id: Long): Task.Set
 
-@Dao
-interface PoolTaskDao {
+    // Pool tasks
     @Upsert
     suspend fun upsert(task: Task.Pool)
-
     @Query("DELETE FROM PoolTask WHERE id = :id")
-    suspend fun delete(id: Long)
-
+    suspend fun deletePool(id: Long)
     @Query("SELECT * FROM PoolTask")
-    suspend fun getAll(): List<Task.Pool>
-
+    suspend fun getAllPool(): List<Task.Pool>
     @Query("SELECT * FROM PoolTask WHERE id = :id")
-    suspend fun get(id: Long): Task.Pool
-}
+    suspend fun getPool(id: Long): Task.Pool
 
-@Dao
-interface DailyTaskDao {
+    // Daily tasks
     @Upsert
     suspend fun upsert(task: Task.Daily)
-
     @Query("DELETE FROM DailyTask WHERE id = :id")
-    suspend fun delete(id: Long)
-
+    suspend fun deleteDaily(id: Long)
     @Query("SELECT * FROM DailyTask")
-    suspend fun getAll(): List<Task.Daily>
-
+    suspend fun getAllDaily(): List<Task.Daily>
     @Query("SELECT * FROM DailyTask WHERE id = :id")
-    suspend fun get(id: Long): Task.Daily
+    suspend fun getDaily(id: Long): Task.Daily
+
+    // Streak
+    @Upsert
+    suspend fun upsert(streak: Streak)
+    @Query("SELECT * FROM Streak WHERE id = 1")
+    suspend fun getStreak(): Streak?
 }

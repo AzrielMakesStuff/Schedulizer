@@ -62,7 +62,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ateam.schedulizer.entities.Task
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
-import com.kizitonwose.calendar.core.now
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
@@ -196,7 +195,8 @@ fun LocalDate.fmt(): String =
 
 @Composable
 fun TaskScreen() {
-    val today = remember { LocalDate.now() }
+    val now = remember { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()) }
+    val today = remember { now.date }
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
 
     var weekAnchor by remember { mutableStateOf(today) }
@@ -242,8 +242,6 @@ fun TaskScreen() {
     Box {
         val tasks by databaseInstance.tasks.collectAsState()
         val filteredTasks = remember(tasks) {
-            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-            val today = now.date
             tasks.filter { task ->
                 when (task) {
                     is Task.Daily -> true
@@ -338,6 +336,7 @@ fun TaskScreen() {
                         val dates = remember(anchor) { weekDatesFor(anchor, firstDayOfWeek) }
                         WeeklyScheduleGrid(
                             visibleDates = dates,
+                            now = now,
                             today = today,
                             selectedDateOne = selectedDateOne,
                             onCellTapped = ::onCellTapped,
@@ -370,10 +369,7 @@ fun TaskScreen() {
                 }
             }
             items(filteredTasks) { task ->
-                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                val todayDate = now.date
-
-                val isCompletedToday = task is Task.Daily && task.lastCompleted?.date == todayDate
+                val isCompletedToday = task is Task.Daily && task.lastCompleted?.date == today
 
                 val isExpired = when (task) {
                     is Task.Set -> !task.completed && task.end != null && task.end < now
@@ -426,27 +422,16 @@ fun TaskScreen() {
                         onCheckedChange = { checked ->
                             scope.launch {
                                 val updated = when (task) {
-                                    is Task.Daily -> task.copy(
-                                        lastCompleted = if (checked)
-                                            Clock.System.now()
-                                                .toLocalDateTime(TimeZone.currentSystemDefault())
-                                        else null
-                                    )
+                                    is Task.Daily -> task.copy(lastCompleted = if (checked) now else null)
 
                                     is Task.Set -> task.copy(
                                         completed = checked,
-                                        completionDate = if (checked)
-                                            Clock.System.now()
-                                                .toLocalDateTime(TimeZone.currentSystemDefault())
-                                        else null
+                                        completionDate = if (checked) now else null
                                     )
 
                                     is Task.Pool -> task.copy(
                                         completed = checked,
-                                        completionDate = if (checked)
-                                            Clock.System.now()
-                                                .toLocalDateTime(TimeZone.currentSystemDefault())
-                                        else null
+                                        completionDate = if (checked) now else null
                                     )
                                 }
                                 databaseInstance.createTask(updated)
@@ -584,6 +569,7 @@ fun TaskScreen() {
 @Composable
 fun WeeklyScheduleGrid(
     visibleDates: List<LocalDate>,
+    now: LocalDateTime,
     today: LocalDate,
     selectedDateOne: LocalDateTime?,
     onCellTapped: (LocalDate, Int, Int) -> Unit,
@@ -606,9 +592,7 @@ fun WeeklyScheduleGrid(
         val totalWidth = hourWidth * 24
 
         LaunchedEffect(hourWidth) {
-            snapshotFlow { hScroll.maxValue }
-                .first { it > 0 }
-            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            snapshotFlow { hScroll.maxValue }.first { it > 0 }
             val currentFraction = now.hour + now.minute / 60f
             val density = density
             val targetPx = with(density) { (hourWidth * currentFraction).toPx() }

@@ -23,6 +23,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,12 +39,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.painterResource
 import schedulizer.composeapp.generated.resources.Res
-import schedulizer.composeapp.generated.resources.streakbackground
+import schedulizer.composeapp.generated.resources.streak_complete
 import schedulizer.composeapp.generated.resources.streak_incomplete
+import schedulizer.composeapp.generated.resources.streakbackground
 
 @Composable
 fun HomeScreen()
 {
+    val streakStatus = remember { mutableStateOf(AppDatabase.StreakStatus(
+        lost = false,
+        completedToday = false
+    )) }
+
+    LaunchedEffect(Unit) {
+        databaseInstance.refresh()
+        streakStatus.value = databaseInstance.checkStreak()
+    }
+
+    val streak by databaseInstance.streak.collectAsState()
+
     var createTaskDialog by remember { mutableStateOf(false) }
 
     if (createTaskDialog) {
@@ -83,7 +98,7 @@ fun HomeScreen()
             {
                 //Image open for improvement
                 Image(
-                    painter = painterResource(Res.drawable.streak_incomplete),
+                    painter = painterResource(if (streakStatus.value.completedToday) Res.drawable.streak_complete else Res.drawable.streak_incomplete),
                     contentDescription = "Streak",
                 )
             }
@@ -101,9 +116,10 @@ fun HomeScreen()
                 verticalArrangement = Arrangement.Center
             )
             {
+                val streakNow = streak + if (streakStatus.value.completedToday) 1 else 0
                 Text(
                     //The streak number value is here
-                    text = "[Num] Days",
+                    text = "$streakNow Day${if (streakNow != 1) "s" else ""}",
                     autoSize = TextAutoSize.StepBased(
                         minFontSize = 10.sp,
                         maxFontSize = 20.sp,

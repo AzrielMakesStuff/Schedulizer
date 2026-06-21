@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "1f805ee1bd3be35e6cddff6a6dccd96f",
+    "identityHash": "f0d4d3e6de35daf84ce356d2c8334b8c",
     "entities": [
       {
         "tableName": "SetTask",
@@ -154,11 +154,40 @@
             "id"
           ]
         }
+      },
+      {
+        "tableName": "Streak",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `dateInitiated` TEXT NOT NULL, `lostDate` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateInitiated",
+            "columnName": "dateInitiated",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lostDate",
+            "columnName": "lostDate",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1f805ee1bd3be35e6cddff6a6dccd96f')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f0d4d3e6de35daf84ce356d2c8334b8c')"
     ]
   }
 }
