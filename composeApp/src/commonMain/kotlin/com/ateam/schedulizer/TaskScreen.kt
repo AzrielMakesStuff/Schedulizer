@@ -61,8 +61,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ateam.schedulizer.entities.Task
-import com.ateam.schedulizer.entities.TaskType
-import com.ateam.schedulizer.entities.displayName
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.now
 import kotlinx.coroutines.flow.first
@@ -84,19 +82,40 @@ data class PositionedTask(
 )
 
 private fun computeLanes(tasks: List<Task>): Pair<Map<Task, Int>, Map<Task, Int>> {
-    val sorted = tasks.sortedBy { it.dateOne }
+    val sorted = tasks.sortedBy { task ->
+        when (task) {
+            is Task.Set -> task.start
+            is Task.Pool -> task.expiry
+            is Task.Daily -> null
+        }
+    }
     val lanes = mutableListOf<MutableList<Task>>()
     val laneOf = mutableMapOf<Task, Int>()
 
+    fun Task.tStart(): LocalDateTime? {
+        return when (this) {
+            is Task.Set -> start
+            is Task.Pool -> expiry ?: return null
+            is Task.Daily -> return null
+        }
+    }
+    fun Task.tEnd(): LocalDateTime? {
+        return when (this) {
+            is Task.Set -> end ?: start
+            is Task.Pool -> expiry ?: return null
+            is Task.Daily -> return null
+        }
+    }
+
     sorted.forEach { task ->
-        val tStart = task.dateOne
-        val tEnd = task.dateTwo ?: task.dateOne
+        val tStart = task.tStart()
+        val tEnd = task.tEnd()
         var placed = false
         for (laneIdx in lanes.indices) {
             val conflict = lanes[laneIdx].any { existing ->
-                val eStart = existing.dateOne
-                val eEnd = existing.dateTwo ?: existing.dateOne
-                tStart < eEnd && tEnd > eStart
+                val eStart = existing.tStart() ?: return@any false
+                val eEnd = existing.tEnd() ?: return@any false
+                tStart!! < eEnd && tEnd!! > eStart
             }
             if (!conflict) {
                 lanes[laneIdx].add(task)
@@ -120,12 +139,12 @@ private fun computeLanes(tasks: List<Task>): Pair<Map<Task, Int>, Map<Task, Int>
         while (queue.isNotEmpty()) {
             val current = queue.removeFirst()
             if (!visited.add(current)) continue
-            val cStart = current.dateOne
-            val cEnd = current.dateTwo ?: current.dateOne
+            val cStart = current.tStart() ?: continue
+            val cEnd = current.tEnd() ?: continue
             sorted.forEach { other ->
                 if (other !in visited) {
-                    val oStart = other.dateOne
-                    val oEnd = other.dateTwo ?: other.dateOne
+                    val oStart = other.tStart() ?: return@forEach
+                    val oEnd = other.tEnd() ?: return@forEach
                     if (cStart < oEnd && cEnd > oStart) queue.add(other)
                 }
             }
@@ -144,12 +163,12 @@ private fun tasksForDate(
     totalLanesOf: Map<Task, Int>
 ): List<PositionedTask> = tasks
     .filter { task ->
-        when (task.type) {
-            TaskType.DAILY -> false
-            TaskType.POOL -> task.dateTwo != null && task.dateTwo.date == date
-            TaskType.SET ->
-                if (task.dateTwo != null) task.dateOne.date <= date && task.dateTwo.date >= date
-                else task.dateOne.date == date
+        when (task) {
+            is Task.Daily -> false
+            is Task.Pool -> task.expiry != null && task.expiry.date == date
+            is Task.Set ->
+                if (task.end != null) task.start.date <= date && task.end.date >= date
+                else task.start.date == date
         }
     }
     .map { PositionedTask(it, laneOf[it] ?: 0, totalLanesOf[it] ?: 1) }
@@ -162,6 +181,18 @@ private fun weekDatesFor(
     val start = anchor.minus(diff, DateTimeUnit.DAY)
     return (0..6).map { start.plus(it, DateTimeUnit.DAY) }
 }
+
+fun LocalDateTime.fmt(): String {
+    val h = hour.toString().padStart(2, '0')
+    val m = minute.toString().padStart(2, '0')
+    return "${dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
+            "${date.day} ${month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
+            "$year $h:$m"
+}
+
+fun LocalDate.fmt(): String =
+    "${dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
+            "$day ${month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} $year"
 
 @Composable
 fun TaskScreen() {
@@ -179,12 +210,12 @@ fun TaskScreen() {
 
     if (showCreateDialog) {
         TaskDialog(
-            dateOne = selectedDateOne!!.date,
-            hourOne = selectedDateOne!!.hour,
-            minuteOne = selectedDateOne!!.minute,
-            dateTwo = pendingDateTwo?.date,
-            hourTwo = pendingDateTwo?.hour,
-            minuteTwo = pendingDateTwo?.minute,
+            initialDate = selectedDateOne!!.date,
+            initialHour = selectedDateOne!!.hour,
+            initialMinute = selectedDateOne!!.minute,
+            initialEndDate = pendingDateTwo?.date,
+            initialEndHour = pendingDateTwo?.hour,
+            initialEndMinute = pendingDateTwo?.minute,
             onDismiss = {
                 showCreateDialog = false
                 selectedDateOne = null
@@ -214,39 +245,42 @@ fun TaskScreen() {
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val today = now.date
             tasks.filter { task ->
-                when (task.type) {
-                    TaskType.DAILY -> true
-                    TaskType.SET -> {
+                when (task) {
+                    is Task.Daily -> true
+                    is Task.Set -> {
                         if (task.completed) {
                             task.completionDate?.date?.let { it >= today } ?: false
-                        } else {
-                            true // show all incomplete SET tasks including expired
-                        }
+                        } else true
                     }
-
-                    TaskType.POOL -> {
+                    is Task.Pool -> {
                         if (task.completed) {
                             task.completionDate?.date?.let { it >= today } ?: false
-                        } else {
-                            true // show all incomplete POOL tasks including expired
-                        }
+                        } else true
                     }
                 }
             }.sortedWith(compareBy(
-                { if (it.completed || (it.type == TaskType.DAILY &&
-                            it.dateOne.date == now.date)) 1 else 0 },
-                { if (it.type == TaskType.DAILY) 0 else 1 },
-                {
-                    when {
-                        it.type == TaskType.POOL && it.dateTwo == null ->
-                            LocalDateTime(today, kotlinx.datetime.LocalTime(23, 30))
-                        else -> it.dateOne
+                { task ->
+                    when (task) {
+                        is Task.Daily if task.lastCompleted?.date == today -> 1
+                        is Task.Set if task.completed -> 1
+                        is Task.Pool if task.completed -> 1
+                        else -> 0
+                    }
+                },
+                { if (it is Task.Daily) 0 else 1 },
+                { task ->
+                    when (task) {
+                        is Task.Pool -> task.expiry ?: LocalDateTime(today, kotlinx.datetime.LocalTime(23, 30))
+                        is Task.Set -> task.start
+                        is Task.Daily -> task.lastCompleted ?: LocalDateTime(today, kotlinx.datetime.LocalTime(0, 0))
                     }
                 }
             ))
         }
         val listState = rememberLazyListState()
         val scope = rememberCoroutineScope()
+
+        var editingTask by remember { mutableStateOf<Task?>(null) }
 
         LaunchedEffect(Unit) { databaseInstance.refresh() }
         LazyColumn(modifier = Modifier.padding(8.dp), listState) {
@@ -308,7 +342,12 @@ fun TaskScreen() {
                             selectedDateOne = selectedDateOne,
                             onCellTapped = ::onCellTapped,
                             onTaskTapped = { task ->
-                                weekAnchor = task.dateOne.date
+                                val date = when (task) {
+                                    is Task.Set -> task.start.date
+                                    is Task.Pool -> task.expiry?.date ?: today
+                                    is Task.Daily -> today
+                                }
+                                weekAnchor = date
                                 val index = filteredTasks.indexOf(task)
                                 if (index >= 0) scope.launch { listState.animateScrollToItem(index + 1) }
                             }
@@ -331,24 +370,24 @@ fun TaskScreen() {
                 }
             }
             items(filteredTasks) { task ->
-                val isCompletedToday = task.type == TaskType.DAILY &&
-                        task.dateOne.date == Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-
                 val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                val todayDate = now.date
 
-                val isExpired = !task.completed && when (task.type) {
-                    TaskType.SET -> task.dateTwo != null && task.dateTwo < now
-                    TaskType.POOL -> task.dateTwo != null && task.dateTwo < now
-                    TaskType.DAILY -> false
+                val isCompletedToday = task is Task.Daily && task.lastCompleted?.date == todayDate
+
+                val isExpired = when (task) {
+                    is Task.Set -> !task.completed && task.end != null && task.end < now
+                    is Task.Pool -> !task.completed && task.expiry != null && task.expiry < now
+                    is Task.Daily -> false
                 }
 
-                val isChecked = when (task.type) {
-                    TaskType.DAILY -> isCompletedToday
-                    else -> task.completed
+                val isChecked = when (task) {
+                    is Task.Daily -> isCompletedToday
+                    is Task.Set -> task.completed
+                    is Task.Pool -> task.completed
                 }
 
                 val alpha = if (isChecked) 0.4f else 1f
-
                 val textColor = when {
                     isChecked -> MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)
                     isExpired -> MaterialTheme.colorScheme.error
@@ -367,20 +406,6 @@ fun TaskScreen() {
                     else -> MaterialTheme.colorScheme.surfaceVariant
                 }
 
-                fun LocalDateTime.fmt(): String {
-                    val hour = hour.toString().padStart(2, '0')
-                    val min = minute.toString().padStart(2, '0')
-                    return "${dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
-                            "${date.day} ${month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
-                            "$year $hour:$min"
-                }
-
-                fun LocalDate.fmt(): String =
-                    "${dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
-                            "$day ${month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} $year"
-
-                var editingTask by remember { mutableStateOf<Task?>(null) }
-
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -388,8 +413,8 @@ fun TaskScreen() {
                         .clip(RoundedCornerShape(12.dp))
                         .background(cardBackground)
                         .clickable {
-                            if (task.type != TaskType.DAILY && task.type != TaskType.POOL) {
-                                weekAnchor = task.dateOne.date
+                            if (task is Task.Set) {
+                                weekAnchor = task.start.date
                                 scope.launch { listState.animateScrollToItem(0) }
                             }
                         }
@@ -400,15 +425,27 @@ fun TaskScreen() {
                         checked = isChecked,
                         onCheckedChange = { checked ->
                             scope.launch {
-                                val updated = when (task.type) {
-                                    TaskType.DAILY -> {
-                                        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                                        task.copy(dateOne = if (checked) now else task.dateOne)
-                                    }
-                                    else -> task.copy(
+                                val updated = when (task) {
+                                    is Task.Daily -> task.copy(
+                                        lastCompleted = if (checked)
+                                            Clock.System.now()
+                                                .toLocalDateTime(TimeZone.currentSystemDefault())
+                                        else null
+                                    )
+
+                                    is Task.Set -> task.copy(
                                         completed = checked,
                                         completionDate = if (checked)
-                                            Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                                            Clock.System.now()
+                                                .toLocalDateTime(TimeZone.currentSystemDefault())
+                                        else null
+                                    )
+
+                                    is Task.Pool -> task.copy(
+                                        completed = checked,
+                                        completionDate = if (checked)
+                                            Clock.System.now()
+                                                .toLocalDateTime(TimeZone.currentSystemDefault())
                                         else null
                                     )
                                 }
@@ -431,7 +468,7 @@ fun TaskScreen() {
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                text = task.type.displayName(),
+                                text = task.displayName(),
                                 fontSize = 10.sp,
                                 color = when {
                                     isExpired -> MaterialTheme.colorScheme.error
@@ -439,10 +476,17 @@ fun TaskScreen() {
                                 },
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(when {
-                                        isExpired -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                                        else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = alpha * 0.5f)
-                                    })
+                                    .background(
+                                        when {
+                                            isExpired -> MaterialTheme.colorScheme.errorContainer.copy(
+                                                alpha = 0.5f
+                                            )
+
+                                            else -> MaterialTheme.colorScheme.primaryContainer.copy(
+                                                alpha = alpha * 0.5f
+                                            )
+                                        }
+                                    )
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -450,59 +494,65 @@ fun TaskScreen() {
                         if (task.description.isNotBlank()) {
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                text = task.description,
-                                fontSize = 12.sp,
-                                color = subtleColor,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                                task.description, fontSize = 12.sp, color = subtleColor,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis
                             )
                         }
 
                         Spacer(Modifier.height(4.dp))
 
-                        when (task.type) {
-                            TaskType.SET -> {
-                                if (task.dateTwo != null) {
-                                    Text("${task.dateOne.fmt()} to ${task.dateTwo.fmt()}",
-                                        fontSize = 11.sp, color = subtleColor)
+                        when (task) {
+                            is Task.Set -> {
+                                if (task.end != null) {
+                                    Text(
+                                        "${task.start.fmt()} to ${task.end.fmt()}",
+                                        fontSize = 11.sp, color = subtleColor
+                                    )
                                 } else {
-                                    Text(task.dateOne.fmt(), fontSize = 11.sp, color = subtleColor)
+                                    Text(task.start.fmt(), fontSize = 11.sp, color = subtleColor)
                                 }
                             }
-                            TaskType.POOL -> {
-                                if (task.dateTwo != null) {
-                                    Text("Expires ${task.dateTwo.fmt()}", fontSize = 11.sp, color = subtleColor)
+
+                            is Task.Pool -> {
+                                if (task.expiry != null) {
+                                    Text(
+                                        "Expires ${task.expiry.fmt()}",
+                                        fontSize = 11.sp,
+                                        color = subtleColor
+                                    )
                                 } else {
                                     Text("No expiry", fontSize = 11.sp, color = subtleColor)
                                 }
                             }
-                            TaskType.DAILY -> {
+
+                            is Task.Daily -> {
                                 Text("Daily task", fontSize = 11.sp, color = subtleColor)
                             }
                         }
 
-                        if (isChecked && task.completionDate != null) {
+                        val completionDate = when (task) {
+                            is Task.Set -> task.completionDate
+                            is Task.Pool -> task.completionDate
+                            is Task.Daily -> null
+                        }
+                        if (isChecked && completionDate != null) {
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                "Completed ${task.completionDate.fmt()}",
-                                fontSize = 11.sp,
+                                "Completed ${completionDate.fmt()}", fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                             )
                         }
-                        if (isChecked && task.type == TaskType.DAILY) {
+                        if (isChecked && task is Task.Daily) {
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                "Completed today",
-                                fontSize = 11.sp,
+                                "Completed today", fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                             )
                         }
                         if (isExpired) {
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                "Expired",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                "Expired", fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
@@ -510,24 +560,22 @@ fun TaskScreen() {
 
                     IconButton(onClick = { editingTask = task }, enabled = !isChecked) {
                         Icon(
-                            imageVector = Icons.Outlined.Edit,
-                            contentDescription = "Edit Task",
+                            Icons.Outlined.Edit, contentDescription = "Edit Task",
                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (isChecked) 0.3f else 0.8f)
                         )
                     }
                     IconButton(onClick = { scope.launch { databaseInstance.deleteTask(task) } }) {
                         Icon(
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = "Delete Task",
+                            Icons.Outlined.Delete, contentDescription = "Delete Task",
                             tint = MaterialTheme.colorScheme.error.copy(alpha = alpha)
                         )
                     }
                 }
-
-                editingTask?.let { taskToEdit ->
-                    TaskDialog(task = taskToEdit, onDismiss = { editingTask = null })
-                }
             }
+        }
+
+        editingTask?.let { taskToEdit ->
+            TaskDialog(task = taskToEdit, onDismiss = { editingTask = null })
         }
     }
 }
@@ -740,27 +788,27 @@ fun WeeklyScheduleGrid(
                         dayTasks.forEach { positioned ->
                             val task = positioned.task
 
-                            val startHour = when (task.type) {
-                                TaskType.POOL -> task.dateTwo!!.hour
-                                TaskType.SET -> if (task.dateOne.date < date) 0 else task.dateOne.hour
-                                else -> 0
+                            val startHour = when (task) {
+                                is Task.Pool -> task.expiry!!.hour
+                                is Task.Set -> if (task.start.date < date) 0 else task.start.hour
+                                is Task.Daily -> 0
                             }
-                            val startMinute = when (task.type) {
-                                TaskType.POOL -> task.dateTwo!!.minute
-                                TaskType.SET -> if (task.dateOne.date < date) 0 else task.dateOne.minute
-                                else -> 0
+                            val startMinute = when (task) {
+                                is Task.Pool -> task.expiry!!.minute
+                                is Task.Set -> if (task.start.date < date) 0 else task.start.minute
+                                is Task.Daily -> 0
                             }
-                            val endHour = when (task.type) {
-                                TaskType.POOL -> task.dateTwo!!.hour + 1
-                                TaskType.SET -> if (task.dateTwo != null && task.dateTwo.date > date) 24
-                                else (task.dateTwo?.hour?.plus(1) ?: (task.dateOne.hour + 1))
-                                else -> 0
+                            val endHour = when (task) {
+                                is Task.Pool -> task.expiry!!.hour + 1
+                                is Task.Set -> if (task.end != null && task.end.date > date) 24
+                                else (task.end?.hour?.plus(1) ?: (task.start.hour + 1))
+                                is Task.Daily -> 0
                             }
-                            val endMinute = when (task.type) {
-                                TaskType.POOL -> task.dateTwo!!.minute
-                                TaskType.SET -> if (task.dateTwo != null && task.dateTwo.date > date) 0
-                                else (task.dateTwo?.minute ?: 0)
-                                else -> 0
+                            val endMinute = when (task) {
+                                is Task.Pool -> task.expiry!!.minute
+                                is Task.Set -> if (task.end != null && task.end.date > date) 0
+                                else (task.end?.minute ?: 0)
+                                is Task.Daily -> 0
                             }
 
                             val startFraction = startHour + startMinute / 60f
@@ -782,11 +830,16 @@ fun WeeklyScheduleGrid(
 
                             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 
-                            val pillColor = when {
-                                task.completed && task.type == TaskType.SET ->
+                            val pillColor = when (task) {
+                                is Task.Set if task.completed ->
                                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                !task.completed && task.dateTwo != null && task.dateTwo < now ->
+
+                                is Task.Set if task.end != null && task.end < now ->
                                     MaterialTheme.colorScheme.error
+
+                                is Task.Pool if task.expiry != null && task.expiry < now ->
+                                    MaterialTheme.colorScheme.error
+
                                 else -> primaryColor
                             }
 
