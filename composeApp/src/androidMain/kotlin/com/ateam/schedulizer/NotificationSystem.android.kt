@@ -16,12 +16,16 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.app.NotificationCompat
 import com.ateam.schedulizer.entities.Task
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.number
 import java.util.Calendar
 import kotlin.random.Random
 
 actual object NotificationSystem {
+    private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     fun createNotification(title: String, body : String): Notification {
     return NotificationCompat.Builder(ContextHolder.context, Constants.NOTIF_CHANNEL_ID).setPriority(
         NotificationManager.IMPORTANCE_DEFAULT).setContentText(body).setContentTitle(title).setSmallIcon(R.drawable.ic_launcher_background).build()

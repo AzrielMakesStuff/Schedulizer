@@ -27,6 +27,13 @@ class Receiver : BroadcastReceiver() {
 
         NotificationSystem.clearNotificationById(id)
         val currentDate = LocalDate.now()
-        val tasks = databaseInstance.tasks
+            val task = databaseInstance.tasks.value.find { it.id.toInt() == id }
+        val nextDate = task!!.reminderSchedule.nextFireDate(currentDate);
+        NotificationSystem.scheduleNotification(
+            task.title,
+            task.description,
+            nextDate?.atTime(12,0,0) ?: LocalDate.now().atTime(12,0,0),
+            task.id.toInt()
+        )
     }
 }
