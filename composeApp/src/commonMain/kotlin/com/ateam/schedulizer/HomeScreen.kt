@@ -48,7 +48,7 @@ fun HomeScreen()
 {
     val streakStatus = remember { mutableStateOf(AppDatabase.StreakStatus(
         lost = false,
-        completedToday = false
+        completedToday = true
     )) }
 
     LaunchedEffect(Unit) {
