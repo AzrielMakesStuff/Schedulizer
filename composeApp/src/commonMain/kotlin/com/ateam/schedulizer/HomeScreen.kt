@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.painterResource
 import schedulizer.composeapp.generated.resources.Res
 import schedulizer.composeapp.generated.resources.streakbackground
-import schedulizer.composeapp.generated.resources.flame_icon
+import schedulizer.composeapp.generated.resources.streak_incomplete
 
 @Composable
 fun HomeScreen()
@@ -85,9 +85,9 @@ fun HomeScreen()
                 verticalArrangement = Arrangement.Top
             )
             {
-                //THIS IS A PLACEHOLDER IMAGE
+                //Image open for improvement
                 Image(
-                    painter = painterResource(Res.drawable.flame_icon),
+                    painter = painterResource(Res.drawable.streak_incomplete),
                     contentDescription = "Streak",
                 )
             }
@@ -106,6 +106,7 @@ fun HomeScreen()
             )
             {
                 Text(
+                    //The streak number value is here
                     text = "[Num] Days",
                     autoSize = TextAutoSize.StepBased(
                         minFontSize = 10.sp,

@@ -42,8 +42,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.ateam.schedulizer.entities.Task
-import com.ateam.schedulizer.entities.TaskType
-import com.ateam.schedulizer.entities.displayName
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -432,15 +430,21 @@ private fun OrdinalPicker(
     }
 }
 
+sealed class TaskTypeSelection {
+    object Set : TaskTypeSelection()
+    object Pool : TaskTypeSelection()
+    object Daily : TaskTypeSelection()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDialog(
-    dateOne: LocalDate? = null,
-    hourOne: Int? = null,
-    minuteOne: Int? = null,
-    dateTwo: LocalDate? = null,
-    hourTwo: Int? = null,
-    minuteTwo: Int? = null,
+    initialDate: LocalDate? = null,
+    initialHour: Int? = null,
+    initialMinute: Int? = null,
+    initialEndDate: LocalDate? = null,
+    initialEndHour: Int? = null,
+    initialEndMinute: Int? = null,
     onDismiss: () -> Unit,
     task: Task? = null
 ) {
@@ -450,45 +454,80 @@ fun TaskDialog(
     val today = remember { now.toLocalDateTime(timeZone) }
     val coroutineScope = rememberCoroutineScope()
 
-    var expanded by remember { mutableStateOf(false) }
-    var taskType by remember { mutableStateOf(task?.type ?: TaskType.SET) }
+    var taskTypeSelection by remember {
+        mutableStateOf(when (task) {
+            is Task.Set -> TaskTypeSelection.Set
+            is Task.Pool -> TaskTypeSelection.Pool
+            is Task.Daily -> TaskTypeSelection.Daily
+            null -> TaskTypeSelection.Set
+        })
+    }
+
     var title by remember { mutableStateOf(task?.title ?: "") }
     var description by remember { mutableStateOf(task?.description ?: "") }
     var reminderSchedule by remember { mutableStateOf(task?.reminderSchedule ?: ReminderSchedule.None) }
 
     var ignoreTime by remember {
-        mutableStateOf(when (task?.type) {
-            TaskType.SET -> task.dateOne.hour == 0 && task.dateOne.minute == 0
-                    && task.dateTwo?.hour == 23 && task.dateTwo.minute == 59
-            TaskType.POOL -> task.dateTwo?.hour == 23 && task.dateTwo.minute == 59
+        mutableStateOf(when (task) {
+            is Task.Set -> task.start.hour == 0 && task.start.minute == 0
+                    && task.end?.hour == 23 && task.end.minute == 59
+            is Task.Pool -> task.expiry?.hour == 23 && task.expiry.minute == 59
             else -> false
         })
     }
     var oneDay by remember {
         mutableStateOf(
-            task?.type == TaskType.SET
-                    && task.dateTwo != null
-                    && task.dateOne.date == task.dateTwo.date
-                    && task.dateOne.hour == 0 && task.dateTwo.hour == 23
+            task is Task.Set
+                    && task.end != null
+                    && task.start.date == task.end.date
+                    && task.start.hour == 0 && task.end.hour == 23
         )
     }
-    var hasExpiry by remember { mutableStateOf(task?.dateTwo != null) }
+    var hasExpiry by remember {
+        mutableStateOf(task is Task.Pool && task.expiry != null)
+    }
 
     val startState = remember {
         DateTimePickerState(
-            initialMillis = task?.dateOne?.date?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
-                ?: dateOne?.atStartOfDayIn(timeZone)?.toEpochMilliseconds(),
-            initialHour = task?.dateOne?.hour ?: hourOne ?: 0,
-            initialMinute = task?.dateOne?.minute ?: minuteOne ?: 0
+            initialMillis = when (task) {
+                is Task.Set -> task.start.date.atStartOfDayIn(timeZone).toEpochMilliseconds()
+                else -> initialDate?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
+            },
+            initialHour = when (task) {
+                is Task.Set -> task.start.hour
+                else -> initialHour ?: 0
+            },
+            initialMinute = when (task) {
+                is Task.Set -> task.start.minute
+                else -> initialMinute ?: 0
+            }
         )
     }
     val endState = remember {
         DateTimePickerState(
-            initialMillis = task?.dateTwo?.date?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
-                ?: dateTwo?.atStartOfDayIn(timeZone)?.toEpochMilliseconds(),
-            initialHour = task?.dateTwo?.hour ?: hourTwo ?: 0,
-            initialMinute = task?.dateTwo?.minute ?: minuteTwo ?: 0
+            initialMillis = when (task) {
+                is Task.Set -> task.end?.date?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
+                is Task.Pool -> task.expiry?.date?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
+                else -> initialEndDate?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
+            },
+            initialHour = when (task) {
+                is Task.Set -> task.end?.hour ?: 0
+                is Task.Pool -> task.expiry?.hour ?: 0
+                else -> initialEndHour ?: 0
+            },
+            initialMinute = when (task) {
+                is Task.Set -> task.end?.minute ?: 0
+                is Task.Pool -> task.expiry?.minute ?: 0
+                else -> initialEndMinute ?: 0
+            }
         )
+    }
+
+    var expanded by remember { mutableStateOf(false) }
+    val typeLabel = when (taskTypeSelection) {
+        is TaskTypeSelection.Set -> "Set Task"
+        is TaskTypeSelection.Pool -> "Pool Task"
+        is TaskTypeSelection.Daily -> "Daily Task"
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -505,12 +544,9 @@ fun TaskDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it }
-                ) {
+                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
                     OutlinedTextField(
-                        value = taskType.displayName(),
+                        value = typeLabel,
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Task Type") },
@@ -520,11 +556,15 @@ fun TaskDialog(
                             .fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        TaskType.entries.forEach { type ->
+                        listOf(
+                            TaskTypeSelection.Set to "Set Task",
+                            TaskTypeSelection.Pool to "Pool Task",
+                            TaskTypeSelection.Daily to "Daily Task"
+                        ).forEach { (type, label) ->
                             DropdownMenuItem(
-                                text = { Text(type.displayName()) },
+                                text = { Text(label) },
                                 onClick = {
-                                    taskType = type
+                                    taskTypeSelection = type
                                     ignoreTime = false
                                     hasExpiry = false
                                     oneDay = false
@@ -536,8 +576,8 @@ fun TaskDialog(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
 
-                when (taskType) {
-                    TaskType.SET -> {
+                when (taskTypeSelection) {
+                    is TaskTypeSelection.Set -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = oneDay, onCheckedChange = { oneDay = it })
                             Text("One Day")
@@ -565,7 +605,7 @@ fun TaskDialog(
                             )
                         }
                     }
-                    TaskType.POOL -> {
+                    is TaskTypeSelection.Pool -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = hasExpiry, onCheckedChange = { hasExpiry = it })
                             Text("Expires?")
@@ -584,9 +624,9 @@ fun TaskDialog(
                             )
                         }
                     }
-                    TaskType.DAILY -> {
+                    is TaskTypeSelection.Daily -> {
                         Text(
-                            "Daily tasks automatically start today.",
+                            "Daily tasks automatically reset each day.",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -630,51 +670,55 @@ fun TaskDialog(
                                 return LocalDateTime(base.date, LocalTime(23, 59))
                             }
 
-                            val resolvedDateOne = when (taskType) {
-                                TaskType.SET -> when {
-                                    oneDay -> startState.toStartOfDay(timeZone) ?: return@Button
-                                    ignoreTime -> startState.toStartOfDay(timeZone) ?: return@Button
-                                    else -> startState.toLocalDateTime(timeZone) ?: return@Button
+                            val newTask: Task = when (taskTypeSelection) {
+                                is TaskTypeSelection.Set -> {
+                                    val start = when {
+                                        oneDay || ignoreTime -> startState.toStartOfDay(timeZone) ?: return@Button
+                                        else -> startState.toLocalDateTime(timeZone) ?: return@Button
+                                    }
+                                    val end = when {
+                                        oneDay -> startState.toEndOfDay(timeZone) ?: return@Button
+                                        ignoreTime -> endState.toEndOfDay(timeZone) ?: return@Button
+                                        else -> endState.toLocalDateTime(timeZone)
+                                    }
+                                    Task.Set(
+                                        id = task?.id ?: 0,
+                                        title = title,
+                                        description = description,
+                                        reminderSchedule = reminderSchedule,
+                                        start = start,
+                                        end = end,
+                                        completed = (task as? Task.Set)?.completed ?: false,
+                                        completionDate = (task as? Task.Set)?.completionDate
+                                    )
                                 }
-                                TaskType.POOL, TaskType.DAILY -> today
-                            }
-                            val resolvedDateTwo = when (taskType) {
-                                TaskType.SET -> when {
-                                    oneDay -> startState.toEndOfDay(timeZone) ?: return@Button
-                                    ignoreTime -> endState.toEndOfDay(timeZone) ?: return@Button
-                                    else -> endState.toLocalDateTime(timeZone) ?: return@Button
+                                is TaskTypeSelection.Pool -> {
+                                    val expiry = when {
+                                        !hasExpiry -> null
+                                        ignoreTime -> endState.toEndOfDay(timeZone) ?: return@Button
+                                        else -> endState.toLocalDateTime(timeZone) ?: return@Button
+                                    }
+                                    Task.Pool(
+                                        id = task?.id ?: 0,
+                                        title = title,
+                                        description = description,
+                                        reminderSchedule = reminderSchedule,
+                                        expiry = expiry,
+                                        completed = (task as? Task.Pool)?.completed ?: false,
+                                        completionDate = (task as? Task.Pool)?.completionDate
+                                    )
                                 }
-                                TaskType.POOL -> when {
-                                    hasExpiry && ignoreTime -> endState.toEndOfDay(timeZone) ?: return@Button
-                                    hasExpiry -> endState.toLocalDateTime(timeZone) ?: return@Button
-                                    else -> null
-                                }
-                                TaskType.DAILY -> today
+                                is TaskTypeSelection.Daily -> Task.Daily(
+                                    id = task?.id ?: 0,
+                                    title = title,
+                                    description = description,
+                                    reminderSchedule = reminderSchedule,
+                                    lastCompleted = (task as? Task.Daily)?.lastCompleted
+                                )
                             }
 
                             coroutineScope.launch {
-                                if (isEditing) {
-                                    databaseInstance.refresh()
-
-                                    databaseInstance.createTask(task.copy(
-                                        type = taskType,
-                                        title = title,
-                                        description = description,
-                                        reminderSchedule = reminderSchedule,
-                                        dateOne = resolvedDateOne,
-                                        dateTwo = resolvedDateTwo
-                                    ))
-                                } else {
-                                    databaseInstance.createTask(Task(
-                                        type = taskType,
-                                        title = title,
-                                        description = description,
-                                        completed = false,
-                                        reminderSchedule = reminderSchedule,
-                                        dateOne = resolvedDateOne,
-                                        dateTwo = resolvedDateTwo
-                                    ))
-                                }
+                                databaseInstance.createTask(newTask)
                                 onDismiss()
                             }
                         },
