@@ -11,9 +11,9 @@ import kotlinx.datetime.daysUntil
 data class Streak(
     @PrimaryKey
     val id: Long = 1,
-    val dateInitiated: LocalDate = today,
+    val dateInitiated: LocalDate = today(),
     val lostDate: LocalDate? = null
 ) {
     @Ignore
-    val streakLength = dateInitiated.daysUntil(today)
+    val streakLength = dateInitiated.daysUntil(today())
 }

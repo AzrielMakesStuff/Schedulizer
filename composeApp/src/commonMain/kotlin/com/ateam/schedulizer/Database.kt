@@ -33,14 +33,14 @@ abstract class AppDatabase : RoomDatabase() {
         if (dailies.isEmpty()) return StreakStatus(lost = false, completedToday = false)
 
         val lost = dailies.any { task ->
-            task.lastCompleted == null || task.lastCompleted.date < today.minus(1, DateTimeUnit.DAY)
+            task.lastCompleted == null || task.lastCompleted.date < today().minus(1, DateTimeUnit.DAY)
         }
 
         val completedToday = dailies.all { task ->
-            task.lastCompleted?.date == today
+            task.lastCompleted?.date == today()
         }
 
-        if (lost) taskDao().upsert(Streak(dateInitiated = today, lostDate = today))
+        if (lost) taskDao().upsert(Streak(dateInitiated = today(), lostDate = today()))
         refresh()
         return StreakStatus(lost = lost, completedToday = completedToday)
     }

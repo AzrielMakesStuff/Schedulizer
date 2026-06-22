@@ -57,11 +57,11 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.format.DayOfWeekNames
 import kotlinx.datetime.plus
-import kotlinx.datetime.todayIn
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock.System
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
-val today = System.todayIn(TimeZone.currentSystemDefault())
+fun today() = System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -82,7 +82,7 @@ fun Calendar() {
         sorted.forEach { task ->
             val tStart = when (task) {
                 is Task.Set -> task.start.date
-                is Task.Pool -> task.expiry?.date ?: today
+                is Task.Pool -> task.expiry?.date ?: today()
                 is Task.Daily -> return@forEach  // dailies don't appear on calendar
             }
             val tEnd = when (task) {
@@ -95,7 +95,7 @@ fun Calendar() {
                 val conflict = lanes[laneIdx].any { existing ->
                     val eStart = when (existing) {
                         is Task.Set -> existing.start.date
-                        is Task.Pool -> existing.expiry?.date ?: today
+                        is Task.Pool -> existing.expiry?.date ?: today()
                         is Task.Daily -> return@any false
                     }
                     val eEnd = when (existing) {
@@ -216,7 +216,7 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
     val isMonthDate = day.position == DayPosition.MonthDate
     val baseColor = MaterialTheme.colorScheme.onSurface
     val textColor = if (isMonthDate) baseColor else baseColor.copy(alpha = 0.3f)
-    val isToday = day.date == today
+    val isToday = day.date == today()
 
     var showOverlay by remember { mutableStateOf(false) }
     Box(
