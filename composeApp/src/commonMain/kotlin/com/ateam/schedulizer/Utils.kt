@@ -10,7 +10,7 @@ object Utils {
         tasks.forEach {
             NotificationSystem.clearNotification(it)
             val currentDate = LocalDate.now()
-            val nextDate = it.reminderSchedule.nextFireDate(currentDate);
+            val nextDate = it.reminderSchedule.nextFireDate(currentDate)
             NotificationSystem.scheduleNotification(
                 it.title,
                 it.description,

@@ -7,29 +7,44 @@ import android.content.Context
 import android.content.Intent
 import com.ateam.schedulizer.NotificationSystem.createNotification
 import com.kizitonwose.calendar.core.now
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.atTime
 import kotlin.random.Random
 
 class Receiver : BroadcastReceiver() {
 
+    @OptIn(DelicateCoroutinesApi::class)
     override fun onReceive(context: Context, intent: Intent) {
         ContextHolder.context = context.applicationContext as Application
         val notificationManager = context.getSystemService(NotificationManager::class.java)
-        val id = intent.getIntExtra("task_id",0)
+        val id = intent.getIntExtra("task_id", 0)
+        val title = intent.getStringExtra("title_key") ?: return
+        val body = intent.getStringExtra("body_key") ?: return
 
-        val notification = createNotification(intent.getStringExtra("title_key") as String,intent.getStringExtra("body_key") as String)
-        notificationManager.notify(Random.nextInt(0,299999),notification)
+        val notification = createNotification(title, body)
+        notificationManager.notify(Random.nextInt(0, 299999), notification)
 
         NotificationSystem.clearNotificationById(id)
-        val currentDate = LocalDate.now()
-            val task = databaseInstance.tasks.value.find { it.id.toInt() == id }
-        val nextDate = task!!.reminderSchedule.nextFireDate(currentDate);
-        NotificationSystem.scheduleNotification(
-            task.title,
-            task.description,
-            nextDate?.atTime(12,0,0) ?: LocalDate.now().atTime(12,0,0),
-            task.id.toInt()
-        )
+
+        val pendingResult = goAsync()
+        kotlinx.coroutines.GlobalScope.launch {
+            try {
+                // Ensure DB is loaded before reading
+                databaseInstance.refresh()
+                val task = databaseInstance.tasks.value.find { it.id.toInt() == id } ?: return@launch
+                val currentDate = LocalDate.now()
+                val nextDate = task.reminderSchedule.nextFireDate(currentDate) ?: return@launch
+                NotificationSystem.scheduleNotification(
+                    task.title,
+                    task.description,
+                    nextDate.atTime(12, 0, 0),
+                    task.id.toInt()
+                )
+            } finally {
+                pendingResult.finish()
+            }
+        }
     }
 }

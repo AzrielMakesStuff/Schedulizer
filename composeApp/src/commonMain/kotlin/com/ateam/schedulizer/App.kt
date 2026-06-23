@@ -35,7 +35,7 @@ fun App() {
 
     LaunchedEffect(Unit) {
         databaseInstance.refresh()
-        Utils.init();
+        Utils.init()
     }
 
     val rootNavController = rememberNavController()

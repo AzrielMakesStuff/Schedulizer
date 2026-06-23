@@ -14,22 +14,18 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.app.NotificationCompat
 import com.ateam.schedulizer.entities.Task
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.number
 import java.util.Calendar
 
 actual object NotificationSystem {
-    private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     fun createNotification(title: String, body : String): Notification {
     return NotificationCompat.Builder(ContextHolder.context, Constants.NOTIF_CHANNEL_ID).setPriority(
-        NotificationManager.IMPORTANCE_DEFAULT).setContentText(body).setContentTitle(title).setSmallIcon(R.drawable.ic_launcher_background).build()
+        NotificationManager.IMPORTANCE_DEFAULT).setContentText(body).setContentTitle(title).setSmallIcon(R.drawable.ic_stat_name).build()
     }
 
     actual fun scheduleNotification(title: String, body: String, time : LocalDateTime, code : Int) {
-        val intent = Intent(ContextHolder.context, Receiver::class.java);
+        val intent = Intent(ContextHolder.context, Receiver::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         intent.putExtra("title_key",title)
         intent.putExtra("body_key",body)
@@ -58,9 +54,9 @@ actual object NotificationSystem {
     actual fun clearAllNotifications() {
         val alarmManager =
             ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val tasks = databaseInstance.tasks;
+        val tasks = databaseInstance.tasks
         tasks.value.forEach {
-            val intent = Intent(ContextHolder.context, Receiver::class.java);
+            val intent = Intent(ContextHolder.context, Receiver::class.java)
             intent.putExtra("title_key",it.reminderSchedule.displayName())
             intent.putExtra("body_key",it.description)
             val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, Constants.REMIND_ID,intent,
@@ -73,7 +69,7 @@ actual object NotificationSystem {
 
     actual fun clearNotification(task : Task) {
         val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(ContextHolder.context, Receiver::class.java);
+        val intent = Intent(ContextHolder.context, Receiver::class.java)
         intent.putExtra("title_key",task.title)
         intent.putExtra("body_key",task.description)
         val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, task.id.toInt(),intent,
@@ -83,7 +79,7 @@ actual object NotificationSystem {
 
     actual fun clearNotificationById(id: Int) {
         val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(ContextHolder.context, Receiver::class.java);
+        val intent = Intent(ContextHolder.context, Receiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(ContextHolder.context, id,intent,
             PendingIntent.FLAG_MUTABLE)
         alarmManager.cancel(pendingIntent)
