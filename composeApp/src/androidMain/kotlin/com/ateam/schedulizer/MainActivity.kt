@@ -21,7 +21,6 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
 class MainActivity : ComponentActivity() {
-
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -33,7 +32,6 @@ class MainActivity : ComponentActivity() {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(notificationChannel)
         NotificationSystem.requestPermission(this)
-
         setContent {
             val systemIsDark = isSystemInDarkTheme()
             val isDarkMode = when (currentThemeMode) {
@@ -45,7 +43,6 @@ class MainActivity : ComponentActivity() {
                 NotificationSystem.clearAllNotifications()
             }
             LaunchedEffect(isDarkMode) {
-                NotificationSystem.clearAllNotifications()
                 enableEdgeToEdge(
                     statusBarStyle = if (isDarkMode) {
                         SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)

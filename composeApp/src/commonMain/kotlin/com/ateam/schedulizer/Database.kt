@@ -9,12 +9,15 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.ateam.schedulizer.dao.TaskDao
 import com.ateam.schedulizer.entities.Streak
 import com.ateam.schedulizer.entities.Task
+import com.kizitonwose.calendar.core.now
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.atTime
 import kotlinx.datetime.minus
 
 @Database(entities = [Task.Set::class, Task.Pool::class, Task.Daily::class, Streak::class], version = 7)
@@ -56,6 +59,18 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     suspend fun createTask(task: Task) {
+
+        NotificationSystem.clearNotification(task)
+        val currentDate = LocalDate.now()
+        val nextDate = task.reminderSchedule.nextFireDate(currentDate);
+        NotificationSystem.scheduleNotification(
+            task.title,
+            task.description,
+            nextDate?.atTime(12,0,0) ?: LocalDate.now().atTime(12,0,0),
+            task.id.toInt()
+        )
+
+
         when (task) {
             is Task.Set -> taskDao().upsert(task)
             is Task.Pool -> taskDao().upsert(task)
