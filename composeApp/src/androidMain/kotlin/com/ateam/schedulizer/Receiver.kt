@@ -14,10 +14,8 @@ import kotlinx.datetime.atTime
 import kotlin.random.Random
 
 class Receiver : BroadcastReceiver() {
-
     @OptIn(DelicateCoroutinesApi::class)
     override fun onReceive(context: Context, intent: Intent) {
-        ContextHolder.context = context.applicationContext as Application
         val notificationManager = context.getSystemService(NotificationManager::class.java)
         val id = intent.getIntExtra("task_id", 0)
         val title = intent.getStringExtra("title_key") ?: return

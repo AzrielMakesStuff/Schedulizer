@@ -43,7 +43,10 @@ abstract class AppDatabase : RoomDatabase() {
             task.lastCompleted?.date == today()
         }
 
-        if (lost) taskDao().upsert(Streak(dateInitiated = today(), lostDate = today()))
+        if (lost) {
+            taskDao().upsert(Streak(dateInitiated = today(), lostDate = today()))
+            println("STREAK LOST")
+        }
         refresh()
         return StreakStatus(lost = lost, completedToday = completedToday)
     }

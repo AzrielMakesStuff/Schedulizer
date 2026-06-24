@@ -193,13 +193,13 @@ fun LocalDate.fmt(): String =
     "${dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
             "$day ${month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} $year"
 
+fun now() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+
 @Composable
 fun TaskScreen() {
-    val now = remember { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()) }
-    val today = remember { now.date }
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
 
-    var weekAnchor by remember { mutableStateOf(today) }
+    var weekAnchor by remember { mutableStateOf(today()) }
     val visibleMonth by remember(weekAnchor) {
         derivedStateOf { weekDatesFor(weekAnchor, firstDayOfWeek).first().yearMonth }
     }
@@ -247,19 +247,19 @@ fun TaskScreen() {
                     is Task.Daily -> true
                     is Task.Set -> {
                         if (task.completed) {
-                            task.completionDate?.date?.let { it >= today } ?: false
+                            task.completionDate?.date?.let { it >= today() } ?: false
                         } else true
                     }
                     is Task.Pool -> {
                         if (task.completed) {
-                            task.completionDate?.date?.let { it >= today } ?: false
+                            task.completionDate?.date?.let { it >= today() } ?: false
                         } else true
                     }
                 }
             }.sortedWith(compareBy(
                 { task ->
                     when (task) {
-                        is Task.Daily if task.lastCompleted?.date == today -> 1
+                        is Task.Daily if task.lastCompleted?.date == today() -> 1
                         is Task.Set if task.completed -> 1
                         is Task.Pool if task.completed -> 1
                         else -> 0
@@ -268,9 +268,9 @@ fun TaskScreen() {
                 { if (it is Task.Daily) 0 else 1 },
                 { task ->
                     when (task) {
-                        is Task.Pool -> task.expiry ?: LocalDateTime(today, kotlinx.datetime.LocalTime(23, 30))
+                        is Task.Pool -> task.expiry ?: LocalDateTime(today(), kotlinx.datetime.LocalTime(23, 30))
                         is Task.Set -> task.start
-                        is Task.Daily -> task.lastCompleted ?: LocalDateTime(today, kotlinx.datetime.LocalTime(0, 0))
+                        is Task.Daily -> task.lastCompleted ?: LocalDateTime(today(), kotlinx.datetime.LocalTime(0, 0))
                     }
                 }
             ))
@@ -336,15 +336,15 @@ fun TaskScreen() {
                         val dates = remember(anchor) { weekDatesFor(anchor, firstDayOfWeek) }
                         WeeklyScheduleGrid(
                             visibleDates = dates,
-                            now = now,
-                            today = today,
+                            now = now(),
+                            today = today(),
                             selectedDateOne = selectedDateOne,
                             onCellTapped = ::onCellTapped,
                             onTaskTapped = { task ->
                                 val date = when (task) {
                                     is Task.Set -> task.start.date
-                                    is Task.Pool -> task.expiry?.date ?: today
-                                    is Task.Daily -> today
+                                    is Task.Pool -> task.expiry?.date ?: today()
+                                    is Task.Daily -> today()
                                 }
                                 weekAnchor = date
                                 val index = filteredTasks.indexOf(task)
@@ -369,11 +369,11 @@ fun TaskScreen() {
                 }
             }
             items(filteredTasks) { task ->
-                val isCompletedToday = task is Task.Daily && task.lastCompleted?.date == today
+                val isCompletedToday = task is Task.Daily && task.lastCompleted?.date == today()
 
                 val isExpired = when (task) {
-                    is Task.Set -> !task.completed && task.end != null && task.end < now
-                    is Task.Pool -> !task.completed && task.expiry != null && task.expiry < now
+                    is Task.Set -> !task.completed && task.end != null && task.end < now()
+                    is Task.Pool -> !task.completed && task.expiry != null && task.expiry < now()
                     is Task.Daily -> false
                 }
 
@@ -422,16 +422,20 @@ fun TaskScreen() {
                         onCheckedChange = { checked ->
                             scope.launch {
                                 val updated = when (task) {
-                                    is Task.Daily -> task.copy(lastCompleted = if (checked) now else null)
+                                    is Task.Daily -> {
+                                        val updated = task.copy(lastCompleted = if (checked) now() else LocalDateTime(now().date.minus(1, DateTimeUnit.DAY), now().time))
+                                        println("DAILY STREAK RESET TO: ${updated.lastCompleted}")
+                                        updated
+                                    }
 
                                     is Task.Set -> task.copy(
                                         completed = checked,
-                                        completionDate = if (checked) now else null
+                                        completionDate = if (checked) now() else null
                                     )
 
                                     is Task.Pool -> task.copy(
                                         completed = checked,
-                                        completionDate = if (checked) now else null
+                                        completionDate = if (checked) now() else null
                                     )
                                 }
                                 databaseInstance.createTask(updated)
