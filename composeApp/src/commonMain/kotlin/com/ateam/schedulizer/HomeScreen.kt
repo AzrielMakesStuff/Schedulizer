@@ -1,5 +1,6 @@
 package com.ateam.schedulizer
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -96,7 +97,6 @@ fun HomeScreen()
                 verticalArrangement = Arrangement.Top
             )
             {
-                //Image open for improvement
                 Image(
                     painter = painterResource(if (streakStatus.value.completedToday) Res.drawable.streak_complete else Res.drawable.streak_incomplete),
                     contentDescription = "Streak",
@@ -144,8 +144,8 @@ fun HomeScreen()
                         start = 15.dp,
                         end = 5.dp,
                     )
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
             ) {
                 Box(
                     modifier = Modifier
@@ -189,8 +189,8 @@ fun HomeScreen()
                         start = 5.dp,
                         end = 15.dp,
                     )
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
                 contentAlignment = Alignment.TopCenter
             ) {
                 Box(
@@ -228,8 +228,8 @@ fun HomeScreen()
                 .fillMaxHeight()
                 .fillMaxWidth()
                 .padding(15.dp)
-                .clip(RoundedCornerShape(30.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .clip(RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
         )
         {
             Column(modifier = Modifier.fillMaxSize())
