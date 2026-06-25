@@ -45,7 +45,7 @@ val navigationItemsLists = listOf(
     NavigationItem(
         unSelectedIcon = Icons.Outlined.Settings,
         selectedIcon = Icons.Filled.Settings,
-        title = "Settings",
+        title = "SettingsScreen",
         route = Routes.SettingDetail.route,
     )
 )

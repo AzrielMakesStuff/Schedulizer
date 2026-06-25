@@ -3,6 +3,7 @@ package com.ateam.schedulizer.dao
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
+import com.ateam.schedulizer.entities.Settings
 import com.ateam.schedulizer.entities.Streak
 import com.ateam.schedulizer.entities.Task
 
@@ -43,4 +44,10 @@ interface TaskDao {
     suspend fun upsert(streak: Streak)
     @Query("SELECT * FROM Streak WHERE id = 1")
     suspend fun getStreak(): Streak?
+
+    // Settings
+    @Upsert
+    suspend fun upsert(settings: Settings)
+    @Query("SELECT * FROM Settings WHERE id = 1")
+    suspend fun getSettings(): Settings?
 }

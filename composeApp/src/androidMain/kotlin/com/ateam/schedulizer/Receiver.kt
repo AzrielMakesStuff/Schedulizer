@@ -1,6 +1,5 @@
 package com.ateam.schedulizer
 
-import android.app.Application
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -8,6 +7,7 @@ import android.content.Intent
 import com.ateam.schedulizer.NotificationSystem.createNotification
 import com.kizitonwose.calendar.core.now
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.atTime
@@ -27,7 +27,7 @@ class Receiver : BroadcastReceiver() {
         NotificationSystem.clearNotificationById(id)
 
         val pendingResult = goAsync()
-        kotlinx.coroutines.GlobalScope.launch {
+        GlobalScope.launch {
             try {
                 // Ensure DB is loaded before reading
                 databaseInstance.refresh()

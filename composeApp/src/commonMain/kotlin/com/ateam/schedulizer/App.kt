@@ -19,6 +19,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,9 +43,10 @@ fun App() {
     val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    val settings by databaseInstance.settings.collectAsState()
     val systemIsDark = isSystemInDarkTheme()
-    val isDarkMode = when (currentThemeMode) {
-        ThemeMode.SYSTEM -> systemIsDark
+    val isDarkMode = when (ThemeMode.entries.getOrElse(settings?.colourMode?.toInt() ?: 0) { ThemeMode.AUTO }) {
+        ThemeMode.AUTO -> systemIsDark
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
@@ -95,7 +97,7 @@ fun App() {
                     }
                     composable(Routes.SettingDetail.route)
                     {
-                        Settings()
+                        SettingsScreen()
                     }
                 }
             }
