@@ -1,7 +1,5 @@
 package com.ateam.schedulizer
 
-import Routes
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ateam.schedulizer.entities.Task
 import org.jetbrains.compose.resources.painterResource
 import schedulizer.composeapp.generated.resources.Res
 import schedulizer.composeapp.generated.resources.streak_complete
@@ -262,7 +261,15 @@ fun HomeScreen()
                         )
                         Spacer(modifier = Modifier.height(5.dp))
                         Text(
-                            text = "${tasks.count()}",
+                            text = "${
+                                tasks.count { task ->
+                                    when (task) {
+                                        is Task.Daily -> task.lastCompleted?.date != today()
+                                        is Task.Set -> !task.completed
+                                        is Task.Pool -> !task.completed
+                                    }
+                                }
+                            }",
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.titleLarge,
                         )
@@ -287,7 +294,15 @@ fun HomeScreen()
                         )
                         Spacer(modifier = Modifier.height(5.dp))
                         Text(
-                            text = "00",
+                            text = "${
+                                tasks.count { task ->
+                                    when (task) {
+                                        is Task.Daily -> task.lastCompleted?.date != today()
+                                        is Task.Set -> !task.completed && task.start.date <= today() && (task.end == null || task.end.date >= today())
+                                        is Task.Pool -> !task.completed && (task.expiry == null || task.expiry.date <= today())
+                                    }
+                                }
+                            }",
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.titleLarge,
                         )
