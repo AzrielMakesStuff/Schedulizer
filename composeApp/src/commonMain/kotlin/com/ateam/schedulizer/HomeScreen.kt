@@ -1,5 +1,6 @@
 package com.ateam.schedulizer
 
+import Routes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -47,6 +48,8 @@ import schedulizer.composeapp.generated.resources.streakbackground
 @Composable
 fun HomeScreen()
 {
+    val tasks by databaseInstance.tasks.collectAsState(initial = emptyList())
+
     val streakStatus = remember { mutableStateOf(AppDatabase.StreakStatus(
         lost = false,
         completedToday = true
@@ -259,7 +262,7 @@ fun HomeScreen()
                         )
                         Spacer(modifier = Modifier.height(5.dp))
                         Text(
-                            text = "00",
+                            text = "${tasks.count()}",
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.titleLarge,
                         )
