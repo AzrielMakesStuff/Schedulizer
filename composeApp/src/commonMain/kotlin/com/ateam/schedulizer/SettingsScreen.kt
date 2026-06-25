@@ -20,9 +20,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,17 +29,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 enum class ThemeMode {
-    SYSTEM,
-    LIGHT,
-    DARK
+    AUTO,
+    DARK,
+    LIGHT
 }
 
-var currentThemeMode by mutableStateOf(ThemeMode.SYSTEM)
-
 @Composable
-fun Settings() {
+fun SettingsScreen() {
+    val settings by databaseInstance.settings.collectAsState()
+    val currentMode = ThemeMode.entries.getOrElse(settings?.colourMode?.toInt() ?: 0) { ThemeMode.AUTO }
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -72,26 +76,25 @@ fun Settings() {
                     )
                     {
                         ThemeButton(
-                            selected = currentThemeMode == ThemeMode.SYSTEM,
-                             onClick = { currentThemeMode = ThemeMode.SYSTEM },
+                            selected = currentMode == ThemeMode.AUTO,
+                             onClick = { setTheme(ThemeMode.AUTO) },
                              color = MaterialTheme.colorScheme.outline,
                              label = "A"
                         )
                         ThemeButton(
-                            selected = currentThemeMode == ThemeMode.LIGHT,
-                            onClick = { currentThemeMode = ThemeMode.LIGHT },
-                            color = Color.White,
-                            border = Color.LightGray
-                        )
-                        ThemeButton(
-                            selected = currentThemeMode == ThemeMode.DARK,
-                            onClick = { currentThemeMode = ThemeMode.DARK },
+                            selected = currentMode == ThemeMode.DARK,
+                            onClick = { setTheme(ThemeMode.DARK) },
                             color = Color.Black,
                             border = Color.Gray
                         )
+                        ThemeButton(
+                            selected = currentMode == ThemeMode.LIGHT,
+                            onClick = { setTheme(ThemeMode.LIGHT) },
+                            color = Color.White,
+                            border = Color.LightGray
+                        )
                     }
                 }
-
             }
             Box(
                 modifier = Modifier
@@ -140,6 +143,15 @@ fun ThemeButton(
                 color = if (color == Color.Black) Color.White else Color.Black,
                 fontWeight = FontWeight.Bold,
             )
+        }
+    }
+}
+
+fun setTheme(theme: ThemeMode) {
+    CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        databaseInstance.settings.value?.let { current ->
+            databaseInstance.saveSettings(current.copy(colourMode = theme.ordinal.toByte()))
+            databaseInstance.refresh()
         }
     }
 }

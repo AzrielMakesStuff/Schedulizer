@@ -1,6 +1,5 @@
 package com.ateam.schedulizer
 
-import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
@@ -13,12 +12,9 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.tooling.preview.Preview
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toKotlinLocalDateTime
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -32,9 +28,10 @@ class MainActivity : ComponentActivity() {
         notificationManager.createNotificationChannel(notificationChannel)
         NotificationSystem.requestPermission(this)
         setContent {
+            val settings by databaseInstance.settings.collectAsState()
             val systemIsDark = isSystemInDarkTheme()
-            val isDarkMode = when (currentThemeMode) {
-                ThemeMode.SYSTEM -> systemIsDark
+            val isDarkMode = when (ThemeMode.entries.getOrElse(settings?.colourMode?.toInt() ?: 0) { ThemeMode.AUTO }) {
+                ThemeMode.AUTO -> systemIsDark
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
@@ -43,14 +40,8 @@ class MainActivity : ComponentActivity() {
             }
             LaunchedEffect(isDarkMode) {
                 enableEdgeToEdge(
-                    statusBarStyle = if (isDarkMode) {
-                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
-                    } else {
-                        SystemBarStyle.light(
-                            android.graphics.Color.TRANSPARENT,
-                            android.graphics.Color.TRANSPARENT
-                        )
-                    }
+                    statusBarStyle = if (isDarkMode) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
                 )
             }
             App()

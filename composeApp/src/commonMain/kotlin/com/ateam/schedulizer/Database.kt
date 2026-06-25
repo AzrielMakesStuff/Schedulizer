@@ -7,6 +7,7 @@ import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.ateam.schedulizer.dao.TaskDao
+import com.ateam.schedulizer.entities.Settings
 import com.ateam.schedulizer.entities.Streak
 import com.ateam.schedulizer.entities.Task
 import com.kizitonwose.calendar.core.now
@@ -19,8 +20,7 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.atTime
 import kotlinx.datetime.minus
-
-@Database(entities = [Task.Set::class, Task.Pool::class, Task.Daily::class, Streak::class], version = 7)
+@Database(entities = [Task.Set::class, Task.Pool::class, Task.Daily::class, Streak::class, Settings::class], version = 8)
 @TypeConverters(Converters::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -28,6 +28,8 @@ abstract class AppDatabase : RoomDatabase() {
     val tasks: StateFlow<List<Task>> = _tasks.asStateFlow()
     private val _streak = MutableStateFlow(0)
     val streak: StateFlow<Int> = _streak.asStateFlow()
+    private val _settings = MutableStateFlow<Settings?>(null)
+    val settings: StateFlow<Settings?> = _settings.asStateFlow()
 
     data class StreakStatus(val lost: Boolean, val completedToday: Boolean)
 
@@ -59,13 +61,16 @@ abstract class AppDatabase : RoomDatabase() {
     suspend fun refresh() {
         _tasks.value = getAll()
         _streak.value = (taskDao().getStreak() ?: Streak().also { taskDao().upsert(it) }).streakLength
+        _settings.value = taskDao().getSettings() ?: Settings()
     }
+
+    suspend fun saveSettings(settings: Settings) = taskDao().upsert(settings)
 
     suspend fun createTask(task: Task) {
 
         NotificationSystem.clearNotification(task)
         val currentDate = LocalDate.now()
-        val nextDate = task.reminderSchedule.nextFireDate(currentDate);
+        val nextDate = task.reminderSchedule.nextFireDate(currentDate)
         NotificationSystem.scheduleNotification(
             task.title,
             task.description,

@@ -1,12 +1,6 @@
 package com.ateam.schedulizer.entities
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.input.key.Key.Companion.Settings
-import com.ateam.schedulizer.Settings
-import com.russhwolf.settings.Settings
 import kotlinx.serialization.Serializable
-import com.russhwolf.settings.set
-import com.russhwolf.settings.get
 
 @Serializable
 data class PublicHoliday(
@@ -21,7 +15,7 @@ data class PublicHoliday(
     val types: List<String>
 )
 
-//val settings: Settings = Settings()
+//val settings: SettingsScreen = SettingsScreen()
 //
 //@Composable
 //fun HolidayCache() {
