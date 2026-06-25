@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Checkbox
@@ -197,6 +199,14 @@ fun now() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 
 @Composable
 fun TaskScreen() {
+    var createTaskDialog by remember { mutableStateOf(false) }
+
+    if (createTaskDialog) {
+        TaskDialog(
+            onDismiss = { createTaskDialog = false }
+        )
+    }
+
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
 
     var weekAnchor by remember { mutableStateOf(today()) }
@@ -354,18 +364,30 @@ fun TaskScreen() {
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(5.dp),
-                    contentAlignment = Alignment.Center
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "Tasks",
-                        textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp
                     )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    IconButton(
+                        onClick = { createTaskDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Create Task",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
             items(filteredTasks) { task ->
