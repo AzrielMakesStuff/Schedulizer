@@ -54,8 +54,8 @@ fun Settings() {
                     .fillMaxWidth()
                     .fillMaxHeight(0.25f)
                     .padding(15.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally)
@@ -98,8 +98,8 @@ fun Settings() {
                     .fillMaxWidth()
                     .fillMaxHeight(0.3f)
                     .padding(15.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
