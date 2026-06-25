@@ -138,59 +138,9 @@ fun HomeScreen()
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.5f)
-                    .fillMaxHeight(0.3f)
-                    .padding(
-                        top = 10.dp,
-                        bottom = 5.dp,
-                        start = 15.dp,
-                        end = 5.dp,
-                    )
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .fillMaxHeight()
-                        .padding(top = 10.dp),
-                    contentAlignment = Alignment.TopCenter
-                )
-                {
-                    Text(
-                        text = "Quick Task Create",
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
-                )
-                {
-                    IconButton(onClick = {
-                        createTaskDialog = true
-                    }) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = "Create Task",
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-            }
-            Box(
-                modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(0.3f)
-                    .padding(
-                        top = 10.dp,
-                        bottom = 5.dp,
-                        start = 5.dp,
-                        end = 15.dp,
-                    )
+                    .padding(15.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
                 contentAlignment = Alignment.TopCenter
@@ -314,12 +264,12 @@ fun HomeScreen()
                         .weight(1f)
                 )
                 {
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Top
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     )
                     {
                         Text(
@@ -327,6 +277,15 @@ fun HomeScreen()
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.headlineMedium
                         )
+                        IconButton(onClick = {
+                            createTaskDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Create Task",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                     }
                 }
             }
