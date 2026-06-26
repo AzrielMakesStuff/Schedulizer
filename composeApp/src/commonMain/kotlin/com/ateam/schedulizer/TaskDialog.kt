@@ -116,6 +116,7 @@ fun DateTimePickerField(
     }
 
     if (showDateDialog) {
+
         Dialog(onDismissRequest = { showDateDialog = false }) {
             Box(
                 modifier = Modifier
@@ -170,6 +171,8 @@ fun DateTimePickerField(
     }
 
     if (showTimeDialog) {
+        var tempHour by remember { mutableStateOf(dateTimeState.hour) }
+        var tempMinute by remember { mutableStateOf(dateTimeState.minute) }
         Dialog(onDismissRequest = { showTimeDialog = false }) {
             Box(
                 modifier = Modifier
@@ -187,15 +190,15 @@ fun DateTimePickerField(
                     ) {
                         NumberScrollPicker(
                             range = 0..23,
-                            selected = dateTimeState.hour,
-                            onSelected = { dateTimeState.hour = it },
+                            selected = tempHour,
+                            onSelected = { tempHour = it },
                             modifier = Modifier.weight(1f)
                         )
                         Text(":", style = MaterialTheme.typography.titleLarge)
                         NumberScrollPicker(
                             range = 0..59,
-                            selected = dateTimeState.minute,
-                            onSelected = { dateTimeState.minute = it },
+                            selected = tempMinute,
+                            onSelected = { tempMinute = it },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -203,7 +206,11 @@ fun DateTimePickerField(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = { showTimeDialog = false }) { Text("Cancel") }
                         Spacer(modifier = Modifier.width(8.dp))
-                        TextButton(onClick = { showTimeDialog = false }) { Text("OK") }
+                        TextButton(onClick = {
+                            dateTimeState.hour = tempHour
+                            dateTimeState.minute = tempMinute
+                            showTimeDialog = false
+                        }) { Text("OK") }
                     }
                 }
             }

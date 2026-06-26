@@ -57,11 +57,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
 import com.ateam.schedulizer.entities.Task
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import kotlinx.coroutines.flow.first
@@ -75,6 +75,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearMonth
 import kotlin.time.Clock
+import cafe.adriel.voyager.navigator.internal.BackHandler
 
 data class PositionedTask(
     val task: Task,
@@ -197,6 +198,7 @@ fun LocalDate.fmt(): String =
 
 fun now() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 
+@OptIn(InternalVoyagerApi::class)
 @Composable
 fun TaskScreen() {
     var createTaskDialog by remember { mutableStateOf(false) }
@@ -215,21 +217,36 @@ fun TaskScreen() {
     }
 
     var selectedDateOne by remember { mutableStateOf<LocalDateTime?>(null) }
+    var selectedDateTwo by remember { mutableStateOf<LocalDateTime?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
-    var pendingDateTwo by remember { mutableStateOf<LocalDateTime?>(null) }
+
+    var editingTask by remember { mutableStateOf<Task?>(null) }
+
+    BackHandler(enabled = editingTask != null || createTaskDialog || showCreateDialog || selectedDateOne != null) {
+        when {
+            editingTask != null -> editingTask = null
+            showCreateDialog -> {
+                showCreateDialog = false
+                selectedDateOne = null
+                selectedDateTwo = null
+            }
+            createTaskDialog -> createTaskDialog = false
+            selectedDateOne != null -> selectedDateOne = null
+        }
+    }
 
     if (showCreateDialog) {
         TaskDialog(
             initialDate = selectedDateOne!!.date,
             initialHour = selectedDateOne!!.hour,
             initialMinute = selectedDateOne!!.minute,
-            initialEndDate = pendingDateTwo?.date,
-            initialEndHour = pendingDateTwo?.hour,
-            initialEndMinute = pendingDateTwo?.minute,
+            initialEndDate = selectedDateTwo?.date,
+            initialEndHour = selectedDateTwo?.hour,
+            initialEndMinute = selectedDateTwo?.minute,
             onDismiss = {
                 showCreateDialog = false
                 selectedDateOne = null
-                pendingDateTwo = null
+                selectedDateTwo = null
             }
         )
     }
@@ -240,8 +257,8 @@ fun TaskScreen() {
             selectedDateOne = tapped
         } else {
             val dateOne = selectedDateOne!!
-            if (tapped >= dateOne) pendingDateTwo = tapped
-            else { pendingDateTwo = dateOne; selectedDateOne = tapped }
+            if (tapped >= dateOne) selectedDateTwo = tapped
+            else { selectedDateTwo = dateOne; selectedDateOne = tapped }
             showCreateDialog = true
         }
     }
@@ -257,12 +274,16 @@ fun TaskScreen() {
                     is Task.Daily -> true
                     is Task.Set -> {
                         if (task.completed) {
-                            task.completionDate?.date?.let { it >= today() } ?: false
+                            val completedYesterday = task.completionDate?.date?.let { it < today() } ?: false
+                            val pastEnd = task.end?.let { it < now() } ?: true
+                            !(completedYesterday && pastEnd)
                         } else true
                     }
                     is Task.Pool -> {
                         if (task.completed) {
-                            task.completionDate?.date?.let { it >= today() } ?: false
+                            val completedYesterday = task.completionDate?.date?.let { it < today() } ?: false
+                            val pastExpiry = task.expiry?.let { it < now() } ?: true
+                            !(completedYesterday && pastExpiry)
                         } else true
                     }
                 }
@@ -287,8 +308,6 @@ fun TaskScreen() {
         }
         val listState = rememberLazyListState()
         val scope = rememberCoroutineScope()
-
-        var editingTask by remember { mutableStateOf<Task?>(null) }
 
         LaunchedEffect(Unit) { databaseInstance.refresh() }
         LazyColumn(modifier = Modifier.padding(8.dp), listState) {

@@ -45,18 +45,19 @@ kotlin {
 
             implementation(libs.multiplatform.settings) // Storage
 
-            implementation("com.kizitonwose.calendar:compose-multiplatform:2.10.1")
+            implementation(libs.compose.multiplatform)
+            implementation(libs.voyager.navigator)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
 
 
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+            implementation(libs.kotlinx.datetime)
 
             implementation(libs.navigation.compose)
 
             implementation(libs.screen.size)
 
-            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
+            implementation(libs.material.icons.extended)
 
         }
         commonTest.dependencies {

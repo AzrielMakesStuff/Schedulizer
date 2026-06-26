@@ -7,8 +7,10 @@ androidx-activity = "1.13.0"
 androidx-lifecycle = "2.10.0"
 composeMultiplatform = "1.11.1"
 #noinspection GradleDependency
+composeMultiplatformVersion = "2.10.1"
 kotlin = "2.3.21"
 ksp = "2.3.7"
+materialIconsExtended = "1.7.3"
 room = "2.8.4"
 sqlite = "2.6.2"
 material3 = "1.10.0-alpha05"
@@ -17,9 +19,11 @@ multiplatformSettings = "1.3.0"
 securityCryptoKtx = "1.1.0"
 navigationCompose = "2.9.2"
 size = "0.5.0"
+voyagerNavigator = "2.2.21-1.10.3"
 
 [libraries]
 androidx-security-crypto-ktx = { module = "androidx.security:security-crypto-ktx", version.ref = "securityCryptoKtx" }
+compose-multiplatform = { module = "com.kizitonwose.calendar:compose-multiplatform", version.ref = "composeMultiplatformVersion" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 compose-uiTooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "composeMultiplatform" }
@@ -32,12 +36,14 @@ compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMul
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 multiplatform-settings = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatformSettings" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 screen-size = { module = "dev.chrisbanes.material3:material3-window-size-class-multiplatform", version.ref = "size" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyagerNavigator" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
