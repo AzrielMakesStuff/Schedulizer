@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -154,10 +155,13 @@ fun Calendar() {
             firstDayOfWeek = daysOfWeek.first(),
             outDateStyle = OutDateStyle.EndOfGrid)
 
-        Column {
+        Column(modifier = Modifier
+            .fillMaxSize()
+        ) {
             val backgroundColor = MaterialTheme.colorScheme.surface
 
             HorizontalCalendar(
+                modifier = Modifier.fillMaxSize(),
                 monthBody = { _, content ->
                     Box(modifier = Modifier.background(backgroundColor)) {
                         content()
@@ -173,8 +177,10 @@ fun Calendar() {
                         .lowercase()
                         .replaceFirstChar { it.uppercase() }
                     val year = month.yearMonth.year
-                    MonthName(monthName = monthName, year = year)
-                    MonthHeader(daysOfWeek = daysOfWeek)
+                    Column {
+                        MonthName(monthName = monthName, year = year)
+                        MonthHeader(daysOfWeek = daysOfWeek)
+                    }
                 }
             )
         }
