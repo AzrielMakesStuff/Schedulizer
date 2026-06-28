@@ -140,7 +140,12 @@ fun HomeScreen()
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(0.3f)
-                    .padding(15.dp)
+                    .padding(
+                        top = 5.dp,
+                        bottom = 15.dp,
+                        start = 15.dp,
+                        end = 15.dp
+                    )
                     .clip(RoundedCornerShape(20.dp))
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
                 contentAlignment = Alignment.TopCenter
@@ -179,7 +184,12 @@ fun HomeScreen()
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth()
-                .padding(15.dp)
+                .padding(
+                    top = 5.dp,
+                    bottom = 15.dp,
+                    start = 15.dp,
+                    end = 15.dp
+                )
                 .clip(RoundedCornerShape(24.dp))
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
         )
