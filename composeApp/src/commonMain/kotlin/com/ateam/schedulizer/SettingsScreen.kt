@@ -17,23 +17,30 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ateam.schedulizer.entities.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalTime
 
 enum class ThemeMode {
     AUTO,
@@ -45,6 +52,19 @@ enum class ThemeMode {
 fun SettingsScreen() {
     val settings by databaseInstance.settings.collectAsState()
     val currentMode = ThemeMode.entries.getOrElse(settings?.colourMode?.toInt() ?: 0) { ThemeMode.AUTO }
+    val notifTime = settings?.notificationTime ?: LocalTime(8, 0)
+
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    if (showTimePicker) {
+        TimePickerDialog(
+            initialHour = settings?.notificationTime?.hour ?: 8,
+            initialMinute = settings?.notificationTime?.minute ?: 0,
+            onDismiss = { showTimePicker = false },
+            onConfirm = { hour, minute -> setNotificationTime(hour, minute) }
+        )
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -99,17 +119,24 @@ fun SettingsScreen() {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.3f)
                     .padding(15.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+                    .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Put something else here, idk I just work here",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Notification Time", style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(onClick = { showTimePicker = true }) {
+                        Text(
+                            "${notifTime.hour.toString().padStart(2, '0')}:" +
+                                    notifTime.minute.toString().padStart(2, '0'),
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    }
+                }
             }
         }
     }
@@ -148,10 +175,19 @@ fun ThemeButton(
 }
 
 fun setTheme(theme: ThemeMode) {
+    databaseInstance.settings.value?.let { current ->
+        saveSettings(current.copy(colourMode = theme.ordinal.toByte()))
+    }
+}
+
+fun setNotificationTime(hour: Int, minute: Int) {
+    databaseInstance.settings.value?.let { current ->
+        saveSettings(current.copy(notificationTime = LocalTime(hour = hour, minute = minute)))
+    }
+}
+
+fun saveSettings(settings: Settings) {
     CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-        databaseInstance.settings.value?.let { current ->
-            databaseInstance.saveSettings(current.copy(colourMode = theme.ordinal.toByte()))
-            databaseInstance.refresh()
-        }
+        databaseInstance.saveSettings(settings)
     }
 }

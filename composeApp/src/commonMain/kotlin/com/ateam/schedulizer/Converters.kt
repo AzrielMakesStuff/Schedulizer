@@ -3,6 +3,7 @@ package com.ateam.schedulizer
 import androidx.room.TypeConverter
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 
 class Converters {
     @TypeConverter fun fromLocalDateTime(value: LocalDateTime?): String? = value?.toString()?.replace("T", " ")
@@ -10,6 +11,9 @@ class Converters {
 
     @TypeConverter fun fromLocalDate(value: LocalDate?): String? = value?.toString()
     @TypeConverter fun toLocalDate(value: String?): LocalDate? = value?.let { LocalDate.parse(it) }
+
+    @TypeConverter fun fromLocalTime(value: LocalTime?): String? = value?.toString()
+    @TypeConverter fun toLocalTime(value: String?): LocalTime? = value?.let { LocalTime.parse(it) }
 
     @TypeConverter
     fun fromSchedule(s: ReminderSchedule): String = when (s) {

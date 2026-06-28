@@ -18,9 +18,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atTime
 import kotlinx.datetime.minus
-@Database(entities = [Task.Set::class, Task.Pool::class, Task.Daily::class, Streak::class, Settings::class], version = 8)
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+
+@Database(entities = [Task.Set::class, Task.Pool::class, Task.Daily::class, Streak::class, Settings::class], version = 9)
 @TypeConverters(Converters::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -35,7 +39,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     suspend fun checkStreak(): StreakStatus {
         val dailies = taskDao().getAllDaily()
-        if (dailies.isEmpty()) return StreakStatus(lost = false, completedToday = false)
+        if (dailies.isEmpty()) return StreakStatus(lost = true, completedToday = false)
 
         val lost = dailies.any { task ->
             task.lastCompleted == null || task.lastCompleted.date < today().minus(1, DateTimeUnit.DAY)
@@ -64,21 +68,30 @@ abstract class AppDatabase : RoomDatabase() {
         _settings.value = taskDao().getSettings() ?: Settings()
     }
 
-    suspend fun saveSettings(settings: Settings) = taskDao().upsert(settings)
+    suspend fun saveSettings(settings: Settings) {
+        taskDao().upsert(settings)
+        _settings.value = settings
+        rescheduleAllNotifications()
+        refresh()
+    }
 
     suspend fun createTask(task: Task) {
-
         NotificationSystem.clearNotification(task)
         val currentDate = LocalDate.now()
         val nextDate = task.reminderSchedule.nextFireDate(currentDate)
-        NotificationSystem.scheduleNotification(
-            task.title,
-            task.description,
-            nextDate?.atTime(12,0,0) ?: LocalDate.now().atTime(12,0,0),
-            task.id.toInt()
-        )
-
-
+        if (nextDate != null) {
+            val time = (_settings.value ?: taskDao().getSettings() ?: Settings()).notificationTime
+            val nextDateTime = nextDate.atTime(time.hour, time.minute, 0)
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            if (nextDateTime > now) {
+                NotificationSystem.scheduleNotification(
+                    task.title,
+                    task.description,
+                    nextDateTime,
+                    task.id.toInt()
+                )
+            }
+        }
         when (task) {
             is Task.Set -> taskDao().upsert(task)
             is Task.Pool -> taskDao().upsert(task)
@@ -88,12 +101,32 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     suspend fun deleteTask(task: Task) {
+        NotificationSystem.clearNotification(task)
         when (task) {
             is Task.Set -> taskDao().deleteSet(task.id)
             is Task.Pool -> taskDao().deletePool(task.id)
             is Task.Daily -> taskDao().deleteDaily(task.id)
         }
         refresh()
+    }
+
+    suspend fun rescheduleAllNotifications() {
+        val tasks = getAll()
+        val time = (_settings.value ?: taskDao().getSettings() ?: Settings()).notificationTime
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val currentDate = LocalDate.now()
+        tasks.forEach { task ->
+            NotificationSystem.clearNotification(task)
+            val nextDate = task.reminderSchedule.nextFireDate(currentDate) ?: return@forEach
+            val nextDateTime = nextDate.atTime(time.hour, time.minute, 0)
+            if (nextDateTime <= now) return@forEach  // skip past times
+            NotificationSystem.scheduleNotification(
+                task.title,
+                task.description,
+                nextDateTime,
+                task.id.toInt()
+            )
+        }
     }
 }
 

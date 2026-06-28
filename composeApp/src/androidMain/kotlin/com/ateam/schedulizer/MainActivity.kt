@@ -36,7 +36,8 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
             }
             LaunchedEffect(Unit) {
-                NotificationSystem.clearAllNotifications()
+                databaseInstance.refresh()
+                databaseInstance.rescheduleAllNotifications()
             }
             LaunchedEffect(isDarkMode) {
                 enableEdgeToEdge(
