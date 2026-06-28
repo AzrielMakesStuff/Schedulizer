@@ -1,7 +1,6 @@
 package com.ateam.schedulizer
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -28,9 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,238 +38,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.ateam.schedulizer.entities.Task
 import kotlinx.coroutines.launch
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.minus
-import kotlinx.datetime.number
-import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DateTimePickerField(
-    label: String,
-    dateTimeState: DateTimePickerState,
-    showTime: Boolean = true
-) {
-    var showDateDialog by remember { mutableStateOf(false) }
-    var showTimeDialog by remember { mutableStateOf(false) }
-
-    val today = remember {
-        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-    }
-
-    var selectedYear by remember { mutableStateOf(dateTimeState.millis?.let {
-        millisToLocalDateTime(it, TimeZone.currentSystemDefault())?.year
-    } ?: today.year) }
-    var selectedMonth by remember { mutableStateOf(dateTimeState.millis?.let {
-        millisToLocalDateTime(it, TimeZone.currentSystemDefault())?.month?.number
-    } ?: today.month.number) }
-    var selectedDay by remember { mutableStateOf(dateTimeState.millis?.let {
-        millisToLocalDateTime(it, TimeZone.currentSystemDefault())?.day
-    } ?: today.day) }
-
-    val daysInMonth = remember(selectedYear, selectedMonth) {
-        LocalDate(selectedYear, selectedMonth, 1).plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).day
-    }
-
-    LaunchedEffect(daysInMonth) {
-        if (selectedDay > daysInMonth) selectedDay = daysInMonth
-    }
-
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        OutlinedButton(
-            onClick = { showDateDialog = true },
-            modifier = if (showTime) Modifier.weight(1f) else Modifier.fillMaxWidth()
-        ) {
-            Text(
-                dateTimeState.millis?.let {
-                    millisToLocalDateTime(it, TimeZone.currentSystemDefault())?.date.toString()
-                } ?: label,
-                maxLines = 1
-            )
-        }
-
-        if (showTime) {
-            Spacer(modifier = Modifier.width(8.dp))
-            OutlinedButton(
-                onClick = { showTimeDialog = true },
-                modifier = Modifier.weight(1f),
-                enabled = dateTimeState.millis != null
-            ) {
-                Text(
-                    "${dateTimeState.hour.toString().padStart(2, '0')}:${dateTimeState.minute.toString().padStart(2, '0')}",
-                    maxLines = 1
-                )
-            }
-        }
-    }
-
-    if (showDateDialog) {
-
-        Dialog(onDismissRequest = { showDateDialog = false }) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(24.dp)
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Select Date", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Day
-                        NumberScrollPicker(
-                            range = 1..daysInMonth,
-                            selected = selectedDay,
-                            onSelected = { selectedDay = it },
-                            modifier = Modifier.weight(1f)
-                        )
-                        // Month
-                        NumberScrollPicker(
-                            range = 1..12,
-                            selected = selectedMonth,
-                            onSelected = { selectedMonth = it },
-                            modifier = Modifier.weight(1f)
-                        )
-                        // Year
-                        NumberScrollPicker(
-                            range = today.year..today.year + 10,
-                            selected = selectedYear,
-                            onSelected = { selectedYear = it },
-                            modifier = Modifier.weight(2f)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { showDateDialog = false }) { Text("Cancel") }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        TextButton(onClick = {
-                            val date = LocalDate(selectedYear, selectedMonth, selectedDay)
-                            val instant = date.atStartOfDayIn(TimeZone.currentSystemDefault())
-                            dateTimeState.millis = instant.toEpochMilliseconds()
-                            showDateDialog = false
-                        }) { Text("OK") }
-                    }
-                }
-            }
-        }
-    }
-
-    if (showTimeDialog) {
-        var tempHour by remember { mutableStateOf(dateTimeState.hour) }
-        var tempMinute by remember { mutableStateOf(dateTimeState.minute) }
-        Dialog(onDismissRequest = { showTimeDialog = false }) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(24.dp)
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Select Time", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        NumberScrollPicker(
-                            range = 0..23,
-                            selected = tempHour,
-                            onSelected = { tempHour = it },
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(":", style = MaterialTheme.typography.titleLarge)
-                        NumberScrollPicker(
-                            range = 0..59,
-                            selected = tempMinute,
-                            onSelected = { tempMinute = it },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { showTimeDialog = false }) { Text("Cancel") }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        TextButton(onClick = {
-                            dateTimeState.hour = tempHour
-                            dateTimeState.minute = tempMinute
-                            showTimeDialog = false
-                        }) { Text("OK") }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Suppress("FrequentlyChangingValue")
-@Composable
-fun NumberScrollPicker(
-    range: IntRange,
-    selected: Int,
-    onSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val itemHeight = 48.dp
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selected - range.first)
-
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (!listState.isScrollInProgress) {
-            onSelected(range.first + listState.firstVisibleItemIndex)
-        }
-    }
-
-    LazyColumn(
-        state = listState,
-        modifier = modifier.height(itemHeight * 3),
-        flingBehavior = rememberSnapFlingBehavior(listState),
-        contentPadding = PaddingValues(vertical = itemHeight)
-    ) {
-        items(range.count()) { index ->
-            val value = range.first + index
-            val isSelected = listState.firstVisibleItemIndex == index
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.height(itemHeight).fillMaxWidth()
-            ) {
-                Text(
-                    value.toString().padStart(2, '0'),
-                    style = if (isSelected) MaterialTheme.typography.titleLarge
-                    else MaterialTheme.typography.bodyMedium,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                )
-            }
-        }
-    }
-}
-
-// Holder for a date+time selection
-class DateTimePickerState(
-    initialMillis: Long? = null,
-    initialHour: Int = 0,
-    initialMinute: Int = 0
-) {
-    var millis by mutableStateOf(initialMillis)
-    var hour by mutableStateOf(initialHour)
-    var minute by mutableStateOf(initialMinute)
-
-    fun toLocalDateTime(zone: TimeZone): LocalDateTime? {
-        val base = millisToLocalDateTime(millis, zone) ?: return null
-        return LocalDateTime(base.date, LocalTime(hour, minute))
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -462,25 +232,34 @@ fun TaskDialog(
     val coroutineScope = rememberCoroutineScope()
 
     var taskTypeSelection by remember {
-        mutableStateOf(when (task) {
-            is Task.Set -> TaskTypeSelection.Set
-            is Task.Pool -> TaskTypeSelection.Pool
-            is Task.Daily -> TaskTypeSelection.Daily
-            null -> TaskTypeSelection.Set
-        })
+        mutableStateOf(
+            when (task) {
+                is Task.Set -> TaskTypeSelection.Set
+                is Task.Pool -> TaskTypeSelection.Pool
+                is Task.Daily -> TaskTypeSelection.Daily
+                null -> TaskTypeSelection.Set
+            }
+        )
     }
 
     var title by remember { mutableStateOf(task?.title ?: "") }
     var description by remember { mutableStateOf(task?.description ?: "") }
-    var reminderSchedule by remember { mutableStateOf(task?.reminderSchedule ?: ReminderSchedule.None) }
+    var reminderSchedule by remember {
+        mutableStateOf(
+            task?.reminderSchedule ?: ReminderSchedule.None
+        )
+    }
 
     var ignoreTime by remember {
-        mutableStateOf(when (task) {
-            is Task.Set -> task.start.hour == 0 && task.start.minute == 0
-                    && task.end?.hour == 23 && task.end.minute == 59
-            is Task.Pool -> task.expiry?.hour == 23 && task.expiry.minute == 59
-            else -> false
-        })
+        mutableStateOf(
+            when (task) {
+                is Task.Set -> task.start.hour == 0 && task.start.minute == 0
+                        && task.end?.hour == 23 && task.end.minute == 59
+
+                is Task.Pool -> task.expiry?.hour == 23 && task.expiry.minute == 59
+                else -> false
+            }
+        )
     }
     var oneDay by remember {
         mutableStateOf(
@@ -562,7 +341,9 @@ fun TaskDialog(
                             .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                             .fillMaxWidth()
                     )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }) {
                         listOf(
                             TaskTypeSelection.Set to "Set Task",
                             TaskTypeSelection.Pool to "Pool Task",
@@ -591,7 +372,9 @@ fun TaskDialog(
                         }
                         if (!oneDay) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = ignoreTime, onCheckedChange = { ignoreTime = it })
+                                Checkbox(
+                                    checked = ignoreTime,
+                                    onCheckedChange = { ignoreTime = it })
                                 Text("Ignore Time")
                             }
                         }
@@ -612,6 +395,7 @@ fun TaskDialog(
                             )
                         }
                     }
+
                     is TaskTypeSelection.Pool -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = hasExpiry, onCheckedChange = { hasExpiry = it })
@@ -619,7 +403,9 @@ fun TaskDialog(
                         }
                         if (hasExpiry) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = ignoreTime, onCheckedChange = { ignoreTime = it })
+                                Checkbox(
+                                    checked = ignoreTime,
+                                    onCheckedChange = { ignoreTime = it })
                                 Text("Ignore Time")
                             }
                             Spacer(modifier = Modifier.height(8.dp))
@@ -631,6 +417,7 @@ fun TaskDialog(
                             )
                         }
                     }
+
                     is TaskTypeSelection.Daily -> {
                         Text(
                             "Daily tasks automatically reset each day.",
@@ -672,6 +459,7 @@ fun TaskDialog(
                                 val base = millisToLocalDateTime(millis, zone) ?: return null
                                 return LocalDateTime(base.date, LocalTime(0, 0))
                             }
+
                             fun DateTimePickerState.toEndOfDay(zone: TimeZone): LocalDateTime? {
                                 val base = millisToLocalDateTime(millis, zone) ?: return null
                                 return LocalDateTime(base.date, LocalTime(23, 59))
@@ -680,8 +468,11 @@ fun TaskDialog(
                             val newTask: Task = when (taskTypeSelection) {
                                 is TaskTypeSelection.Set -> {
                                     val start = when {
-                                        oneDay || ignoreTime -> startState.toStartOfDay(timeZone) ?: return@Button
-                                        else -> startState.toLocalDateTime(timeZone) ?: return@Button
+                                        oneDay || ignoreTime -> startState.toStartOfDay(timeZone)
+                                            ?: return@Button
+
+                                        else -> startState.toLocalDateTime(timeZone)
+                                            ?: return@Button
                                     }
                                     val end = when {
                                         oneDay -> startState.toEndOfDay(timeZone) ?: return@Button
@@ -699,6 +490,7 @@ fun TaskDialog(
                                         completionDate = (task as? Task.Set)?.completionDate
                                     )
                                 }
+
                                 is TaskTypeSelection.Pool -> {
                                     val expiry = when {
                                         !hasExpiry -> null
@@ -715,12 +507,14 @@ fun TaskDialog(
                                         completionDate = (task as? Task.Pool)?.completionDate
                                     )
                                 }
+
                                 is TaskTypeSelection.Daily -> Task.Daily(
                                     id = task?.id ?: 0,
                                     title = title,
                                     description = description,
                                     reminderSchedule = reminderSchedule,
-                                    lastCompleted = (task as? Task.Daily)?.lastCompleted
+                                    lastCompleted = (task as? Task.Daily)?.lastCompleted ?: Clock.System.now()
+                                        .toLocalDateTime(TimeZone.currentSystemDefault())
                                 )
                             }
 
@@ -738,11 +532,4 @@ fun TaskDialog(
             }
         }
     }
-}
-
-fun millisToLocalDateTime(millis: Long?, zone: TimeZone): LocalDateTime? {
-    if (millis == null) return null
-    return kotlin.time.Instant
-        .fromEpochMilliseconds(millis)
-        .toLocalDateTime(zone)
 }
