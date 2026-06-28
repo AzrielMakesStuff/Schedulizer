@@ -23,6 +23,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".WidgetTaskActivity"
+            android:theme="@style/Theme.Transparent"
+            android:launchMode="singleInstance"
+            android:exported="false" />
         <receiver
             android:name=".Receiver"
             android:enabled="true"

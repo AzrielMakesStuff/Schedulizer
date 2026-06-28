@@ -19,8 +19,9 @@ actual val databaseInstance: AppDatabase by lazy{
 
 actual object WidgetManager {
     actual fun updateWidgets() {
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             StreakWidget().updateAll(ContextHolder.context)
+            TaskWidget().updateAll(ContextHolder.context)
         }
     }
 }

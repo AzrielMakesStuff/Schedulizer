@@ -33,9 +33,7 @@ import androidx.navigation.compose.rememberNavController
 import navigationItemsLists
 
 @Composable
-@Preview
 fun App() {
-
     LaunchedEffect(Unit) {
         databaseInstance.refresh()
     }
@@ -44,18 +42,7 @@ fun App() {
     val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val settings by databaseInstance.settings.collectAsState()
-    val systemIsDark = isSystemInDarkTheme()
-    val isDarkMode = when (ThemeMode.entries.getOrElse(settings?.colourMode?.toInt() ?: 0) { ThemeMode.AUTO }) {
-        ThemeMode.AUTO -> systemIsDark
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-    }
-
-    val colorScheme = if (isDarkMode) darkColorScheme() else lightColorScheme()
-
-
-    MaterialTheme(colorScheme = colorScheme) {
+    AppTheme {
         Scaffold(
             bottomBar = {
                 BottomNavigationBar(

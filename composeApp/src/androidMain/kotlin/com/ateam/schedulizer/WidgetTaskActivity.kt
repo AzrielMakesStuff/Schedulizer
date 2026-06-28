@@ -1,0 +1,91 @@
+package com.ateam.schedulizer
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
+
+class WidgetTaskActivity : ComponentActivity() {
+
+    companion object {
+        const val EXTRA_ACTION = "widget_action"
+        const val EXTRA_TASK_ID = "task_id"
+
+        const val ACTION_CREATE = "create"
+        const val ACTION_EDIT = "edit"
+        const val ACTION_DELETE = "delete"
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        handleIntent()
+    }
+
+    // Handle new intents when activity is reused (singleInstance)
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent()
+    }
+
+    private fun handleIntent() {
+        val action = intent.getStringExtra(EXTRA_ACTION) ?: ACTION_CREATE
+        val taskId = intent.getIntExtra(EXTRA_TASK_ID, -1)
+
+        setContent {
+            AppTheme {
+                Surface(
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    when (action) {
+                        ACTION_CREATE -> TaskDialog(onDismiss = { finish() })
+
+                        ACTION_EDIT -> {
+                            val task = remember(taskId) {
+                                databaseInstance.tasks.value.find { it.id.toInt() == taskId }
+                            }
+                            if (task != null) {
+                                TaskDialog(task = task, onDismiss = { finish() })
+                            } else {
+                                finish()
+                            }
+                        }
+
+                        ACTION_DELETE -> {
+                            val task = remember(taskId) {
+                                databaseInstance.tasks.value.find { it.id.toInt() == taskId }
+                            }
+                            if (task == null) {
+                                finish()
+                                return@Surface
+                            }
+                            val scope = rememberCoroutineScope()
+                            AlertDialog(
+                                onDismissRequest = { finish() },
+                                title = { Text("Delete task") },
+                                text = { Text("Delete \"${task.title}\"? This can't be undone.") },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            databaseInstance.deleteTask(task)
+                                            finish()
+                                        }
+                                    }) { Text("Delete") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { finish() }) { Text("Cancel") }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
