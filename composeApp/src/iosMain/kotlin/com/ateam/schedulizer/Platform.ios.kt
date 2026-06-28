@@ -15,3 +15,7 @@ fun createIosSecureSettings(): Settings = KeychainSettings(service = "SecureKeyT
 actual val databaseInstance: AppDatabase by lazy {
     return@lazy getRoomDatabase(getDatabaseBuilder());
 }
+
+actual object WidgetManager {
+    actual fun updateWidgets() { /* no-op */ }
+}

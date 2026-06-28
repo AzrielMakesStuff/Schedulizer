@@ -1,6 +1,10 @@
 package com.ateam.schedulizer
 
 import android.app.Application
+import androidx.glance.appwidget.updateAll
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 object ContextHolder {
     lateinit var context : Application
@@ -11,4 +15,12 @@ object ContextHolder {
 
 actual val databaseInstance: AppDatabase by lazy{
     return@lazy (getRoomDatabase(getDatabaseBuilder(ContextHolder.context)));
+}
+
+actual object WidgetManager {
+    actual fun updateWidgets() {
+        CoroutineScope(Dispatchers.Main).launch {
+            StreakWidget().updateAll(ContextHolder.context)
+        }
+    }
 }

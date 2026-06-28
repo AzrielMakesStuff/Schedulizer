@@ -30,6 +30,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview) // Defaults
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.security.crypto.ktx) // Storage
+            implementation(libs.androidx.glance.appwidget) // Widgets
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime) // Defaults
