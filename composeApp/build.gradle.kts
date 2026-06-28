@@ -58,7 +58,6 @@ kotlin {
             implementation(libs.screen.size)
 
             implementation(libs.material.icons.extended)
-
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -161,9 +163,9 @@ fun Calendar() {
             val backgroundColor = MaterialTheme.colorScheme.surface
 
             HorizontalCalendar(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.weight(1f),
                 monthBody = { _, content ->
-                    Box(modifier = Modifier.background(backgroundColor)) {
+                    Box(modifier = Modifier.background(backgroundColor).wrapContentHeight()) {
                         content()
                     }
                 },
@@ -227,7 +229,7 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
     var showOverlay by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
-            .aspectRatio(0.55f)
+            .fillMaxWidth()
             .border(
                 color = if ((isToday) && (isMonthDate)) textColor.copy(alpha = 0.8f) else Color.Transparent.copy(
                     alpha = 0.2f

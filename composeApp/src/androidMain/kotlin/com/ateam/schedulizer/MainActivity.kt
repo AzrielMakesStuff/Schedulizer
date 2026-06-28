@@ -2,6 +2,7 @@ package com.ateam.schedulizer
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,6 +22,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        val smallestWidthDp = resources.configuration.smallestScreenWidthDp
+
+        if (smallestWidthDp < 600)
+        {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
 
         val notificationChannel = NotificationChannel(Constants.NOTIF_CHANNEL_ID, Constants.NOTIF_CHANNEL_NAME,
             NotificationManager.IMPORTANCE_DEFAULT)
