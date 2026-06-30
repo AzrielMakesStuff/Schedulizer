@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +32,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,9 +56,11 @@ import com.kizitonwose.calendar.core.daysOfWeek
 import com.kizitonwose.calendar.core.minusMonths
 import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusMonths
+import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.format.DayOfWeekNames
@@ -66,6 +71,10 @@ import kotlin.time.Clock.System
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 fun today() = System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
+private fun formatTime(time: LocalDateTime?) = time?.time?.toString()?.take(5) ?: ""
+
+private fun formatDate(date: LocalDate) =
+    "${date.dayOfWeek.name.take(3)}, ${date.month.name.take(3)} ${date.day}"
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun Calendar() {
@@ -227,6 +236,7 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
     val isToday = day.date == today()
 
     var showOverlay by remember { mutableStateOf(false) }
+    var selectedTask by remember { mutableStateOf<Task?>(null) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -236,7 +246,10 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
                 ),
                 width = 1.5.dp,
             )
-            .clickable(enabled = isMonthDate, onClick = { showOverlay = true })
+            .clickable(enabled = isMonthDate, onClick = {
+                selectedTask = null
+                showOverlay = true
+            })
             .background(
                 color = if ((isToday) && (isMonthDate)) MaterialTheme.colorScheme.primaryContainer.copy(
                     alpha = 0.3f
@@ -284,7 +297,11 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
                                     topEnd = if (isEnd) 2.dp else 0.dp,
                                     bottomEnd = if (isEnd) 2.dp else 0.dp
                                 )
-                            ),
+                            )
+                            .clickable {
+                                selectedTask = task
+                                showOverlay = true
+                            },
                             contentAlignment = Alignment.CenterStart
                     ) {
                         if (isStart || day.date.dayOfWeek == daysOfWeek.first() || day.date.day == 1) {
@@ -300,7 +317,15 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
                         }
                     }
                 } else {
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(14.dp)
+                            .clickable(enabled = isMonthDate) {
+                                selectedTask = null
+                                showOverlay = true
+                            }
+                    )
                 }
             }
         }
@@ -309,7 +334,8 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
                 isVisible = showOverlay,
                 onDismiss = { showOverlay = false },
                 day = day,
-                tasks = tasks
+                tasks = tasks,
+                selectedTask = selectedTask
             )
         }
     }
@@ -321,14 +347,24 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
         isVisible: Boolean,
         onDismiss: () -> Unit,
         day: CalendarDay,
-        tasks: List<Task>
+        tasks: List<Task>,
+        selectedTask: Task? = null
     ) {
+        val scope = rememberCoroutineScope()
         var createTaskDialog by remember { mutableStateOf(false) }
+        var editingTask by remember { mutableStateOf<Task?>(null) }
 
         if (createTaskDialog) {
             TaskDialog(
                 initialDate = day.date,
                 onDismiss = { createTaskDialog = false }
+            )
+        }
+
+        editingTask?.let { task ->
+            TaskDialog(
+                task = task,
+                onDismiss = { editingTask = null }
             )
         }
 
@@ -383,39 +419,75 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
                                         modifier = Modifier.padding(bottom = 16.dp)
                                     )
 
-                                    if (tasks.isNotEmpty()) {
+                                    if (selectedTask != null) {
                                         Text(
-                                            text = "Tasks for Today",
-                                            style = MaterialTheme.typography.bodyLarge,
+                                            text = selectedTask.title,
+                                            style = MaterialTheme.typography.headlineSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.padding(bottom = 4.dp)
                                         )
+                                        Text (
+                                            text = selectedTask.displayName(),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                        )
+                                        val timeInfo = when(selectedTask) {
+                                            is Task.Set -> "${formatTime(selectedTask.start)} - ${formatTime(selectedTask.end)}"
+                                            is Task.Pool -> selectedTask.expiry?.let { "To be Completed by ${formatTime(it)}" } ?: "No End Date"
+                                            else -> "Daily"
+                                        }
+                                        Text(timeInfo, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+                                        if (selectedTask.description.isNotEmpty()) {
+                                            Text(selectedTask.description, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
+                                        }
+                                    }
+                                    IconButton(onClick = { editingTask = task }) {
+                                        Icon(Icons.Outlined.Edit, contentDescription = "Edit Item")
+                                    }
+                                    IconButton(onClick = { scope.launch { databaseInstance.deleteTask(task) } }) {
+                                        Icon(Icons.Outlined.Delete, contentDescription = "Delete Item")
+
+//                                        if (selectedTask.description.isNotEmpty()) {
+//                                            Text(
+//                                                text = selectedTask.description,
+//                                                style = MaterialTheme.typography.bodyLarge,
+//                                                color = MaterialTheme.colorScheme.onSurface,
+//                                                modifier = Modifier.padding(bottom = 8.dp)
+//                                            )
+//                                        }
+//                                        when (selectedTask) {
+//                                            is Task.Set -> {
+//                                                Text("Start: ${selectedTask.start}", style = MaterialTheme.typography.bodySmall)
+//                                                selectedTask.end?.let { Text("End: $it", style = MaterialTheme.typography.bodySmall) }
+//                                            }
+//                                            is Task.Pool -> {
+//                                                selectedTask.expiry?.let { Text("Expiry: $it", style = MaterialTheme.typography.bodySmall) }
+//                                            }
+//                                            else -> {}
+//                                        }
+//                                        tasks.forEach { task ->
+//                                            Text(
+//                                                text = "${task.title} - ${task.displayName()}",
+//                                                color = MaterialTheme.colorScheme.onSurface,
+//                                                modifier = Modifier.padding(vertical = 4.dp)
+//                                            )
+//                                        }
+                                    } else {
+                                        Text("Tasks", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                         tasks.forEach { task ->
-                                            Text(
-                                                text = "${task.title} - ${task.displayName()}",
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                modifier = Modifier.padding(vertical = 4.dp)
+                                            Text("• ${task.title}", modifier = Modifier.padding(vertical = 2.dp))
+                                        }
+                                        if (tasks.isEmpty()) Text("No tasks scheduled", color = Color.Gray)
+                                        Spacer(Modifier.height(24.dp))
+                                        IconButton(onClick = {
+                                            onDismiss()
+                                            createTaskDialog = true
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Add,
+                                                contentDescription = "Create Task",
+                                                tint = MaterialTheme.colorScheme.primary
                                             )
                                         }
-                                    } else {
-                                        Text(
-                                            text = "Add Task?",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.padding(bottom = 4.dp)
-                                        )
-                                    }
-                                    IconButton(onClick = {
-                                        onDismiss()
-                                        createTaskDialog = true
-                                    }) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Add,
-                                            contentDescription = "Create Task",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
                                     }
                                 }
                             }
