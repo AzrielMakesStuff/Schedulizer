@@ -26,7 +26,10 @@
         <activity
             android:name=".WidgetTaskActivity"
             android:theme="@style/Theme.Transparent"
-            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:launchMode="singleTask"
             android:exported="false" />
         <receiver
             android:name=".Receiver"

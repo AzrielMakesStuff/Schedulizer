@@ -44,16 +44,16 @@ class WidgetTaskActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     when (action) {
-                        ACTION_CREATE -> TaskDialog(onDismiss = { finish() })
+                        ACTION_CREATE -> TaskDialog(onDismiss = { finishAndRemoveTask() })
 
                         ACTION_EDIT -> {
                             val task = remember(taskId) {
                                 databaseInstance.tasks.value.find { it.id.toInt() == taskId }
                             }
                             if (task != null) {
-                                TaskDialog(task = task, onDismiss = { finish() })
+                                TaskDialog(task = task, onDismiss = { finishAndRemoveTask() })
                             } else {
-                                finish()
+                                finishAndRemoveTask()
                             }
                         }
 
@@ -62,24 +62,24 @@ class WidgetTaskActivity : ComponentActivity() {
                                 databaseInstance.tasks.value.find { it.id.toInt() == taskId }
                             }
                             if (task == null) {
-                                finish()
+                                finishAndRemoveTask()
                                 return@Surface
                             }
                             val scope = rememberCoroutineScope()
                             AlertDialog(
-                                onDismissRequest = { finish() },
+                                onDismissRequest = { finishAndRemoveTask() },
                                 title = { Text("Delete task") },
                                 text = { Text("Delete \"${task.title}\"? This can't be undone.") },
                                 confirmButton = {
                                     TextButton(onClick = {
                                         scope.launch {
                                             databaseInstance.deleteTask(task)
-                                            finish()
+                                            finishAndRemoveTask()
                                         }
                                     }) { Text("Delete") }
                                 },
                                 dismissButton = {
-                                    TextButton(onClick = { finish() }) { Text("Cancel") }
+                                    TextButton(onClick = { finishAndRemoveTask() }) { Text("Cancel") }
                                 }
                             )
                         }

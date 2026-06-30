@@ -109,6 +109,19 @@ class DeleteTaskAction : ActionCallback {
     }
 }
 
+class OpenActivityAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        context.startActivity(
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        )
+    }
+}
+
 // Widget
 class TaskWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -173,7 +186,7 @@ private fun WidgetContent(tasks: List<Task>) {
     val divider = ColorProvider(Color(0x1A000000), Color(0x1AFFFFFF))
     val headerDivider = ColorProvider(Color(0x33000000), Color(0x33FFFFFF))
 
-    Column(modifier = GlanceModifier.fillMaxSize().background(surface)) {
+    Column(modifier = GlanceModifier.fillMaxSize().background(surface).clickable(actionRunCallback<OpenActivityAction>())) {
 
         // Header
         Row(
@@ -208,7 +221,7 @@ private fun WidgetContent(tasks: List<Task>) {
         // Empty state
         if (tasks.isEmpty()) {
             Box(
-                modifier = GlanceModifier.fillMaxSize(),
+                modifier = GlanceModifier.fillMaxSize().clickable(actionRunCallback<OpenActivityAction>()),
                 contentAlignment = Alignment.Center
             ) {
                 Text("No tasks", style = TextStyle(color = muted, fontSize = 13.sp))
@@ -358,6 +371,15 @@ private fun WidgetContent(tasks: List<Task>) {
                             .background(divider)
                     ) {}
                 }
+            }
+
+            item {
+                Box(
+                    modifier = GlanceModifier
+                        .fillMaxSize()
+                        .height(1500.dp)
+                        .clickable(actionRunCallback<OpenActivityAction>()),
+                ) {}
             }
         }
     }
