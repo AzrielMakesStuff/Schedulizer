@@ -440,11 +440,11 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
                                             Text(selectedTask.description, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
                                         }
                                     }
-                                    IconButton(onClick = { editingTask = task }) {
-                                        Icon(Icons.Outlined.Edit, contentDescription = "Edit Item")
-                                    }
-                                    IconButton(onClick = { scope.launch { databaseInstance.deleteTask(task) } }) {
-                                        Icon(Icons.Outlined.Delete, contentDescription = "Delete Item")
+//                                    IconButton(onClick = { editingTask = task }) {
+//                                        Icon(Icons.Outlined.Edit, contentDescription = "Edit Item")
+//                                    }
+//                                    IconButton(onClick = { scope.launch { databaseInstance.deleteTask(task) } }) {
+//                                        Icon(Icons.Outlined.Delete, contentDescription = "Delete Item")
 
 //                                        if (selectedTask.description.isNotEmpty()) {
 //                                            Text(
@@ -471,24 +471,24 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>) {
 //                                                modifier = Modifier.padding(vertical = 4.dp)
 //                                            )
 //                                        }
-                                    } else {
-                                        Text("Tasks", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                        tasks.forEach { task ->
-                                            Text("• ${task.title}", modifier = Modifier.padding(vertical = 2.dp))
-                                        }
-                                        if (tasks.isEmpty()) Text("No tasks scheduled", color = Color.Gray)
-                                        Spacer(Modifier.height(24.dp))
-                                        IconButton(onClick = {
-                                            onDismiss()
-                                            createTaskDialog = true
-                                        }) {
-                                            Icon(
-                                                imageVector = Icons.Filled.Add,
-                                                contentDescription = "Create Task",
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                    }
+//                                    } else {
+//                                        Text("Tasks", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+//                                        tasks.forEach { task ->
+//                                            Text("• ${task.title}", modifier = Modifier.padding(vertical = 2.dp))
+//                                        }
+//                                        if (tasks.isEmpty()) Text("No tasks scheduled", color = Color.Gray)
+//                                        Spacer(Modifier.height(24.dp))
+//                                        IconButton(onClick = {
+//                                            onDismiss()
+//                                            createTaskDialog = true
+//                                        }) {
+//                                            Icon(
+//                                                imageVector = Icons.Filled.Add,
+//                                                contentDescription = "Create Task",
+//                                                tint = MaterialTheme.colorScheme.primary
+//                                            )
+//                                        }
+//                                    }
                                 }
                             }
                         }
