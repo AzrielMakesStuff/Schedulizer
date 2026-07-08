@@ -13,6 +13,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
@@ -37,7 +38,10 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.minus
 
 // Action parameter keys
-private val taskIdKey = ActionParameters.Key<Int>("task_id")
+private val taskIdKey = ActionParameters.Key<Long>("task_id")
+private val taskTypeKey = ActionParameters.Key<String>("task_type")
+
+fun List<Task>.findByIdAndType(id: Long, type: String): Task? = find { it.id == id && it.typeTag() == type }
 
 // Toggle
 class ToggleTaskAction : ActionCallback {
@@ -45,8 +49,9 @@ class ToggleTaskAction : ActionCallback {
         context: Context, glanceId: GlanceId, parameters: ActionParameters
     ) {
         val id = parameters[taskIdKey] ?: return
+        val type = parameters[taskTypeKey] ?: return
         val allTasks = databaseInstance.getAll()
-        val task = allTasks.find { it.id.toInt() == id } ?: return
+        val task = allTasks.findByIdAndType(id, type) ?: return
         val updated = when (task) {
             is Task.Daily -> {
                 val alreadyDone = task.lastCompleted?.date == today()
@@ -85,10 +90,12 @@ class EditTaskAction : ActionCallback {
         context: Context, glanceId: GlanceId, parameters: ActionParameters
     ) {
         val id = parameters[taskIdKey] ?: return
+        val type = parameters[taskTypeKey] ?: return
         context.startActivity(
             Intent(context, WidgetTaskActivity::class.java)
                 .putExtra(WidgetTaskActivity.EXTRA_ACTION, WidgetTaskActivity.ACTION_EDIT)
                 .putExtra(WidgetTaskActivity.EXTRA_TASK_ID, id)
+                .putExtra(WidgetTaskActivity.EXTRA_TASK_TYPE, type)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         )
     }
@@ -100,10 +107,12 @@ class DeleteTaskAction : ActionCallback {
         context: Context, glanceId: GlanceId, parameters: ActionParameters
     ) {
         val id = parameters[taskIdKey] ?: return
+        val type = parameters[taskTypeKey] ?: return
         context.startActivity(
             Intent(context, WidgetTaskActivity::class.java)
                 .putExtra(WidgetTaskActivity.EXTRA_ACTION, WidgetTaskActivity.ACTION_DELETE)
                 .putExtra(WidgetTaskActivity.EXTRA_TASK_ID, id)
+                .putExtra(WidgetTaskActivity.EXTRA_TASK_TYPE, type)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         )
     }
@@ -187,6 +196,8 @@ private fun WidgetContent(tasks: List<Task>) {
     val divider = ColorProvider(Color(0x1A000000), Color(0x1AFFFFFF))
     val headerDivider = ColorProvider(Color(0x33000000), Color(0x33FFFFFF))
 
+    val widgetHeight = LocalSize.current.height
+
     Column(modifier = GlanceModifier.fillMaxSize().background(surface).clickable(actionRunCallback<OpenActivityAction>())) {
 
         // Header
@@ -258,7 +269,6 @@ private fun WidgetContent(tasks: List<Task>) {
                     is Task.Pool -> if (task.expiry != null) "Expires ${task.expiry.fmt()}" else "No expiry"
                     is Task.Daily -> "Daily task"
                 }
-                val id = task.id.toInt()
 
                 Column(modifier = GlanceModifier.fillMaxWidth()) {
                     Row(
@@ -282,7 +292,10 @@ private fun WidgetContent(tasks: List<Task>) {
                                 .size(28.dp)
                                 .clickable(
                                     actionRunCallback<ToggleTaskAction>(
-                                        actionParametersOf(taskIdKey to id)
+                                        actionParametersOf(
+                                            taskIdKey to task.id,
+                                                taskTypeKey to task.typeTag()
+                                            )
                                     )
                                 )
                                 .padding(end = 6.dp)
@@ -340,7 +353,10 @@ private fun WidgetContent(tasks: List<Task>) {
                                     .size(28.dp)
                                     .clickable(
                                         actionRunCallback<EditTaskAction>(
-                                            actionParametersOf(taskIdKey to id)
+                                            actionParametersOf(
+                                                taskIdKey to task.id,
+                                                taskTypeKey to task.typeTag()
+                                            )
                                         )
                                     )
                                     .padding(horizontal = 2.dp)
@@ -358,7 +374,10 @@ private fun WidgetContent(tasks: List<Task>) {
                                 .size(28.dp)
                                 .clickable(
                                     actionRunCallback<DeleteTaskAction>(
-                                        actionParametersOf(taskIdKey to id)
+                                        actionParametersOf(
+                                            taskIdKey to task.id,
+                                                taskTypeKey to task.typeTag()
+                                            )
                                     )
                                 )
                                 .padding(start = 2.dp)
@@ -378,7 +397,7 @@ private fun WidgetContent(tasks: List<Task>) {
                 Box(
                     modifier = GlanceModifier
                         .fillMaxSize()
-                        .height(1500.dp)
+                        .height(widgetHeight)
                         .clickable(actionRunCallback<OpenActivityAction>()),
                 ) {}
             }

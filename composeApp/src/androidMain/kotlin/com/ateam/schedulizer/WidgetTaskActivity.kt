@@ -16,6 +16,7 @@ class WidgetTaskActivity : ComponentActivity() {
     companion object {
         const val EXTRA_ACTION = "widget_action"
         const val EXTRA_TASK_ID = "task_id"
+        const val EXTRA_TASK_TYPE = "task_type"
 
         const val ACTION_CREATE = "create"
         const val ACTION_EDIT = "edit"
@@ -36,7 +37,8 @@ class WidgetTaskActivity : ComponentActivity() {
 
     private fun handleIntent() {
         val action = intent.getStringExtra(EXTRA_ACTION) ?: ACTION_CREATE
-        val taskId = intent.getIntExtra(EXTRA_TASK_ID, -1)
+        val taskId = intent.getLongExtra(EXTRA_TASK_ID, -1)
+        val taskType = intent.getStringExtra(EXTRA_TASK_TYPE)
 
         setContent {
             AppTheme {
@@ -47,8 +49,8 @@ class WidgetTaskActivity : ComponentActivity() {
                         ACTION_CREATE -> TaskDialog(onDismiss = { finishAndRemoveTask() })
 
                         ACTION_EDIT -> {
-                            val task = remember(taskId) {
-                                databaseInstance.tasks.value.find { it.id.toInt() == taskId }
+                            val task = remember(taskId, taskType) {
+                                databaseInstance.tasks.value.findByIdAndType(taskId, taskType ?: "")
                             }
                             if (task != null) {
                                 TaskDialog(task = task, onDismiss = { finishAndRemoveTask() })
@@ -58,8 +60,8 @@ class WidgetTaskActivity : ComponentActivity() {
                         }
 
                         ACTION_DELETE -> {
-                            val task = remember(taskId) {
-                                databaseInstance.tasks.value.find { it.id.toInt() == taskId }
+                            val task = remember(taskId, taskType) {
+                                databaseInstance.tasks.value.findByIdAndType(taskId, taskType ?: "")
                             }
                             if (task == null) {
                                 finishAndRemoveTask()

@@ -48,4 +48,10 @@ sealed class Task {
         override val reminderSchedule: ReminderSchedule,
         val lastCompleted: LocalDateTime?,
     ) : Task()
+
+    fun typeTag(): String = when (this) {
+        is Daily -> "Daily"
+        is Set -> "Set"
+        is Pool -> "Pool"
+    }
 }
