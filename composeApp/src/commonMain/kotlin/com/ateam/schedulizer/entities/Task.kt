@@ -3,6 +3,7 @@ package com.ateam.schedulizer.entities
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.ateam.schedulizer.ReminderSchedule
+import com.ateam.schedulizer.today
 import kotlinx.datetime.LocalDateTime
 
 sealed class Task {
@@ -53,5 +54,11 @@ sealed class Task {
         is Daily -> "Daily"
         is Set -> "Set"
         is Pool -> "Pool"
+    }
+
+    fun isComplete(): Boolean = when (this) {
+        is Daily -> lastCompleted?.date == today()
+        is Set -> completed
+        is Pool -> completed
     }
 }

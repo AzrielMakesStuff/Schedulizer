@@ -10,8 +10,11 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atTime
+import kotlinx.datetime.toLocalDateTime
 import kotlin.random.Random
+import kotlin.time.Clock
 
 class Receiver : BroadcastReceiver() {
     @OptIn(DelicateCoroutinesApi::class)
@@ -29,19 +32,24 @@ class Receiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         GlobalScope.launch {
             try {
-                // Ensure DB is loaded before reading
                 databaseInstance.refresh()
                 val task = databaseInstance.tasks.value.find { it.id.toInt() == id } ?: return@launch
-                val currentDate = LocalDate.now()
-                val nextDate = task.reminderSchedule.nextFireDate(currentDate)
-                if (nextDate != null) {
-                    val time = databaseInstance.settings.value?.notificationTime
-                    NotificationSystem.scheduleNotification(
-                        task.title,
-                        task.description,
-                        nextDate.atTime(time?.hour ?: 12, time?.minute ?: 0, 0),
-                        task.id.toInt()
-                    )
+                if (!task.isComplete()) {
+                    val currentDate = LocalDate.now()
+                    val nextDate = task.reminderSchedule.nextFireDate(currentDate)
+                    if (nextDate != null) {
+                        val time = databaseInstance.settings.value?.notificationTime
+                        val nextDateTime = nextDate.atTime(time?.hour ?: 12, time?.minute ?: 0, 0)
+                        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                        if (nextDateTime > now) {
+                            NotificationSystem.scheduleNotification(
+                                task.title,
+                                task.description,
+                                nextDateTime,
+                                task.id.toInt()
+                            )
+                        }
+                    }
                 }
             } finally {
                 pendingResult.finish()

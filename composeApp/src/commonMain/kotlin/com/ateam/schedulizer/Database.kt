@@ -79,19 +79,21 @@ abstract class AppDatabase : RoomDatabase() {
 
     suspend fun createTask(task: Task) {
         NotificationSystem.clearNotification(task)
-        val currentDate = LocalDate.now()
-        val nextDate = task.reminderSchedule.nextFireDate(currentDate)
-        if (nextDate != null) {
-            val time = (_settings.value ?: taskDao().getSettings() ?: Settings()).notificationTime
-            val nextDateTime = nextDate.atTime(time.hour, time.minute, 0)
-            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-            if (nextDateTime > now) {
-                NotificationSystem.scheduleNotification(
-                    task.title,
-                    task.description,
-                    nextDateTime,
-                    task.id.toInt()
-                )
+        if (!task.isComplete()) {
+            val currentDate = LocalDate.now()
+            val nextDate = task.reminderSchedule.nextFireDate(currentDate)
+            if (nextDate != null) {
+                val time = (_settings.value ?: taskDao().getSettings() ?: Settings()).notificationTime
+                val nextDateTime = nextDate.atTime(time.hour, time.minute, 0)
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                if (nextDateTime > now) {
+                    NotificationSystem.scheduleNotification(
+                        task.title,
+                        task.description,
+                        nextDateTime,
+                        task.id.toInt()
+                    )
+                }
             }
         }
         when (task) {
@@ -119,9 +121,10 @@ abstract class AppDatabase : RoomDatabase() {
         val currentDate = LocalDate.now()
         tasks.forEach { task ->
             NotificationSystem.clearNotification(task)
+            if (task.isComplete()) return@forEach
             val nextDate = task.reminderSchedule.nextFireDate(currentDate) ?: return@forEach
             val nextDateTime = nextDate.atTime(time.hour, time.minute, 0)
-            if (nextDateTime <= now) return@forEach  // skip past times
+            if (nextDateTime <= now) return@forEach
             NotificationSystem.scheduleNotification(
                 task.title,
                 task.description,
