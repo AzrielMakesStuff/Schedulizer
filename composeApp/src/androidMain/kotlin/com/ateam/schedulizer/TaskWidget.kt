@@ -125,6 +125,7 @@ class OpenActivityAction : ActionCallback {
 // Widget
 class TaskWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        databaseInstance.refresh()
         provideContent {
             val tasks by databaseInstance.tasks.collectAsState()
             val filtered = remember(tasks) {

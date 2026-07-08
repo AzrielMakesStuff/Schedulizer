@@ -22,7 +22,7 @@ import com.ateam.schedulizer.entities.Task
 
 class StreakWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        //databaseInstance.refresh()
+        databaseInstance.refresh()
         provideContent {
             val tasks by databaseInstance.tasks.collectAsState()
             val streak by databaseInstance.streak.collectAsState()
