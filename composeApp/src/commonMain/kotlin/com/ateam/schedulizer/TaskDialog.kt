@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.ateam.schedulizer.entities.Task
+import com.kizitonwose.calendar.core.now
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -68,7 +69,6 @@ fun ReminderSchedulePicker(
     var expanded by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf(scheduleToType(schedule)) }
 
-    // Sub-fields
     var nDays by remember { mutableStateOf(
         (schedule as? ReminderSchedule.EveryNDays)?.days?.toString() ?: "2") }
     var weeklyDay by remember { mutableStateOf(
@@ -81,26 +81,36 @@ fun ReminderSchedulePicker(
     var ordinalDay by remember { mutableStateOf(
         (schedule as? ReminderSchedule.MonthlyByWeekday)?.dayOfWeek ?: 1) }
 
-    // Emit updated schedule whenever sub fields change
+    // Time-of-day, shared across all schedule types
+    var hour by remember { mutableStateOf(if (schedule is ReminderSchedule.None) 5 else schedule.time.hour) }
+    var minute by remember { mutableStateOf(if (schedule is ReminderSchedule.None) 0 else schedule.time.minute) }
+
+    // Anchor only matters for EveryNDays — fixed once, at whatever date the
+    // task already had, or today for a brand new task. Never silently recomputed.
+    val anchor = remember {
+        (schedule as? ReminderSchedule.EveryNDays)?.anchor ?: LocalDate.now()
+    }
+
     fun emit() {
+        val time = LocalTime(hour, minute)
         val s = when (selectedType) {
-            "Daily" -> ReminderSchedule.EveryNDays(1)
-            "Every N Days" -> ReminderSchedule.EveryNDays(nDays.toIntOrNull()?.coerceAtLeast(2) ?: 2)
-            "Weekly" -> ReminderSchedule.Weekly(weeklyDay)
-            "Fortnightly" -> ReminderSchedule.Fortnightly(weeklyDay, 0)
-            "Monthly by Date" -> ReminderSchedule.MonthlyByDate(monthDay)
-            "Monthly by Weekday" -> ReminderSchedule.MonthlyByWeekday(ordinal, ordinalDay)
+            "Daily" -> ReminderSchedule.EveryNDays(1, anchor, time)
+            "Every N Days" -> ReminderSchedule.EveryNDays(
+                nDays.toIntOrNull()?.coerceAtLeast(2) ?: 2, anchor, time
+            )
+            "Weekly" -> ReminderSchedule.Weekly(weeklyDay, time)
+            "Fortnightly" -> ReminderSchedule.Fortnightly(weeklyDay, 0, time)
+            "Monthly by Date" -> ReminderSchedule.MonthlyByDate(monthDay, time)
+            "Monthly by Weekday" -> ReminderSchedule.MonthlyByWeekday(ordinal, ordinalDay, time)
             else -> ReminderSchedule.None
         }
         onScheduleChange(s)
     }
 
-    val dayNames = listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")
     val ordinalLabels = listOf("1st","2nd","3rd","4th","Last")
     val ordinalValues = listOf(1, 2, 3, 4, -1)
 
     Column(modifier = modifier) {
-        // Type selector
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
             OutlinedTextField(
                 value = selectedType,
@@ -148,15 +158,40 @@ fun ReminderSchedulePicker(
                 )
             }
             "Monthly by Weekday" -> {
-                // Ordinal picker (1st–4th, Last)
                 OrdinalPicker(
-                    labels  = ordinalLabels,
-                    values  = ordinalValues,
+                    labels = ordinalLabels,
+                    values = ordinalValues,
                     selected = ordinal,
                     onSelected = { ordinal = it; emit() }
                 )
                 Spacer(Modifier.height(8.dp))
                 DayOfWeekPicker(selected = ordinalDay) { ordinalDay = it; emit() }
+            }
+        }
+
+        if (selectedType != "None") {
+            Spacer(Modifier.height(8.dp))
+            Text("Reminder Time", style = MaterialTheme.typography.labelMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    NumberScrollPicker(
+                        range = 0..23,
+                        selected = hour,
+                        onSelected = { hour = it; emit() }
+                    )
+                }
+                Text(":", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 4.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    NumberScrollPicker(
+                        range = 0..59,
+                        selected = minute,
+                        onSelected = { minute = it; emit() }
+                    )
+                }
             }
         }
     }
@@ -227,8 +262,6 @@ fun TaskDialog(
 ) {
     val isEditing = task != null
     val timeZone = TimeZone.currentSystemDefault()
-    val now = remember { Clock.System.now() }
-    val today = remember { now.toLocalDateTime(timeZone) }
     val coroutineScope = rememberCoroutineScope()
 
     var taskTypeSelection by remember {

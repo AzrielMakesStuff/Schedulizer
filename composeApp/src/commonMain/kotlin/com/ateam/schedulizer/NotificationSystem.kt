@@ -4,9 +4,9 @@ import com.ateam.schedulizer.entities.Task
 import kotlinx.datetime.LocalDateTime
 
 expect object NotificationSystem {
-    fun scheduleNotification(title : String, body: String, time : LocalDateTime,code : Int)
+    fun scheduleNotification(title : String, body: String, time: LocalDateTime, task: Task)
     fun clearAllNotifications()
     fun clearNotification(task : Task)
-    fun clearNotificationById(id : Int)
+    fun clearNotificationById(id : Long, type: String)
 
 }

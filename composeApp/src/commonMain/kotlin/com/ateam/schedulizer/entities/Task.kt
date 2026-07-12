@@ -61,4 +61,13 @@ sealed class Task {
         is Set -> completed
         is Pool -> completed
     }
+
+    fun notificationCode(): Int {
+        val tag = when (this) {
+            is Set -> 1
+            is Pool -> 2
+            is Daily -> 3
+        }
+        return (id.toInt() * 4) + tag
+    }
 }

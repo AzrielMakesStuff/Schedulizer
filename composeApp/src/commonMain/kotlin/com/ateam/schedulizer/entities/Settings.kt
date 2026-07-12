@@ -10,5 +10,4 @@ data class Settings(
     @PrimaryKey
     val id: Long = 1,
     val colourMode: Byte = 0, // 0: Auto, 1: Dark Mode, 2: Light Mode (EW)
-    val notificationTime: LocalTime = LocalTime(hour = 8, minute = 0), // Time of day to receive reminders
 )

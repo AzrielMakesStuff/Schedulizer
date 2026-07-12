@@ -11,7 +11,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.app.NotificationCompat
@@ -21,69 +20,68 @@ import kotlinx.datetime.number
 import java.util.Calendar
 
 actual object NotificationSystem {
-    fun createNotification(title: String, body : String): Notification {
-    return NotificationCompat.Builder(ContextHolder.context, Constants.NOTIF_CHANNEL_ID).setPriority(
-        NotificationManager.IMPORTANCE_DEFAULT).setContentText(body).setContentTitle(title).setSmallIcon(R.drawable.ic_stat_name).build()
+    fun createNotification(title: String, body: String): Notification {
+        return NotificationCompat.Builder(ContextHolder.context, Constants.NOTIF_CHANNEL_ID).setPriority(
+            NotificationManager.IMPORTANCE_DEFAULT).setContentText(body).setContentTitle(title).setSmallIcon(R.drawable.ic_stat_name).build()
     }
 
-    actual fun scheduleNotification(title: String, body: String, time: LocalDateTime, code: Int) {
+    private fun requestCode(id: Long, type: String): Int {
+        val tag = when (type) {
+            "Set" -> 1
+            "Pool" -> 2
+            "Daily" -> 3
+            else -> 0
+        }
+        return (id.toInt() * 4) + tag
+    }
+
+    actual fun scheduleNotification(title: String, body: String, time: LocalDateTime, task: Task) {
         val intent = Intent(ContextHolder.context, Receiver::class.java)
         intent.putExtra("title_key", title)
         intent.putExtra("body_key", body)
-        intent.putExtra("task_id", code)
-        Log.d("NotifDebug", "Scheduling: code=$code component=${intent.component} filterHash=${intent.filterHashCode()}")
+        intent.putExtra("task_id", task.id)
+        intent.putExtra("task_type", task.typeTag())
+        val code = requestCode(task.id, task.typeTag())
         val pendingIntent = PendingIntent.getBroadcast(
             ContextHolder.context, code, intent,
             PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        Log.d("NotifDebug", "PendingIntent creatorPackage=${pendingIntent.creatorPackage} toString=${pendingIntent}")
         val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val calendar = Calendar.getInstance()
         calendar.set(time.year, time.month.number - 1, time.day, time.hour, time.minute, time.second)
-        Log.d("NotifDebug", "Setting alarm for: ${calendar.time} millis=${calendar.timeInMillis}")
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-        Log.d("NotifDebug", "Alarm set done")
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     fun requestPermission(activity: Activity) {
         when {
-            ContextHolder.context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {
-            }
-            else -> {
-                requestPermissions(activity,
-                     arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2323)
-            }
+            ContextHolder.context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {}
+            else -> requestPermissions(activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2323)
         }
     }
-
 
     actual fun clearAllNotifications() {
         val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         databaseInstance.tasks.value.forEach {
             val intent = Intent(ContextHolder.context, Receiver::class.java)
+            val code = requestCode(it.id, it.typeTag())
             val pendingIntent = PendingIntent.getBroadcast(
-                ContextHolder.context, it.id.toInt(), intent, FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                ContextHolder.context, code, intent, FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             alarmManager.cancel(pendingIntent)
         }
     }
 
     actual fun clearNotification(task: Task) {
-        val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(ContextHolder.context, Receiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            ContextHolder.context, task.id.toInt(), intent,
-            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
-        ) ?: return
-        alarmManager.cancel(pendingIntent)
+        clearNotificationById(task.id, task.typeTag())
     }
 
-    actual fun clearNotificationById(id: Int) {
+    actual fun clearNotificationById(id: Long, type: String) {
         val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(ContextHolder.context, Receiver::class.java)
+        val code = requestCode(id, type)
         val pendingIntent = PendingIntent.getBroadcast(
-            ContextHolder.context, id, intent,
+            ContextHolder.context, code, intent,
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
         ) ?: return
         alarmManager.cancel(pendingIntent)

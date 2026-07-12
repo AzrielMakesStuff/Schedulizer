@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
@@ -37,18 +39,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
+import cafe.adriel.voyager.navigator.internal.BackHandler
 import com.ateam.schedulizer.entities.Task
+import kotlinx.datetime.LocalDateTime
 import org.jetbrains.compose.resources.painterResource
 import schedulizer.composeapp.generated.resources.Res
 import schedulizer.composeapp.generated.resources.streak_complete
 import schedulizer.composeapp.generated.resources.streak_incomplete
 import schedulizer.composeapp.generated.resources.streakbackground
 
+@OptIn(InternalVoyagerApi::class)
 @Composable
 fun HomeScreen()
 {
-    val tasks by databaseInstance.tasks.collectAsState(initial = emptyList())
-
     val streakStatus = remember { mutableStateOf(AppDatabase.StreakStatus(
         lost = false,
         completedToday = false
@@ -62,6 +66,11 @@ fun HomeScreen()
     val streak by databaseInstance.streak.collectAsState()
 
     var createTaskDialog by remember { mutableStateOf(false) }
+    var editingTask by remember { mutableStateOf<Task?>(null) }
+
+    BackHandler(enabled = editingTask != null) {
+        editingTask = null
+    }
 
     if (createTaskDialog) {
         TaskDialog(
@@ -69,132 +78,116 @@ fun HomeScreen()
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-    )
-    {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.3f)
-                .padding(15.dp)
-                .clip(RoundedCornerShape(30.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(Res.drawable.streakbackground),
-                alpha = 0.5f,
-                contentDescription = null,
-                modifier = Modifier.matchParentSize(),
-                contentScale = ContentScale.Crop,
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .padding(15.dp),
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.Top
-            )
-            {
-                Image(
-                    painter = painterResource(if (streakStatus.value.completedToday) Res.drawable.streak_complete else Res.drawable.streak_incomplete),
-                    contentDescription = "Streak",
-                )
+    val tasks by databaseInstance.tasks.collectAsState()
+    val filteredTasks = remember(tasks) {
+        tasks.filter { task ->
+            when (task) {
+                is Task.Daily -> true
+                is Task.Set -> {
+                    if (task.completed) {
+                        val completedYesterday = task.completionDate?.date?.let { it < today() } ?: false
+                        val pastEnd = task.end?.let { it < now() } ?: true
+                        !(completedYesterday && pastEnd)
+                    } else true
+                }
+                is Task.Pool -> {
+                    if (task.completed) {
+                        val completedYesterday = task.completionDate?.date?.let { it < today() } ?: false
+                        val pastExpiry = task.expiry?.let { it < now() } ?: true
+                        !(completedYesterday && pastExpiry)
+                    } else true
+                }
             }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .padding(
-                        start = 15.dp,
-                        end = 60.dp,
-                        top = 15.dp,
-                        bottom = 15.dp,
-                    ),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.Center
-            )
-            {
-                val streakNow = streak + if (streakStatus.value.completedToday) 1 else 0
-                Text(
-                    //The streak number value is here
-                    text = "$streakNow Day${if (streakNow != 1) "s" else ""}",
-                    autoSize = TextAutoSize.StepBased(
-                        minFontSize = 10.sp,
-                        maxFontSize = 20.sp,
-                    ),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                )
+        }.sortedWith(compareBy(
+            { task ->
+                when (task) {
+                    is Task.Daily if task.lastCompleted?.date == today() -> 1
+                    is Task.Set if task.completed -> 1
+                    is Task.Pool if task.completed -> 1
+                    else -> 0
+                }
+            },
+            { if (it is Task.Daily) 0 else 1 },
+            { task ->
+                when (task) {
+                    is Task.Pool -> task.expiry ?: LocalDateTime(today(), kotlinx.datetime.LocalTime(23, 30))
+                    is Task.Set -> task.start
+                    is Task.Daily -> task.lastCompleted ?: LocalDateTime(today(), kotlinx.datetime.LocalTime(0, 0))
+                }
             }
-        }
+        ))
+    }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
+    LazyColumn(Modifier.fillMaxSize()) {
+        item {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(0.3f)
-                    .padding(
-                        top = 5.dp,
-                        bottom = 15.dp,
-                        start = 15.dp,
-                        end = 15.dp
-                    )
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-                contentAlignment = Alignment.TopCenter
+                    .padding(15.dp)
+                    .clip(RoundedCornerShape(30.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
+                Image(
+                    painter = painterResource(Res.drawable.streakbackground),
+                    alpha = 0.5f,
+                    contentDescription = null,
+                    modifier = Modifier.matchParentSize(),
+                    contentScale = ContentScale.Crop,
+                )
+
+                Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .fillMaxHeight()
-                        .padding(top = 10.dp),
-                    contentAlignment = Alignment.TopCenter
+                        .padding(15.dp),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.Top
                 )
                 {
-                    Text(
-                        text = "Daily Task",
-                        fontWeight = FontWeight.Bold,
+                    Image(
+                        painter = painterResource(if (streakStatus.value.completedToday) Res.drawable.streak_complete else Res.drawable.streak_incomplete),
+                        contentDescription = "Streak",
                     )
                 }
-
-                Box(
+                Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .fillMaxHeight()
+                        .padding(
+                            start = 15.dp,
+                            end = 60.dp,
+                            top = 15.dp,
+                            bottom = 15.dp,
+                        ),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.Center
                 )
                 {
+                    val streakNow = streak + if (streakStatus.value.completedToday) 1 else 0
                     Text(
-                        text = "Put a random task here or something",
+                        //The streak number value is here
+                        text = "$streakNow Day${if (streakNow != 1) "s" else ""}",
+                        autoSize = TextAutoSize.StepBased(
+                            minFontSize = 10.sp,
+                            maxFontSize = 20.sp,
+                        ),
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold,
                     )
                 }
-
             }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth()
-                .padding(
-                    top = 5.dp,
-                    bottom = 15.dp,
-                    start = 15.dp,
-                    end = 15.dp
-                )
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-        )
-        {
-            Column(modifier = Modifier.fillMaxSize())
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        vertical = 5.dp,
+                        horizontal = 15.dp
+                    )
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+            )
             {
                 Row(
                     modifier = Modifier
@@ -268,37 +261,43 @@ fun HomeScreen()
                         )
                     }
                 }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(2.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            )
+            {
+                Text(
+                    text = "Tasks",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineMedium
                 )
-                {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(10.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                IconButton(onClick = {
+                    createTaskDialog = true
+                }) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "Create Task",
+                        tint = MaterialTheme.colorScheme.primary,
                     )
-                    {
-                        Text(
-                            text = "Tasks",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-                        IconButton(onClick = {
-                            createTaskDialog = true
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = "Create Task",
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    }
                 }
             }
         }
+        items(filteredTasks) { task ->
+            TaskTile(task,
+                onScrollToTop = {},
+                editTask = {
+                    editingTask = task
+                }
+            )
+        }
+    }
+
+    editingTask?.let { taskToEdit ->
+        TaskDialog(task = taskToEdit, onDismiss = { editingTask = null })
     }
 }

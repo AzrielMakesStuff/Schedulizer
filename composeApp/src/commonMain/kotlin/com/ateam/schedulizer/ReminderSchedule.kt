@@ -3,52 +3,60 @@ package com.ateam.schedulizer
 import kotlinx.datetime.*
 
 /**
- * How often a reminder fires.
+ * How often a reminder fires, and at what time of day.
  */
 sealed class ReminderSchedule {
-    data class EveryNDays(val days: Int) : ReminderSchedule()
+    abstract val time: LocalTime
 
-    /**
-     * Weekly - fires on a specific day of the week.
-     * [dayOfWeek] 1 = Monday - 7 = Sunday
-     */
-    data class Weekly(val dayOfWeek: Int) : ReminderSchedule()
+    data class EveryNDays(
+        val days: Int,
+        val anchor: LocalDate,
+        override val time: LocalTime
+    ) : ReminderSchedule()
 
-    /**
-     * Fortnightly - same as weekly but skips alternate weeks.
-     * [dayOfWeek] 1-7.
-     * [weekParity] 0 or 1 - which of the two alternating weeks to fire on.
-     */
-    data class Fortnightly(val dayOfWeek: Int, val weekParity: Int) : ReminderSchedule()
+    /** [dayOfWeek] 1 = Monday - 7 = Sunday */
+    data class Weekly(val dayOfWeek: Int, override val time: LocalTime) : ReminderSchedule()
 
-    /**
-     * Monthly by day of month, e.g. every 15th.
-     * Clamped to last day when the month is shorter.
-     */
-    data class MonthlyByDate(val dayOfMonth: Int) : ReminderSchedule()
+    /** [dayOfWeek] 1-7. [weekParity] 0 or 1. */
+    data class Fortnightly(
+        val dayOfWeek: Int,
+        val weekParity: Int,
+        override val time: LocalTime
+    ) : ReminderSchedule()
 
-    /**
-     * Monthly by ordinal weekday, e.g.: "2nd Tuesday".
-     * [ordinal] 1-4; -1 = last.
-     * [dayOfWeek] 1-7.
-     */
-    data class MonthlyByWeekday(val ordinal: Int, val dayOfWeek: Int) : ReminderSchedule()
+    /** Clamped to last day when the month is shorter. */
+    data class MonthlyByDate(val dayOfMonth: Int, override val time: LocalTime) : ReminderSchedule()
+
+    /** [ordinal] 1-4; -1 = last. [dayOfWeek] 1-7. */
+    data class MonthlyByWeekday(
+        val ordinal: Int,
+        val dayOfWeek: Int,
+        override val time: LocalTime
+    ) : ReminderSchedule()
 
     /** No reminders. */
-    data object None : ReminderSchedule()
+    data object None : ReminderSchedule() {
+        override val time: LocalTime = LocalTime(5, 0) // unused for scheduling; kept as a sane default
+    }
 }
 
-fun ReminderSchedule.displayName(): String = when (this) {
-    is ReminderSchedule.EveryNDays -> if (days == 1) "Daily" else "Every $days days"
-    is ReminderSchedule.Weekly -> "Weekly (${isoDayName(dayOfWeek)})"
-    is ReminderSchedule.Fortnightly -> "Fortnightly (${isoDayName(dayOfWeek)})"
-    is ReminderSchedule.MonthlyByDate -> "Monthly on the ${ordinalSuffix(dayOfMonth)}"
-    is ReminderSchedule.MonthlyByWeekday -> {
-        val ord = if (ordinal == -1) "last" else ordinalSuffix(ordinal)
-        "Monthly — $ord ${isoDayName(dayOfWeek)}"
+fun ReminderSchedule.displayName(): String {
+    val t = timeSuffix()
+    return when (this) {
+        is ReminderSchedule.EveryNDays -> (if (days == 1) "Daily" else "Every $days days") + t
+        is ReminderSchedule.Weekly -> "Weekly (${isoDayName(dayOfWeek)})$t"
+        is ReminderSchedule.Fortnightly -> "Fortnightly (${isoDayName(dayOfWeek)})$t"
+        is ReminderSchedule.MonthlyByDate -> "Monthly on the ${ordinalSuffix(dayOfMonth)}$t"
+        is ReminderSchedule.MonthlyByWeekday -> {
+            val ord = if (ordinal == -1) "last" else ordinalSuffix(ordinal)
+            "Monthly — $ord ${isoDayName(dayOfWeek)}$t"
+        }
+        is ReminderSchedule.None -> "No reminders"
     }
-    is ReminderSchedule.None -> "No reminders"
 }
+
+private fun ReminderSchedule.timeSuffix(): String =
+    if (this is ReminderSchedule.None) "" else " at ${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"
 
 private fun isoDayName(iso: Int) = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")[iso - 1]
 
@@ -61,14 +69,21 @@ private fun ordinalSuffix(n: Int) = "$n" + when {
 }
 
 /**
- * Returns the next date on or after [from] that this schedule fires.
+ * Returns the next date on or after [from] that this schedule's day-pattern fires.
+ * Does NOT consider time-of-day or "now" — use [nextFireDateTime] for that.
  * Returns null for [ReminderSchedule.None].
  */
 fun ReminderSchedule.nextFireDate(from: LocalDate): LocalDate? = when (this) {
     is ReminderSchedule.None -> null
-    is ReminderSchedule.EveryNDays -> from
+
+    is ReminderSchedule.EveryNDays -> {
+        val diff = from.toEpochDays() - anchor.toEpochDays()
+        val remainder = ((diff % days) + days) % days
+        if (remainder == 0L) from else from.plus(days - remainder, DateTimeUnit.DAY)
+    }
+
     is ReminderSchedule.Weekly -> {
-        val todayIso = from.dayOfWeek.isoDayNumber // Mon=1 - Sun=7
+        val todayIso = from.dayOfWeek.isoDayNumber
         val daysAhead = (dayOfWeek - todayIso + 7) % 7
         from.plus(daysAhead.toLong(), DateTimeUnit.DAY)
     }
@@ -77,7 +92,7 @@ fun ReminderSchedule.nextFireDate(from: LocalDate): LocalDate? = when (this) {
         val todayIso = from.dayOfWeek.isoDayNumber
         val daysAhead = (dayOfWeek - todayIso + 7) % 7
         var candidate = from.plus(daysAhead.toLong(), DateTimeUnit.DAY)
-        while (candidate.dayOfWeek.isoDayNumber.let { true } && isoWeekNumber(candidate) % 2 != weekParity) {
+        while (isoWeekNumber(candidate) % 2 != weekParity) {
             candidate = candidate.plus(7, DateTimeUnit.DAY)
         }
         candidate
@@ -105,13 +120,28 @@ fun ReminderSchedule.nextFireDate(from: LocalDate): LocalDate? = when (this) {
     }
 }
 
+/**
+ * Returns the next full [LocalDateTime] this schedule fires, strictly after [now].
+ * Combines the day-pattern with the schedule's own [ReminderSchedule.time].
+ * Returns null for [ReminderSchedule.None].
+ */
+fun ReminderSchedule.nextFireDateTime(now: LocalDateTime): LocalDateTime? {
+    if (this is ReminderSchedule.None) return null
+
+    var candidateDate = nextFireDate(now.date) ?: return null
+    var candidateDateTime = candidateDate.atTime(time)
+
+    if (candidateDateTime <= now) {
+        candidateDate = nextFireDate(now.date.plus(1, DateTimeUnit.DAY)) ?: return null
+        candidateDateTime = candidateDate.atTime(time)
+    }
+
+    return candidateDateTime
+}
+
 private fun daysInMonth(year: Int, month: Int): Int =
     LocalDate(year, month, 1).plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).day
 
-/**
- * Returns the [ordinal]-th [isoDayOfWeek] in the given month,
- * or the *last* occurrence when [ordinal] == -1.
- */
 private fun nthWeekdayOfMonth(year: Int, month: Int, ordinal: Int, isoDayOfWeek: Int): LocalDate? {
     val first = LocalDate(year, month, 1)
     val firstIso = first.dayOfWeek.isoDayNumber
@@ -129,7 +159,6 @@ private fun nthWeekdayOfMonth(year: Int, month: Int, ordinal: Int, isoDayOfWeek:
     }
 }
 
-/** ISO week number */
 private fun isoWeekNumber(date: LocalDate): Int {
     val thursday = date.plus((4 - date.dayOfWeek.isoDayNumber).toLong(), DateTimeUnit.DAY)
     val jan1 = LocalDate(thursday.year, 1, 1)

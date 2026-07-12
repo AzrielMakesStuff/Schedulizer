@@ -29,6 +29,7 @@ import com.ateam.schedulizer.entities.Task
 class StreakWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        databaseInstance.checkStreak()
         databaseInstance.refresh()
         val streakStatus = databaseInstance.checkStreak()
         provideContent {

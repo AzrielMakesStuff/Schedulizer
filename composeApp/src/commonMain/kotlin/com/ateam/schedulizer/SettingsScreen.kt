@@ -52,18 +52,6 @@ enum class ThemeMode {
 fun SettingsScreen() {
     val settings by databaseInstance.settings.collectAsState()
     val currentMode = ThemeMode.entries.getOrElse(settings?.colourMode?.toInt() ?: 0) { ThemeMode.AUTO }
-    val notifTime = settings?.notificationTime ?: LocalTime(8, 0)
-
-    var showTimePicker by remember { mutableStateOf(false) }
-
-    if (showTimePicker) {
-        TimePickerDialog(
-            initialHour = settings?.notificationTime?.hour ?: 8,
-            initialMinute = settings?.notificationTime?.minute ?: 0,
-            onDismiss = { showTimePicker = false },
-            onConfirm = { hour, minute -> setNotificationTime(hour, minute) }
-        )
-    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -116,28 +104,6 @@ fun SettingsScreen() {
                     }
                 }
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(15.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Notification Time", style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedButton(onClick = { showTimePicker = true }) {
-                        Text(
-                            "${notifTime.hour.toString().padStart(2, '0')}:" +
-                                    notifTime.minute.toString().padStart(2, '0'),
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -177,12 +143,6 @@ fun ThemeButton(
 fun setTheme(theme: ThemeMode) {
     databaseInstance.settings.value?.let { current ->
         saveSettings(current.copy(colourMode = theme.ordinal.toByte()))
-    }
-}
-
-fun setNotificationTime(hour: Int, minute: Int) {
-    databaseInstance.settings.value?.let { current ->
-        saveSettings(current.copy(notificationTime = LocalTime(hour = hour, minute = minute)))
     }
 }
 
