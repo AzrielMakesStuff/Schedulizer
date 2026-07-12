@@ -13,7 +13,7 @@ object ContextHolder {
     }
 }
 
-actual val databaseInstance: AppDatabase by lazy{
+actual val databaseInstance: AppDatabase by lazy {
     return@lazy (getRoomDatabase(getDatabaseBuilder(ContextHolder.context)));
 }
 
