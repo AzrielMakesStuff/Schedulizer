@@ -30,6 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Checkbox
@@ -312,12 +313,31 @@ fun TaskScreen() {
         LaunchedEffect(Unit) { databaseInstance.refresh() }
         LazyColumn(modifier = Modifier.padding(8.dp), listState) {
             item {
-                MonthName(
-                    monthName = visibleMonth.month.name
-                        .lowercase()
-                        .replaceFirstChar { it.uppercase() },
-                    year = visibleMonth.year
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(5.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 )
+                {
+                    MonthName(
+                        monthName = visibleMonth.month.name
+                            .lowercase()
+                            .replaceFirstChar { it.uppercase() },
+                        year = visibleMonth.year
+                    )
+                    IconButton(
+                        onClick = { createTaskDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Share,
+                            contentDescription = "Share Calendar",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
 
                 Spacer(modifier = Modifier.height(8.dp))
 
