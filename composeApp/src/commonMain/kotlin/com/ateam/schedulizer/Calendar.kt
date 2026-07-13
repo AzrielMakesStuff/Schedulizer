@@ -218,7 +218,7 @@ fun Calendar() {
                             .replaceFirstChar {it.uppercase() }
                         val year = month.yearMonth.year
                         Column(modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)) {
-                            MonthName(monthName = monthName, year = year)
+                            MonthName(monthName = monthName, year = year, modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
                             MonthHeader(daysOfWeek = daysOfWeek)
                             Spacer(Modifier.height(8.dp))
@@ -246,13 +246,14 @@ fun DaysOfWeekTitle(daysOfWeek: List<DayOfWeek>) {
 }
 
 @Composable
-fun MonthName(monthName: String, year: Int) {
+fun MonthName(monthName: String, year: Int, modifier: Modifier = Modifier) {
     //val textColoring = MaterialTheme.colorScheme.onBackground
     Text(
 //        modifier = Modifier
 //            .fillMaxWidth()
 //            .padding(vertical = 4.dp),
-        modifier = Modifier.fillMaxWidth(),
+        //modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         textAlign = TextAlign.Center,
 //        color = textColoring,
 //        fontSize = 22.sp,
