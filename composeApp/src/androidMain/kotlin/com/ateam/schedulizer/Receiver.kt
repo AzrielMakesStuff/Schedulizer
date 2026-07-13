@@ -6,18 +6,13 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.ateam.schedulizer.NotificationSystem.createNotification
+import com.ateam.schedulizer.NotificationSystem.requestCode
 import com.ateam.schedulizer.entities.Task
-import com.kizitonwose.calendar.core.now
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atTime
-import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
-import kotlin.random.Random
 import kotlin.time.Clock
 
 class Receiver : BroadcastReceiver() {
@@ -38,8 +33,8 @@ class Receiver : BroadcastReceiver() {
                 Log.d("NotifDebug", "Task=${task.title} isComplete=${task.isComplete()}")
 
                 if (!task.isComplete()) {
-                    val notification = createNotification(title, body)
-                    notificationManager.notify(Random.nextInt(0, 299999), notification)
+                    val notification = createNotification(title, body, task.id, task.typeTag())
+                    notificationManager.notify(requestCode(task.id, task.typeTag()), notification)
                 }
 
                 val shouldReschedule = when (task) {

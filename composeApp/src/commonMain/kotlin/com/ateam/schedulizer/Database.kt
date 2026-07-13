@@ -1,36 +1,48 @@
 package com.ateam.schedulizer
 
+import androidx.room.AutoMigration
 import androidx.room.ConstructedBy
 import androidx.room.Database
+import androidx.room.DeleteColumn
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
+import androidx.room.migration.AutoMigrationSpec
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.ateam.schedulizer.dao.TaskDao
 import com.ateam.schedulizer.entities.Settings
 import com.ateam.schedulizer.entities.Streak
 import com.ateam.schedulizer.entities.Task
-import com.kizitonwose.calendar.core.now
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atTime
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
-@Database(entities = [
-    Task.Set::class,
-    Task.Pool::class,
-    Task.Daily::class,
-    Streak::class,
-    Settings::class
-], version = 10)
+@DeleteColumn(
+    tableName = "Settings",
+    columnName = "notificationTime"
+)
+class AutomaticMigration : AutoMigrationSpec
+
+@Database(
+    entities = [
+        Task.Set::class,
+        Task.Pool::class,
+        Task.Daily::class,
+        Streak::class,
+        Settings::class
+    ],
+    version = 10,
+    autoMigrations = [
+        AutoMigration(from = 9, to = 10, spec = AutomaticMigration::class)
+    ]
+)
 @TypeConverters(Converters::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -145,13 +157,20 @@ abstract class AppDatabase : RoomDatabase() {
     }
 }
 
+//val MIGRATION = object : Migration(9, 10) {
+//    override fun migrate(db: SQLiteConnection) {
+//        db.execSQL("ALTER TABLE Settings ADD COLUMN someNewField INTEGER NOT NULL DEFAULT 0")
+//    }
+//}
+
 fun getRoomDatabase(
     builder: RoomDatabase.Builder<AppDatabase>
 ): AppDatabase {
     return builder
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        .fallbackToDestructiveMigration(true)
+        //.addMigrations(MIGRATION)
+        .fallbackToDestructiveMigrationOnDowngrade(true)
         .build()
 }
 

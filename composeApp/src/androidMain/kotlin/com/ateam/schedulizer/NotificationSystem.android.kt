@@ -20,12 +20,35 @@ import kotlinx.datetime.number
 import java.util.Calendar
 
 actual object NotificationSystem {
-    fun createNotification(title: String, body: String): Notification {
-        return NotificationCompat.Builder(ContextHolder.context, Constants.NOTIF_CHANNEL_ID).setPriority(
-            NotificationManager.IMPORTANCE_DEFAULT).setContentText(body).setContentTitle(title).setSmallIcon(R.drawable.ic_stat_name).build()
+    fun createNotification(title: String, body: String, taskId: Long? = null, taskType: String? = null): Notification {
+        val launchIntent = ContextHolder.context.packageManager
+            .getLaunchIntentForPackage(ContextHolder.context.packageName)
+            ?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                if (taskId != null && taskType != null) {
+                    putExtra("task_id", taskId)
+                    putExtra("task_type", taskType)
+                }
+            }
+
+        val contentPendingIntent = PendingIntent.getActivity(
+            ContextHolder.context,
+            requestCode(taskId ?: 0, taskType ?: ""),
+            launchIntent,
+            FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(ContextHolder.context, Constants.NOTIF_CHANNEL_ID)
+            .setPriority(NotificationManager.IMPORTANCE_DEFAULT)
+            .setContentText(body)
+            .setContentTitle(title)
+            .setSmallIcon(R.drawable.ic_stat_name)
+            .setContentIntent(contentPendingIntent)
+            .setAutoCancel(true)
+            .build()
     }
 
-    private fun requestCode(id: Long, type: String): Int {
+    fun requestCode(id: Long, type: String): Int {
         val tag = when (type) {
             "Set" -> 1
             "Pool" -> 2

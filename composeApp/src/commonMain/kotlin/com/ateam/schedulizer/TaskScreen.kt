@@ -221,10 +221,12 @@ fun TaskScreen() {
     var showCreateDialog by remember { mutableStateOf(false) }
 
     var editingTask by remember { mutableStateOf<Task?>(null) }
+    var deletingTask by remember { mutableStateOf<Task?>(null) }
 
-    BackHandler(enabled = editingTask != null || createTaskDialog || showCreateDialog || selectedDateOne != null) {
+    BackHandler(enabled = editingTask != null || deletingTask != null || createTaskDialog || showCreateDialog || selectedDateOne != null) {
         when {
             editingTask != null -> editingTask = null
+            deletingTask != null -> deletingTask = null
             showCreateDialog -> {
                 showCreateDialog = false
                 selectedDateOne = null
@@ -417,6 +419,9 @@ fun TaskScreen() {
                     },
                     editTask = {
                         editingTask = task
+                    },
+                    deleteTask = {
+                        deletingTask = task
                     }
                 )
             }
@@ -424,6 +429,13 @@ fun TaskScreen() {
 
         editingTask?.let { taskToEdit ->
             TaskDialog(task = taskToEdit, onDismiss = { editingTask = null })
+        }
+
+        deletingTask?.let { taskToDelete ->
+            DeleteDialog(taskToDelete) {
+                databaseInstance.deleteTask(taskToDelete)
+                deletingTask = null
+            }
         }
     }
 }

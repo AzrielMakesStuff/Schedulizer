@@ -67,23 +67,9 @@ class WidgetTaskActivity : ComponentActivity() {
                                 finishAndRemoveTask()
                                 return@Surface
                             }
-                            val scope = rememberCoroutineScope()
-                            AlertDialog(
-                                onDismissRequest = { finishAndRemoveTask() },
-                                title = { Text("Delete task") },
-                                text = { Text("Delete \"${task.title}\"? This can't be undone.") },
-                                confirmButton = {
-                                    TextButton(onClick = {
-                                        scope.launch {
-                                            databaseInstance.deleteTask(task)
-                                            finishAndRemoveTask()
-                                        }
-                                    }) { Text("Delete") }
-                                },
-                                dismissButton = {
-                                    TextButton(onClick = { finishAndRemoveTask() }) { Text("Cancel") }
-                                }
-                            )
+                            DeleteDialog(task) {
+                                finishAndRemoveTask()
+                            }
                         }
                     }
                 }

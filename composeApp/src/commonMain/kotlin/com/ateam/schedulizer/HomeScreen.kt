@@ -30,6 +30,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
 import cafe.adriel.voyager.navigator.internal.BackHandler
 import com.ateam.schedulizer.entities.Task
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.compose.resources.painterResource
 import schedulizer.composeapp.generated.resources.Res
@@ -66,10 +68,16 @@ fun HomeScreen()
     val streak by databaseInstance.streak.collectAsState()
 
     var createTaskDialog by remember { mutableStateOf(false) }
+    var deletingTask by remember { mutableStateOf<Task?>(null) }
     var editingTask by remember { mutableStateOf<Task?>(null) }
 
-    BackHandler(enabled = editingTask != null) {
-        editingTask = null
+    val scope = rememberCoroutineScope()
+
+    BackHandler(enabled = editingTask != null || deletingTask != null) {
+        when {
+            editingTask != null -> editingTask = null
+            deletingTask != null -> deletingTask = null
+        }
     }
 
     if (createTaskDialog) {
@@ -292,6 +300,9 @@ fun HomeScreen()
                 onScrollToTop = {},
                 editTask = {
                     editingTask = task
+                },
+                deleteTask = {
+                    deletingTask = task
                 }
             )
         }
@@ -299,5 +310,12 @@ fun HomeScreen()
 
     editingTask?.let { taskToEdit ->
         TaskDialog(task = taskToEdit, onDismiss = { editingTask = null })
+    }
+
+    deletingTask?.let { taskToDelete ->
+        DeleteDialog(taskToDelete) {
+            databaseInstance.deleteTask(taskToDelete)
+            deletingTask = null
+        }
     }
 }

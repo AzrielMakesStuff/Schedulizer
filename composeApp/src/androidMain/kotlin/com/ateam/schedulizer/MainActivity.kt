@@ -25,8 +25,7 @@ class MainActivity : ComponentActivity() {
 
         val smallestWidthDp = resources.configuration.smallestScreenWidthDp
 
-        if (smallestWidthDp < 600)
-        {
+        if (smallestWidthDp < 600) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
 

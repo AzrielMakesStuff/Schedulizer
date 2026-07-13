@@ -35,7 +35,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.minus
 
 @Composable
-fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Unit) {
+fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Unit, deleteTask: () -> Unit) {
 
     val scope = rememberCoroutineScope()
 
@@ -179,9 +179,7 @@ fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Uni
                     }
                 }
 
-                is Task.Daily -> {
-                    Text("Daily task", fontSize = 11.sp, color = subtleColor)
-                }
+                is Task.Daily -> Text("Daily task", fontSize = 11.sp, color = subtleColor)
             }
 
             val completionDate = when (task) {
@@ -218,7 +216,7 @@ fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Uni
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (isChecked) 0.3f else 0.8f)
             )
         }
-        IconButton(onClick = { scope.launch { databaseInstance.deleteTask(task) } }) {
+        IconButton(onClick = { deleteTask() }) {
             Icon(
                 Icons.Outlined.Delete, contentDescription = "Delete Task",
                 tint = MaterialTheme.colorScheme.error.copy(alpha = alpha)
