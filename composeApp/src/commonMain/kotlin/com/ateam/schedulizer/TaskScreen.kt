@@ -203,6 +203,7 @@ fun now() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 @Composable
 fun TaskScreen() {
     var createTaskDialog by remember { mutableStateOf(false) }
+    var shareCalendarDialog by remember { mutableStateOf(false) }
 
     if (createTaskDialog) {
         TaskDialog(
