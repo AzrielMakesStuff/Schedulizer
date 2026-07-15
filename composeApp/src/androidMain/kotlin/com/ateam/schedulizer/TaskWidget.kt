@@ -32,6 +32,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextDecoration
 import androidx.glance.text.TextStyle
 import com.ateam.schedulizer.entities.Task
+import com.ateam.schedulizer.entities.completeAndAdvance
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -58,10 +59,7 @@ class ToggleTaskAction : ActionCallback {
                 val yesterday = LocalDateTime(today().minus(1, DateTimeUnit.DAY), LocalTime(0, 0))
                 task.copy(lastCompleted = if (alreadyDone) yesterday else now())
             }
-            is Task.Set -> task.copy(
-                completed = !task.completed,
-                completionDate = if (!task.completed) now() else null
-            )
+            is Task.Set -> task.completeAndAdvance(now())
             is Task.Pool -> task.copy(
                 completed = !task.completed,
                 completionDate = if (!task.completed) now() else null
