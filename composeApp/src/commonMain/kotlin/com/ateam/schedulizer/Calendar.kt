@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.ateam.schedulizer.entities.Task
+import com.ateam.schedulizer.entities.occurrencesBetween
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
@@ -70,6 +71,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.format.DayOfWeekNames
+import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock.System
@@ -82,6 +84,46 @@ private fun formatTime(time: LocalDateTime?) = time?.time?.toString()?.take(5) ?
 
 private fun formatDate(date: LocalDate) =
     "${date.dayOfWeek.name.take(3)}, ${date.month.name.take(3)} ${date.day}"
+
+/**
+ * A single day-granular occurrence of a [Task] within some date range — the calendar
+ * equivalent of [com.ateam.schedulizer.TaskOccurrence] on the weekly grid, but using
+ * plain [LocalDate]s since month cells don't render time-of-day. For a non-repeating
+ * [Task.Set] or a [Task.Pool] this is just that task's own start/end; for a repeating
+ * [Task.Set] there's one entry per firing. [task] is always the same persisted row
+ * (repeating tasks advance in place), so tapping any occurrence acts on [task] directly.
+ */
+private data class DatedOccurrence(
+    val task: Task,
+    val start: LocalDate,
+    val end: LocalDate
+)
+
+/**
+ * Expands [this] task into its day-granular occurrences within [rangeStart, rangeEnd].
+ * Daily tasks never contribute (they don't appear on the calendar at all). Pool tasks
+ * contribute at most one (their expiry, if it falls in range). Set tasks contribute one
+ * occurrence per repeat firing in range — via [occurrencesBetween] — each keeping the
+ * original start→end day-span.
+ */
+private fun Task.occurrencesInRange(rangeStart: LocalDate, rangeEnd: LocalDate): List<DatedOccurrence> = when (this) {
+    is Task.Set -> {
+        val spanDays = end?.date?.let { it.toEpochDays() - start.date.toEpochDays() } ?: 0
+        occurrencesBetween(rangeStart, rangeEnd).map { occStart ->
+            val occStartDate = occStart.date
+            val occEndDate = occStartDate.plus(spanDays.toInt(), DateTimeUnit.DAY)
+            DatedOccurrence(this, occStartDate, occEndDate)
+        }
+    }
+
+    is Task.Pool -> {
+        val d = expiry?.date
+        if (d != null && d in rangeStart..rangeEnd) listOf(DatedOccurrence(this, d, d)) else emptyList()
+    }
+
+    is Task.Daily -> emptyList()
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun Calendar() {
@@ -89,69 +131,55 @@ fun Calendar() {
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
     val daysOfWeek = remember(firstDayOfWeek) { daysOfWeek(firstDayOfWeek = firstDayOfWeek)}
 
-    val laneOf = remember(tasks) {
-        val sorted = tasks.sortedBy { task ->
-            when (task) {
-                is Task.Set -> task.start
-                is Task.Pool -> task.expiry
-                is Task.Daily -> null
-            }
-        }
-        val lanes = mutableListOf<MutableList<Task>>()
-        val laneMap = mutableMapOf<Task, Int>()
+    val currentMonth = remember { YearMonth.now() }
+    val startMonth = remember { currentMonth.minusMonths(100) }
+    val endMonth = remember { currentMonth.plusMonths(100) }
 
-        sorted.forEach { task ->
-            val tStart = when (task) {
-                is Task.Set -> task.start.date
-                is Task.Pool -> task.expiry?.date ?: today()
-                is Task.Daily -> return@forEach  // dailies don't appear on calendar
-            }
-            val tEnd = when (task) {
-                is Task.Set -> task.end?.date ?: tStart
-                is Task.Pool -> task.expiry?.date ?: tStart
-                is Task.Daily -> return@forEach
-            }
+    // Same [startMonth, endMonth] bounds the calendar itself scrolls across, expressed
+    // as plain dates so repeating tasks can be projected across the whole scrollable
+    // range once (occurrencesAfter bails out as soon as it passes rangeEnd, so this
+    // stays bounded even for tasks that repeat forever).
+    val rangeStart = remember(startMonth) { LocalDate(startMonth.year, startMonth.month, 1) }
+    val rangeEnd = remember(endMonth) {
+        LocalDate(endMonth.year, endMonth.month, 1).plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
+    }
+
+    val occurrences = remember(tasks, rangeStart, rangeEnd) {
+        tasks.flatMap { it.occurrencesInRange(rangeStart, rangeEnd) }
+    }
+
+    val laneOf = remember(occurrences) {
+        val sorted = occurrences.sortedBy { it.start }
+        val lanes = mutableListOf<MutableList<DatedOccurrence>>()
+        val laneMap = mutableMapOf<DatedOccurrence, Int>()
+
+        sorted.forEach { occ ->
             var placed = false
             for (laneIdx in lanes.indices) {
                 val conflict = lanes[laneIdx].any { existing ->
-                    val eStart = when (existing) {
-                        is Task.Set -> existing.start.date
-                        is Task.Pool -> existing.expiry?.date ?: today()
-                        is Task.Daily -> return@any false
-                    }
-                    val eEnd = when (existing) {
-                        is Task.Set -> existing.end?.date ?: eStart
-                        is Task.Pool -> existing.expiry?.date ?: eStart
-                        is Task.Daily -> return@any false
-                    }
-                    tStart <= eEnd && tEnd >= eStart
+                    occ.start <= existing.end && occ.end >= existing.start
                 }
                 if (!conflict) {
-                    lanes[laneIdx].add(task)
-                    laneMap[task] = laneIdx
+                    lanes[laneIdx].add(occ)
+                    laneMap[occ] = laneIdx
                     placed = true
                     break
                 }
             }
             if (!placed) {
-                lanes.add(mutableListOf(task))
-                laneMap[task] = lanes.lastIndex
+                lanes.add(mutableListOf(occ))
+                laneMap[occ] = lanes.lastIndex
             }
         }
         laneMap
     }
 
-    val taskByDate = remember(tasks) {
-        val map = mutableMapOf<LocalDate, MutableList<Task>>()
-        tasks.forEach { task ->
-            val (start, end) = when (task) {
-                is Task.Set -> task.start.date to (task.end?.date ?: task.start.date)
-                is Task.Pool -> task.expiry?.date?.let { it to it } ?: return@forEach
-                is Task.Daily -> return@forEach
-            }
-            var current = start
-            while (current <= end) {
-                map.getOrPut(current) { mutableListOf() }.add(task)
+    val occurrencesByDate = remember(occurrences) {
+        val map = mutableMapOf<LocalDate, MutableList<DatedOccurrence>>()
+        occurrences.forEach { occ ->
+            var current = occ.start
+            while (current <= occ.end) {
+                map.getOrPut(current) { mutableListOf() }.add(occ)
                 current = current.plus(1, DateTimeUnit.DAY)
             }
         }
@@ -166,9 +194,6 @@ fun Calendar() {
             //.background(background)
             .background(MaterialTheme.colorScheme.background)
     ) {
-        val currentMonth = remember { YearMonth.now() }
-        val startMonth = remember { currentMonth.minusMonths(100) }
-        val endMonth = remember { currentMonth.plusMonths(100) }
         val state = rememberCalendarState(
             startMonth = startMonth,
             endMonth = endMonth,
@@ -211,7 +236,7 @@ fun Calendar() {
                 HorizontalCalendar(
                     modifier = Modifier.fillMaxSize(),
                     state = state,
-                    dayContent = { Day(it, taskByDate[it.date] ?: emptyList(), laneOf, daysOfWeek.first())},
+                    dayContent = { Day(it, occurrencesByDate[it.date] ?: emptyList(), laneOf, daysOfWeek.first())},
                     monthHeader = { month: CalendarMonth ->
                         val monthName = month.yearMonth.month.name
                             .lowercase()
@@ -265,7 +290,7 @@ fun MonthName(monthName: String, year: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>, firstDayOfWeek: DayOfWeek) {
+private fun Day(day: CalendarDay, occurrences: List<DatedOccurrence>, laneOf: Map<DatedOccurrence, Int>, firstDayOfWeek: DayOfWeek) {
     val isMonthDate = day.position == DayPosition.MonthDate
     val baseColor = MaterialTheme.colorScheme.onSurface
     val textColor = if (isMonthDate) baseColor else baseColor.copy(alpha = 0.3f)
@@ -314,18 +339,21 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>, firstDayOfW
             Spacer (Modifier.height(4.dp))
 
             for (laneIndex in 0..2) {
-                val task = tasks.find { laneOf[it] == laneIndex }
-                if (task != null) {
-                    val isStart = when (task) {
-                        is Task.Set -> task.start.date == day.date
-                        is Task.Pool -> task.expiry?.date == day.date
-                        is Task.Daily -> false
-                    }
+                val occ = occurrences.find { laneOf[it] == laneIndex }
+                if (occ != null) {
+                    val task = occ.task
+                    val isStart = occ.start == day.date
+                    val isEnd = occ.end == day.date
+
+                    // Whether this pill IS the task's current stored occurrence (vs. a
+                    // future/past projected one) — completed/overdue styling only makes
+                    // sense against the occurrence it actually describes.
+                    val isCurrentOccurrence = (task as? Task.Set)?.start?.date == occ.start
 
                     val pillColor = when (task) {
                         is Task.Set -> when {
-                            task.completed -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            task.end != null && task.end < now -> MaterialTheme.colorScheme.error
+                            task.completed && isCurrentOccurrence -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            isCurrentOccurrence && task.end != null && task.end < now -> MaterialTheme.colorScheme.error
                             else -> primaryColor
                         }
                         is Task.Pool -> when {
@@ -334,12 +362,6 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>, firstDayOfW
                             else -> primaryColor
                         }
                         else -> primaryColor
-                    }
-
-                    val isEnd = when (task) {
-                        is Task.Set -> (task.end?.date ?: task.start.date) == day.date
-                        is Task.Pool -> task.expiry?.date == day.date
-                        is Task.Daily -> false
                     }
 
                     Box(
@@ -383,7 +405,7 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>, firstDayOfW
                                 selectedTask = task
                                 showOverlay = true
                             },
-                            contentAlignment = Alignment.CenterStart
+                        contentAlignment = Alignment.CenterStart
                     ) {
                         if (isStart || day.date.dayOfWeek == firstDayOfWeek || day.date.day == 1) {
                             Text(
@@ -416,7 +438,7 @@ fun Day(day: CalendarDay, tasks: List<Task>, laneOf: Map<Task, Int>, firstDayOfW
                 isVisible = showOverlay,
                 onDismiss = { showOverlay = false },
                 day = day,
-                tasks = tasks,
+                tasks = occurrences.map { it.task }.distinct(),
                 selectedTask = selectedTask
             )
         }
