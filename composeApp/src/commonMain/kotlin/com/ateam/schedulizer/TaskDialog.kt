@@ -552,7 +552,7 @@ fun TaskDialog(
                             }
 
                             coroutineScope.launch {
-                                databaseInstance.createTask(newTask)
+                                databaseInstance.upsertTask(newTask)
                                 onDismiss()
                             }
                         },

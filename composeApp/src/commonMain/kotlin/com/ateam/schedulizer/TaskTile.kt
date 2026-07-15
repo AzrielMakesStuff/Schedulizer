@@ -103,7 +103,7 @@ fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Uni
                             completionDate = if (checked) now() else null
                         )
                     }
-                    databaseInstance.createTask(updated)
+                    databaseInstance.upsertTask(updated)
                 }
             }
         )

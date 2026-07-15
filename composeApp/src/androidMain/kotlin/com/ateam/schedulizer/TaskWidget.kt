@@ -67,7 +67,7 @@ class ToggleTaskAction : ActionCallback {
                 completionDate = if (!task.completed) now() else null
             )
         }
-        databaseInstance.createTask(updated)
+        databaseInstance.upsertTask(updated)
     }
 }
 

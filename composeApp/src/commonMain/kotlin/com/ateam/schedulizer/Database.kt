@@ -105,7 +105,13 @@ abstract class AppDatabase : RoomDatabase() {
         refresh()
     }
 
-    suspend fun createTask(task: Task) {
+    /**
+     * [upsertTask] takes a task, reschedules the notifications
+     * and upserts it to the correct dao database.
+     *
+     * [task] is the new task to upsert.
+     */
+    suspend fun upsertTask(task: Task) {
         NotificationSystem.clearNotification(task)
 
         val shouldSchedule = when (task) {
