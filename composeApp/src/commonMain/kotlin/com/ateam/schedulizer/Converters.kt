@@ -73,4 +73,91 @@ class Converters {
             ReminderSchedule.None
         }
     }
+
+    @TypeConverter
+    fun fromRepeatSchedule(s: CalendarRepeatSchedule?): String? {
+        s ?: return null
+
+        val patternPart = when (val p = s.pattern) {
+            is RecurrencePattern.EveryNDays -> "every_n_days|${p.days}|${p.anchor.toEpochDays()}"
+            is RecurrencePattern.Weekly -> "weekly|${p.daysOfWeek.sorted().joinToString(",")}"
+            is RecurrencePattern.Fortnightly -> "fortnightly|${p.dayOfWeek}|${p.weekParity}"
+            is RecurrencePattern.MonthlyByDate -> "monthly_date|${p.dayOfMonth}"
+            is RecurrencePattern.MonthlyByWeekday -> "monthly_weekday|${p.ordinal}|${p.dayOfWeek}"
+            is RecurrencePattern.YearlyByDate -> "yearly_date|${p.month}|${p.day}"
+            is RecurrencePattern.YearlyByWeekday -> "yearly_weekday|${p.month}|${p.ordinal}|${p.dayOfWeek}"
+        }
+
+        val endPart = when (val e = s.end) {
+            is RecurrenceEnd.Never -> "never"
+            is RecurrenceEnd.UntilDate -> "until|${e.date.toEpochDays()}"
+            is RecurrenceEnd.AfterOccurrences -> "count|${e.count}"
+        }
+
+        return "$patternPart~$endPart"
+    }
+
+    @TypeConverter
+    fun toRepeatSchedule(s: String?): CalendarRepeatSchedule? {
+        s ?: return null
+
+        return try {
+            val segments = s.split("~", limit = 2)
+            val patternParts = segments[0].split("|")
+            val endParts = segments.getOrNull(1)?.split("|") ?: listOf("never")
+
+            val pattern: RecurrencePattern = when (patternParts[0]) {
+                "every_n_days" -> RecurrencePattern.EveryNDays(
+                    days = patternParts.getOrNull(1)?.toIntOrNull() ?: 1,
+                    anchor = patternParts.getOrNull(2)?.toLongOrNull()?.let { LocalDate.fromEpochDays(it.toInt()) }
+                        ?: LocalDate.now()
+                )
+                "weekly" -> RecurrencePattern.Weekly(
+                    daysOfWeek = patternParts.getOrNull(1)
+                        ?.split(",")
+                        ?.mapNotNull { it.toIntOrNull() }
+                        ?.toSet()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?: setOf(1)
+                )
+                "fortnightly" -> RecurrencePattern.Fortnightly(
+                    dayOfWeek = patternParts.getOrNull(1)?.toIntOrNull() ?: 1,
+                    weekParity = patternParts.getOrNull(2)?.toIntOrNull() ?: 0
+                )
+                "monthly_date" -> RecurrencePattern.MonthlyByDate(
+                    dayOfMonth = patternParts.getOrNull(1)?.toIntOrNull() ?: 1
+                )
+                "monthly_weekday" -> RecurrencePattern.MonthlyByWeekday(
+                    ordinal = patternParts.getOrNull(1)?.toIntOrNull() ?: 1,
+                    dayOfWeek = patternParts.getOrNull(2)?.toIntOrNull() ?: 1
+                )
+                "yearly_date" -> RecurrencePattern.YearlyByDate(
+                    month = patternParts.getOrNull(1)?.toIntOrNull() ?: 1,
+                    day = patternParts.getOrNull(2)?.toIntOrNull() ?: 1
+                )
+                "yearly_weekday" -> RecurrencePattern.YearlyByWeekday(
+                    month = patternParts.getOrNull(1)?.toIntOrNull() ?: 1,
+                    ordinal = patternParts.getOrNull(2)?.toIntOrNull() ?: 1,
+                    dayOfWeek = patternParts.getOrNull(3)?.toIntOrNull() ?: 1
+                )
+                else -> return null // unrecognized pattern tag — don't guess, drop the schedule
+            }
+
+            val end: RecurrenceEnd = when (endParts[0]) {
+                "never" -> RecurrenceEnd.Never
+                "until" -> RecurrenceEnd.UntilDate(
+                    date = endParts.getOrNull(1)?.toLongOrNull()?.let { LocalDate.fromEpochDays(it.toInt()) }
+                        ?: LocalDate.now()
+                )
+                "count" -> RecurrenceEnd.AfterOccurrences(
+                    count = endParts.getOrNull(1)?.toIntOrNull() ?: 1
+                )
+                else -> RecurrenceEnd.Never
+            }
+
+            CalendarRepeatSchedule(pattern, end)
+        } catch (e: Exception) {
+            null
+        }
+    }
 }

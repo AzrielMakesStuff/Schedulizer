@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
 import com.ateam.schedulizer.entities.Task
+import com.ateam.schedulizer.entities.occurrencesBetween
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -73,82 +74,106 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearMonth
 import kotlin.time.Clock
 import cafe.adriel.voyager.navigator.internal.BackHandler
 
+/**
+ * A single occurrence of a task, positioned within a specific date range. For a
+ * non-repeating [Task.Set] or a [Task.Pool] this is just that task's own start/end.
+ * For a repeating [Task.Set], [task] is always the same underlying stored row (same
+ * `id` — repeating tasks advance in place rather than existing as separate rows), while
+ * [occurrenceStart]/[occurrenceEnd] vary per projected occurrence. Tapping any
+ * occurrence should act on [task] directly, since that's the only thing actually
+ * persisted.
+ */
+data class TaskOccurrence(
+    val task: Task,
+    val occurrenceStart: LocalDateTime,
+    val occurrenceEnd: LocalDateTime?
+)
+
 data class PositionedTask(
     val task: Task,
+    val occurrenceStart: LocalDateTime,
+    val occurrenceEnd: LocalDateTime?,
     val laneIndex: Int,
     val totalLanes: Int
 )
 
-private fun computeLanes(tasks: List<Task>): Pair<Map<Task, Int>, Map<Task, Int>> {
-    val sorted = tasks.sortedBy { task ->
-        when (task) {
-            is Task.Set -> task.start
-            is Task.Pool -> task.expiry
-            is Task.Daily -> null
+/**
+ * Expands [this] task into its occurrences within [rangeStart, rangeEnd]. Daily tasks
+ * never contribute (they're rendered elsewhere, not on the weekly grid); Pool tasks
+ * contribute at most one (their expiry, if it falls in range); Set tasks contribute
+ * one occurrence per repeat firing in range, via [Task.Set.occurrencesBetween].
+ */
+private fun Task.occurrencesInRange(rangeStart: LocalDate, rangeEnd: LocalDate): List<TaskOccurrence> = when (this) {
+    is Task.Set -> occurrencesBetween(rangeStart, rangeEnd).map { occStart ->
+        // Preserve the original start→end duration for each projected occurrence.
+        val occEnd = end?.let { oldEnd ->
+            val tz = TimeZone.currentSystemDefault()
+            val duration = oldEnd.toInstant(tz) - start.toInstant(tz)
+            (occStart.toInstant(tz) + duration).toLocalDateTime(tz)
         }
-    }
-    val lanes = mutableListOf<MutableList<Task>>()
-    val laneOf = mutableMapOf<Task, Int>()
-
-    fun Task.tStart(): LocalDateTime? {
-        return when (this) {
-            is Task.Set -> start
-            is Task.Pool -> expiry ?: return null
-            is Task.Daily -> return null
-        }
-    }
-    fun Task.tEnd(): LocalDateTime? {
-        return when (this) {
-            is Task.Set -> end ?: start
-            is Task.Pool -> expiry ?: return null
-            is Task.Daily -> return null
-        }
+        TaskOccurrence(this, occStart, occEnd)
     }
 
-    sorted.forEach { task ->
-        val tStart = task.tStart()
-        val tEnd = task.tEnd()
+    is Task.Pool ->
+        if (expiry != null && expiry.date in rangeStart..rangeEnd) listOf(TaskOccurrence(this, expiry, expiry))
+        else emptyList()
+
+    is Task.Daily -> emptyList()
+}
+
+/**
+ * Assigns each occurrence a lane (for stacking overlapping pills) and, per
+ * transitively-overlapping cluster, how many lanes that cluster needs in total.
+ * Operates on [TaskOccurrence]s rather than raw [Task]s so two occurrences of the same
+ * repeating task (different dates, same underlying row) are laid out independently.
+ */
+private fun computeLanes(occurrences: List<TaskOccurrence>): Pair<Map<TaskOccurrence, Int>, Map<TaskOccurrence, Int>> {
+    val sorted = occurrences.sortedBy { it.occurrenceStart }
+    val lanes = mutableListOf<MutableList<TaskOccurrence>>()
+    val laneOf = mutableMapOf<TaskOccurrence, Int>()
+
+    fun TaskOccurrence.spanStart() = occurrenceStart
+    fun TaskOccurrence.spanEnd() = occurrenceEnd ?: occurrenceStart
+
+    sorted.forEach { occ ->
         var placed = false
         for (laneIdx in lanes.indices) {
             val conflict = lanes[laneIdx].any { existing ->
-                val eStart = existing.tStart() ?: return@any false
-                val eEnd = existing.tEnd() ?: return@any false
-                tStart!! < eEnd && tEnd!! > eStart
+                occ.spanStart() < existing.spanEnd() && occ.spanEnd() > existing.spanStart()
             }
             if (!conflict) {
-                lanes[laneIdx].add(task)
-                laneOf[task] = laneIdx
+                lanes[laneIdx].add(occ)
+                laneOf[occ] = laneIdx
                 placed = true
                 break
             }
         }
         if (!placed) {
-            lanes.add(mutableListOf(task))
-            laneOf[task] = lanes.lastIndex
+            lanes.add(mutableListOf(occ))
+            laneOf[occ] = lanes.lastIndex
         }
     }
 
-    val totalLanesOf = mutableMapOf<Task, Int>()
-    sorted.forEach { task ->
-        if (task in totalLanesOf) return@forEach
-        val visited = mutableSetOf<Task>()
-        val queue = ArrayDeque<Task>()
-        queue.add(task)
+    val totalLanesOf = mutableMapOf<TaskOccurrence, Int>()
+    sorted.forEach { occ ->
+        if (occ in totalLanesOf) return@forEach
+        val visited = mutableSetOf<TaskOccurrence>()
+        val queue = ArrayDeque<TaskOccurrence>()
+        queue.add(occ)
         while (queue.isNotEmpty()) {
             val current = queue.removeFirst()
             if (!visited.add(current)) continue
-            val cStart = current.tStart() ?: continue
-            val cEnd = current.tEnd() ?: continue
             sorted.forEach { other ->
-                if (other !in visited) {
-                    val oStart = other.tStart() ?: return@forEach
-                    val oEnd = other.tEnd() ?: return@forEach
-                    if (cStart < oEnd && cEnd > oStart) queue.add(other)
+                if (other !in visited &&
+                    current.spanStart() < other.spanEnd() && current.spanEnd() > other.spanStart()
+                ) {
+                    queue.add(other)
                 }
             }
         }
@@ -159,22 +184,26 @@ private fun computeLanes(tasks: List<Task>): Pair<Map<Task, Int>, Map<Task, Int>
     return Pair(laneOf, totalLanesOf)
 }
 
-private fun tasksForDate(
-    tasks: List<Task>,
+/** Filters [occurrences] to those visible on [date] (spanning multi-day occurrences included), positioned via [laneOf]/[totalLanesOf]. */
+private fun occurrencesForDate(
+    occurrences: List<TaskOccurrence>,
     date: LocalDate,
-    laneOf: Map<Task, Int>,
-    totalLanesOf: Map<Task, Int>
-): List<PositionedTask> = tasks
-    .filter { task ->
-        when (task) {
-            is Task.Daily -> false
-            is Task.Pool -> task.expiry != null && task.expiry.date == date
-            is Task.Set ->
-                if (task.end != null) task.start.date <= date && task.end.date >= date
-                else task.start.date == date
-        }
+    laneOf: Map<TaskOccurrence, Int>,
+    totalLanesOf: Map<TaskOccurrence, Int>
+): List<PositionedTask> = occurrences
+    .filter { occ ->
+        if (occ.occurrenceEnd != null) occ.occurrenceStart.date <= date && occ.occurrenceEnd.date >= date
+        else occ.occurrenceStart.date == date
     }
-    .map { PositionedTask(it, laneOf[it] ?: 0, totalLanesOf[it] ?: 1) }
+    .map {
+        PositionedTask(
+            it.task,
+            it.occurrenceStart,
+            it.occurrenceEnd,
+            laneOf[it] ?: 0,
+            totalLanesOf[it] ?: 1
+        )
+    }
 
 private fun weekDatesFor(
     anchor: LocalDate,
@@ -392,13 +421,8 @@ fun TaskScreen() {
                             today = today(),
                             selectedDateOne = selectedDateOne,
                             onCellTapped = ::onCellTapped,
-                            onTaskTapped = { task ->
-                                val date = when (task) {
-                                    is Task.Set -> task.start.date
-                                    is Task.Pool -> task.expiry?.date ?: today()
-                                    is Task.Daily -> today()
-                                }
-                                weekAnchor = date
+                            onTaskTapped = { task, occurrenceStart ->
+                                weekAnchor = occurrenceStart.date
                                 val index = filteredTasks.indexOf(task)
                                 if (index >= 0) scope.launch { listState.animateScrollToItem(index + 1) }
                             }
@@ -469,7 +493,7 @@ fun WeeklyScheduleGrid(
     today: LocalDate,
     selectedDateOne: LocalDateTime?,
     onCellTapped: (LocalDate, Int, Int) -> Unit,
-    onTaskTapped: (task: Task) -> Unit
+    onTaskTapped: (task: Task, occurrenceStart: LocalDateTime) -> Unit
 ) {
     val tasks by databaseInstance.tasks.collectAsState(initial = emptyList())
     val hours = remember { (0..23).toList() }
@@ -481,7 +505,16 @@ fun WeeklyScheduleGrid(
     val hScroll = rememberScrollState()
     val density = LocalDensity.current
 
-    val (laneOf, totalLanesOf) = remember(tasks) { computeLanes(tasks) }
+    val rangeStart = visibleDates.first()
+    val rangeEnd = visibleDates.last()
+
+    // Project every task (repeating Set tasks included) into concrete occurrences
+    // within the visible week, then lay THOSE out — not the raw tasks — so a
+    // repeating task gets an independently-positioned pill per occurrence.
+    val occurrences = remember(tasks, rangeStart, rangeEnd) {
+        tasks.flatMap { it.occurrencesInRange(rangeStart, rangeEnd) }
+    }
+    val (laneOf, totalLanesOf) = remember(occurrences) { computeLanes(occurrences) }
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val hourWidth = (maxWidth - labelWidth) / visibleHours
@@ -558,7 +591,7 @@ fun WeeklyScheduleGrid(
                 // Day rows
                 visibleDates.forEach { date ->
                     val primaryColor = MaterialTheme.colorScheme.primary
-                    val dayTasks = tasksForDate(tasks, date, laneOf, totalLanesOf)
+                    val dayTasks = occurrencesForDate(occurrences, date, laneOf, totalLanesOf)
 
                     Box(
                         modifier = Modifier
@@ -664,31 +697,23 @@ fun WeeklyScheduleGrid(
                             )
                         }
 
-                        // Task pills
+                        // Task pills — one per occurrence, not one per task
                         dayTasks.forEach { positioned ->
                             val task = positioned.task
+                            val occStart = positioned.occurrenceStart
+                            val occEnd = positioned.occurrenceEnd
 
-                            val startHour = when (task) {
-                                is Task.Pool -> task.expiry!!.hour
-                                is Task.Set -> if (task.start.date < date) 0 else task.start.hour
-                                is Task.Daily -> 0
+                            val startHour = if (occStart.date < date) 0 else occStart.hour
+                            val startMinute = if (occStart.date < date) 0 else occStart.minute
+                            val endHour = when {
+                                occEnd != null && occEnd.date > date -> 24
+                                occEnd != null -> occEnd.hour + 1
+                                else -> startHour + 1
                             }
-                            val startMinute = when (task) {
-                                is Task.Pool -> task.expiry!!.minute
-                                is Task.Set -> if (task.start.date < date) 0 else task.start.minute
-                                is Task.Daily -> 0
-                            }
-                            val endHour = when (task) {
-                                is Task.Pool -> task.expiry!!.hour + 1
-                                is Task.Set -> if (task.end != null && task.end.date > date) 24
-                                else (task.end?.hour?.plus(1) ?: (task.start.hour + 1))
-                                is Task.Daily -> 0
-                            }
-                            val endMinute = when (task) {
-                                is Task.Pool -> task.expiry!!.minute
-                                is Task.Set -> if (task.end != null && task.end.date > date) 0
-                                else (task.end?.minute ?: 0)
-                                is Task.Daily -> 0
+                            val endMinute = when {
+                                occEnd != null && occEnd.date > date -> 0
+                                occEnd != null -> occEnd.minute
+                                else -> 0
                             }
 
                             val startFraction = startHour + startMinute / 60f
@@ -708,16 +733,21 @@ fun WeeklyScheduleGrid(
                             val maxTextOffset = (pillWidthPx - with(density) { 11.dp.toPx() }).coerceAtLeast(0f)
                             val textOffsetPx = visibleLeft.coerceAtMost(maxTextOffset)
 
-                            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                            val nowMoment = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 
-                            val pillColor = when (task) {
-                                is Task.Set if task.completed ->
+                            // Whether this pill IS the task's current stored occurrence
+                            // (vs. a future projected one) — completed/overdue styling
+                            // only makes sense against the occurrence it actually describes.
+                            val isCurrentOccurrence = (task as? Task.Set)?.start == occStart
+
+                            val pillColor = when {
+                                task is Task.Set && task.completed && isCurrentOccurrence ->
                                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
 
-                                is Task.Set if task.end != null && task.end < now ->
-                                    MaterialTheme.colorScheme.error
+                                task is Task.Pool && task.completed ->
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
 
-                                is Task.Pool if task.expiry != null && task.expiry < now ->
+                                occEnd != null && occEnd < nowMoment ->
                                     MaterialTheme.colorScheme.error
 
                                 else -> primaryColor
@@ -741,7 +771,7 @@ fun WeeklyScheduleGrid(
                                             cap = androidx.compose.ui.graphics.StrokeCap.Round
                                         )
                                     }
-                                    .clickable { onTaskTapped(task) }
+                                    .clickable { onTaskTapped(task, occStart) }
                             ) {
                                 Text(
                                     text = task.title,

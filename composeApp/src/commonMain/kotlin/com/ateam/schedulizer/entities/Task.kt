@@ -1,18 +1,14 @@
 package com.ateam.schedulizer.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.ateam.schedulizer.CalendarRepeatSchedule
 import com.ateam.schedulizer.ReminderSchedule
 import com.ateam.schedulizer.RecurrenceEnd
-import com.ateam.schedulizer.databaseInstance
 import com.ateam.schedulizer.nextOccurrenceStart
 import com.ateam.schedulizer.occurrencesAfter
 import com.ateam.schedulizer.today
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -42,12 +38,7 @@ sealed class Task {
         val completed: Boolean = false,
         val completionDate: LocalDateTime? = null,
         val repeatFrequency: CalendarRepeatSchedule? = null,
-        /**
-         * 1-indexed position of the currently-active occurrence within [repeatFrequency]'s
-         * series. Ignored when [repeatFrequency] is null. Used to evaluate
-         * [RecurrenceEnd.AfterOccurrences] without needing to store a separate series
-         * anchor date — [start] IS the anchor for whichever occurrence is active now.
-         */
+        @ColumnInfo(defaultValue = "1")
         val occurrenceIndex: Int = 1
     ) : Task()
 
@@ -93,37 +84,34 @@ sealed class Task {
     }
 }
 
-fun Task.Set.completeAndAdvance(completedAt: LocalDateTime) {
+fun Task.Set.completeAndAdvance(completedAt: LocalDateTime): Task.Set {
     val schedule = repeatFrequency
     val newStart = schedule?.nextOccurrenceStart(start, occurrenceIndex)
 
     if (schedule == null || newStart == null) {
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            databaseInstance.upsertTask(copy(completed = true, completionDate = completedAt))
-        }
-    } else {
-        val newEnd = end?.let { oldEnd ->
-            val tz = TimeZone.currentSystemDefault()
-            val duration = oldEnd.toInstant(tz) - start.toInstant(tz)
-            (newStart.toInstant(tz) + duration).toLocalDateTime(tz)
-        }
-
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            databaseInstance.upsertTask(copy(
-                start = newStart,
-                end = newEnd,
-                completed = false,
-                completionDate = null,
-                occurrenceIndex = occurrenceIndex + 1
-            ))
-        }
+        return copy(completed = true, completionDate = completedAt)
     }
+
+    val newEnd = end?.let { oldEnd ->
+        val tz = TimeZone.currentSystemDefault()
+        val duration = oldEnd.toInstant(tz) - start.toInstant(tz)
+        (newStart.toInstant(tz) + duration).toLocalDateTime(tz)
+    }
+
+    return copy(
+        start = newStart,
+        end = newEnd,
+        completed = false,
+        completionDate = null,
+        occurrenceIndex = occurrenceIndex + 1
+    )
 }
 
 fun Task.Set.occurrencesBetween(rangeStart: LocalDate, rangeEnd: LocalDate): List<LocalDateTime> {
     val results = mutableListOf<LocalDateTime>()
 
-    if (start.date in rangeStart..rangeEnd) {
+    val currentOccurrenceEndDate = end?.date ?: start.date
+    if (start.date <= rangeEnd && currentOccurrenceEndDate >= rangeStart) {
         results += start
     }
 

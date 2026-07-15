@@ -5,6 +5,8 @@ import com.ateam.schedulizer.RecurrenceEnd
 import com.ateam.schedulizer.RecurrencePattern
 import com.ateam.schedulizer.entities.Task
 import kotlinx.datetime.*
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 
 fun CalendarRepeatSchedule.toRRule(occurrenceIndex: Int): String? {
     if (end is RecurrenceEnd.AfterOccurrences) {
@@ -37,16 +39,16 @@ private fun icsDay(isoDayOfWeek: Int) =
 /** RRULE UNTIL as end-of-day UTC on the given date. */
 private fun LocalDate.toIcsUntil(): String {
     val y = year.toString().padStart(4, '0')
-    val m = monthNumber.toString().padStart(2, '0')
-    val d = dayOfMonth.toString().padStart(2, '0')
+    val m = month.number.toString().padStart(2, '0')
+    val d = day.toString().padStart(2, '0')
     return "${y}${m}${d}T235959Z"
 }
 
 private fun LocalDateTime.toIcsDateTimeUtc(zone: TimeZone = TimeZone.currentSystemDefault()): String {
     val utc = this.toInstant(zone).toLocalDateTime(TimeZone.UTC)
     val y = utc.year.toString().padStart(4, '0')
-    val mo = utc.monthNumber.toString().padStart(2, '0')
-    val d = utc.dayOfMonth.toString().padStart(2, '0')
+    val mo = utc.month.number.toString().padStart(2, '0')
+    val d = utc.day.toString().padStart(2, '0')
     val h = utc.hour.toString().padStart(2, '0')
     val mi = utc.minute.toString().padStart(2, '0')
     val s = utc.second.toString().padStart(2, '0')

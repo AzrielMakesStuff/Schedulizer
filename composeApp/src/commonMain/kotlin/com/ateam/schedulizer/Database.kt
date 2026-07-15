@@ -8,7 +8,10 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.execSQL
 import com.ateam.schedulizer.dao.TaskDao
 import com.ateam.schedulizer.entities.Settings
 import com.ateam.schedulizer.entities.Streak
@@ -28,7 +31,7 @@ import kotlin.time.Clock
     tableName = "Settings",
     columnName = "notificationTime"
 )
-class AutomaticMigration : AutoMigrationSpec
+class Migration10 : AutoMigrationSpec
 
 @Database(
     entities = [
@@ -38,9 +41,9 @@ class AutomaticMigration : AutoMigrationSpec
         Streak::class,
         Settings::class
     ],
-    version = 10,
+    version = 11,
     autoMigrations = [
-        AutoMigration(from = 9, to = 10, spec = AutomaticMigration::class)
+        AutoMigration(from = 9, to = 10, spec = Migration10::class)
     ]
 )
 @TypeConverters(Converters::class)
@@ -163,11 +166,12 @@ abstract class AppDatabase : RoomDatabase() {
     }
 }
 
-//val MIGRATION = object : Migration(9, 10) {
-//    override fun migrate(db: SQLiteConnection) {
-//        db.execSQL("ALTER TABLE Settings ADD COLUMN someNewField INTEGER NOT NULL DEFAULT 0")
-//    }
-//}
+val MIGRATION11 = object : Migration(10, 11) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE SetTask ADD COLUMN repeatFrequency TEXT DEFAULT NULL")
+        connection.execSQL("ALTER TABLE SetTask ADD COLUMN occurrenceIndex INTEGER NOT NULL DEFAULT 1")
+    }
+}
 
 fun getRoomDatabase(
     builder: RoomDatabase.Builder<AppDatabase>
@@ -175,7 +179,7 @@ fun getRoomDatabase(
     return builder
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        //.addMigrations(MIGRATION)
+        .addMigrations(MIGRATION11)
         .fallbackToDestructiveMigrationOnDowngrade(true)
         .build()
 }
