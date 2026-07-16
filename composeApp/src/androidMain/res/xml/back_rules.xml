@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules xmlns:andorid="http://schemas.android.com/tools">
     <cloud-backup>
-    <include domain="database" path="my_room.db"/>
+    <include domain="database" path="."/>
     </cloud-backup>
 </data-extraction-rules>
