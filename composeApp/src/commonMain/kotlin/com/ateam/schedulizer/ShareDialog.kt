@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -88,6 +89,7 @@ fun ShareDialog(
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier
+                                    .width(84.dp)
                                     .clickable {createTaskDialog = true}
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
@@ -101,13 +103,14 @@ fun ShareDialog(
                                 Text(
                                     text = "Download ICS file",
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
 
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier
+                                    .width(84.dp)
                                     .clickable {createTaskDialog = true}
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
@@ -121,13 +124,14 @@ fun ShareDialog(
                                 Text(
                                     text = "Share ICS File",
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
 
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier
+                                    .width(84.dp)
                                     .clickable {createTaskDialog = true}
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
@@ -139,9 +143,9 @@ fun ShareDialog(
                                     )
                                 }
                                 Text(
-                                    text = "Backup ICS File",
+                                    text = "Backup Data",
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
