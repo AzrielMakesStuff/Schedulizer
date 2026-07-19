@@ -1,5 +1,6 @@
 package com.ateam.schedulizer
 
+import ShareDialog
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -240,6 +241,12 @@ fun TaskScreen() {
         )
     }
 
+    if (shareCalendarDialog) {
+        ShareDialog(
+            onDismiss = { shareCalendarDialog = false }
+        )
+    }
+
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
 
     var weekAnchor by remember { mutableStateOf(today()) }
@@ -360,7 +367,7 @@ fun TaskScreen() {
                         year = visibleMonth.year
                     )
                     IconButton(
-                        onClick = { createTaskDialog = true }
+                        onClick = { shareCalendarDialog = true }
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Share,

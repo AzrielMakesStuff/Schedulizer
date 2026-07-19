@@ -205,28 +205,6 @@ fun Calendar() {
             .fillMaxSize()
             .padding(8.dp)
         ) {
-//            val backgroundColor = MaterialTheme.colorScheme.surface
-//
-//            HorizontalCalendar(
-//                modifier = Modifier.weight(1f),
-//                monthBody = { _, content ->
-//                    Box(modifier = Modifier.background(backgroundColor).wrapContentHeight()) {
-//                        content()
-//                    }
-//                },
-//                state = state,
-//                dayContent = { Day(it, taskByDate[it.date] ?: emptyList(), laneOf) },
-//                monthHeader = { month: CalendarMonth ->
-//                    val daysOfWeek = remember(month) {
-//                        month.weekDays.first().map { it.date.dayOfWeek }
-//                    }
-//                    val monthName = month.yearMonth.month.name
-//                        .lowercase()
-//                        .replaceFirstChar { it.uppercase() }
-//                    val year = month.yearMonth.year
-//                    Column {
-//                        MonthName(monthName = monthName, year = year)
-//                        MonthHeader(daysOfWeek = daysOfWeek)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -272,16 +250,9 @@ fun DaysOfWeekTitle(daysOfWeek: List<DayOfWeek>) {
 
 @Composable
 fun MonthName(monthName: String, year: Int, modifier: Modifier = Modifier) {
-    //val textColoring = MaterialTheme.colorScheme.onBackground
     Text(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .padding(vertical = 4.dp),
-        //modifier = Modifier.fillMaxWidth(),
         modifier = modifier,
         textAlign = TextAlign.Center,
-//        color = textColoring,
-//        fontSize = 22.sp,
         color = MaterialTheme.colorScheme.onSurface,
         fontSize = 24.sp,
         fontWeight = FontWeight.Bold,
@@ -305,10 +276,6 @@ private fun Day(day: CalendarDay, occurrences: List<DatedOccurrence>, laneOf: Ma
             .fillMaxWidth()
             .aspectRatio(0.75f)
             .border(
-//                color = if ((isToday) && (isMonthDate)) textColor.copy(alpha = 0.8f) else Color.Transparent.copy(
-//                    alpha = 0.2f
-//                ),
-//                width = 1.5.dp,
                 color = if (isToday && isMonthDate) primaryColor.copy(alpha = 0.5f) else Color.Gray.copy(alpha = 0.1f),
                 width = 0.5.dp,
             )
@@ -317,20 +284,14 @@ private fun Day(day: CalendarDay, occurrences: List<DatedOccurrence>, laneOf: Ma
                 showOverlay = true
             })
             .background(
-//                color = if ((isToday) && (isMonthDate)) MaterialTheme.colorScheme.primaryContainer.copy(
-//                    alpha = 0.3f
-//                ) else Color.Transparent
                 color = if (isToday && isMonthDate) primaryColor.copy(alpha = 0.15f) else Color.Transparent
             ),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-//                modifier = Modifier.padding(top = 10.dp),
                 modifier = Modifier.padding(top = 4.dp),
                 text = day.date.day.toString(),
-//                color = if (isToday) textColor.copy(alpha = 0.8f) else textColor,
-////                fontWeight = FontWeight.Bold,
                 color = if (isToday) primaryColor else textColor,
                 fontWeight = if (isToday) FontWeight.Bold else FontWeight.SemiBold,
                 fontSize = 12.sp
@@ -373,13 +334,6 @@ private fun Day(day: CalendarDay, occurrences: List<DatedOccurrence>, laneOf: Ma
                                 start = if (isStart) 2.dp else 0.dp,
                                 end = if (isEnd) 2.dp else 0.dp
                             )
-//                            .background(
-//                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-//                                shape = RoundedCornerShape(
-//                                    topStart = if (isStart) 2.dp else 0.dp,
-//                                    bottomStart = if (isStart) 2.dp else 0.dp,
-//                                    topEnd = if (isEnd) 2.dp else 0.dp,
-//                                    bottomEnd = if (isEnd) 2.dp else 0.dp
                             .clip(
                                 RoundedCornerShape(
                                     topStart = if (isStart) 4.dp else 0.dp,
@@ -605,7 +559,6 @@ fun DetailsOverlay(
 
 @Composable
 fun MonthHeader(daysOfWeek: List<DayOfWeek>) {
-    //val textColoring = MaterialTheme.colorScheme.onSurface
     val textColoring = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
     Row(modifier = Modifier.fillMaxWidth()) {
         for (dayOfWeek in daysOfWeek) {
