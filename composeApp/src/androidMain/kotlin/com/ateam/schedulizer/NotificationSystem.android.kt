@@ -14,11 +14,15 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.LifecycleCoroutineScope
 import com.ateam.schedulizer.entities.Task
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.number
 import java.util.Calendar
 
+var lastNotifPerm = NotificationManagerCompat.from(ContextHolder.context).areNotificationsEnabled()
 actual object NotificationSystem {
     fun createNotification(title: String, body: String, taskId: Long? = null, taskType: String? = null): Notification {
         val launchIntent = ContextHolder.context.packageManager
@@ -59,20 +63,35 @@ actual object NotificationSystem {
     }
 
     actual fun scheduleNotification(title: String, body: String, time: LocalDateTime, task: Task) {
-        val intent = Intent(ContextHolder.context, Receiver::class.java)
-        intent.putExtra("title_key", title)
-        intent.putExtra("body_key", body)
-        intent.putExtra("task_id", task.id)
-        intent.putExtra("task_type", task.typeTag())
-        val code = requestCode(task.id, task.typeTag())
-        val pendingIntent = PendingIntent.getBroadcast(
-            ContextHolder.context, code, intent,
-            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val calendar = Calendar.getInstance()
-        calendar.set(time.year, time.month.number - 1, time.day, time.hour, time.minute, time.second)
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+
+       if (NotificationManagerCompat.from(ContextHolder.context).areNotificationsEnabled()) {
+            val intent = Intent(ContextHolder.context, Receiver::class.java)
+            intent.putExtra("title_key", title)
+            intent.putExtra("body_key", body)
+            intent.putExtra("task_id", task.id)
+            intent.putExtra("task_type", task.typeTag())
+            val code = requestCode(task.id, task.typeTag())
+            val pendingIntent = PendingIntent.getBroadcast(
+                ContextHolder.context, code, intent,
+                PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val alarmManager =
+                ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val calendar = Calendar.getInstance()
+            calendar.set(
+                time.year,
+                time.month.number - 1,
+                time.day,
+                time.hour,
+                time.minute,
+                time.second
+            )
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                pendingIntent
+            )
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -108,5 +127,15 @@ actual object NotificationSystem {
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
         ) ?: return
         alarmManager.cancel(pendingIntent)
+    }
+
+    actual suspend fun recheckNotifPerm() {
+        val notifsEnabled = NotificationManagerCompat.from(ContextHolder.context).areNotificationsEnabled()
+        if (!lastNotifPerm && notifsEnabled) {
+            databaseInstance.rescheduleAllNotifications()
+            lastNotifPerm = true
+        }
+        else if (lastNotifPerm && !notifsEnabled) clearAllNotifications()
+        lastNotifPerm = notifsEnabled
     }
 }

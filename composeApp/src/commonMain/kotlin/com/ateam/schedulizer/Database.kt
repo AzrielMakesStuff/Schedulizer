@@ -97,8 +97,8 @@ abstract class AppDatabase : RoomDatabase() {
         _tasks.value = getAll()
         _streak.value = (taskDao().getStreak() ?: Streak().also { taskDao().upsert(it) }).streakLength
         _settings.value = taskDao().getSettings() ?: Settings()
-
         WidgetManager.updateWidgets() // Refresh widgets
+        NotificationSystem.recheckNotifPerm()
     }
 
     suspend fun saveSettings(settings: Settings) {

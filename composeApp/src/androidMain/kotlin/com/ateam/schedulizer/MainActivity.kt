@@ -16,8 +16,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.app.NotificationManagerCompat
 
 class MainActivity : ComponentActivity() {
+
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -45,6 +47,9 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 databaseInstance.refresh()
                 databaseInstance.rescheduleAllNotifications()
+                if (!NotificationManagerCompat.from(ContextHolder.context).areNotificationsEnabled()) {
+                    NotificationSystem.clearAllNotifications()
+                }
             }
             LaunchedEffect(isDarkMode) {
                 enableEdgeToEdge(
