@@ -125,8 +125,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         if (shouldSchedule) {
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-            val nextDateTime = task.reminderSchedule.nextFireDateTime(now)
-            if (nextDateTime != null) {
+            task.nextNotificationTime(now)?.let { nextDateTime ->
                 NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
             }
         }
@@ -156,26 +155,13 @@ abstract class AppDatabase : RoomDatabase() {
 
         tasks.forEach { task ->
             NotificationSystem.clearNotification(task)
-
             val shouldSchedule = when (task) {
                 is Task.Daily -> true
                 is Task.Set, is Task.Pool -> !task.isComplete()
             }
             if (!shouldSchedule) return@forEach
 
-            val reminderFire = task.reminderSchedule.nextFireDateTime(now)
-
-            val nextDateTime = if (task is Task.Set) {
-                val fifteenBefore = task.start.toInstant(zone)
-                    .minus(15, DateTimeUnit.MINUTE, zone)
-                    .toLocalDateTime(zone)
-                    .takeIf { it >= now }
-
-                listOfNotNull(reminderFire, fifteenBefore).minOrNull()
-            } else {
-                reminderFire
-            } ?: return@forEach
-
+            val nextDateTime = task.nextNotificationTime(now, zone) ?: return@forEach
             NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
         }
     }

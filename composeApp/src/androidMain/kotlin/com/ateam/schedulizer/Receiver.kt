@@ -21,7 +21,7 @@ import kotlin.time.Clock
 class Receiver : BroadcastReceiver() {
     @OptIn(DelicateCoroutinesApi::class)
     override fun onReceive(context: Context, intent: Intent) {
-        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        val notificationManager = context.getSystemService(NotificationManager::class.java) ?: return
         val id = intent.getLongExtra("task_id", 0)
         val typeTag = intent.getStringExtra("task_type") ?: return
         val title = intent.getStringExtra("title_key") ?: return
@@ -35,7 +35,6 @@ class Receiver : BroadcastReceiver() {
                 val task = databaseInstance.getTask(id, typeTag) ?: return@launch
                 val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                 val zone = TimeZone.currentSystemDefault()
-                Log.d("NotifDebug", "Task=${task.title} isComplete=${task.isComplete()}")
 
                 if (!task.isComplete()) {
                     val notification = createNotification(title, body, task.id, task.typeTag())
@@ -48,21 +47,10 @@ class Receiver : BroadcastReceiver() {
                 }
 
                 if (!shouldReschedule) return@launch
-
-                val reminderFire = task.reminderSchedule.nextFireDateTime(now)
-
-                val nextDateTime = if (task is Task.Set) {
-                    val fifteenBefore = task.start.toInstant(zone)
-                        .minus(15, DateTimeUnit.MINUTE, zone)
-                        .toLocalDateTime(zone)
-                        .takeIf { it >= now }
-
-                    listOfNotNull(reminderFire, fifteenBefore).minOrNull()
-                } else {
-                    reminderFire
-                } ?: return@launch
-
+                val nextDateTime = task.nextNotificationTime(now, zone) ?: return@launch
                 NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
+            } catch (e: Exception) {
+                Log.e("NotifDebug", "Failed to handle notification for task=$id", e)
             } finally {
                 pendingResult.finish()
             }

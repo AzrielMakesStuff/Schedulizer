@@ -6,12 +6,15 @@ import androidx.room.PrimaryKey
 import com.ateam.schedulizer.CalendarRepeatSchedule
 import com.ateam.schedulizer.ReminderSchedule
 import com.ateam.schedulizer.RecurrenceEnd
+import com.ateam.schedulizer.nextFireDateTime
 import com.ateam.schedulizer.nextOccurrenceStart
 import com.ateam.schedulizer.occurrencesAfter
 import com.ateam.schedulizer.today
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 
@@ -40,7 +43,46 @@ sealed class Task {
         val repeatFrequency: CalendarRepeatSchedule? = null,
         @ColumnInfo(defaultValue = "1")
         val occurrenceIndex: Int = 1
-    ) : Task()
+    ) : Task() {
+        fun completeAndAdvance(completedAt: LocalDateTime): Set {
+            val schedule = repeatFrequency
+            val newStart = schedule?.nextOccurrenceStart(start, occurrenceIndex)
+
+            if (schedule == null || newStart == null) {
+                return copy(completed = true, completionDate = completedAt)
+            }
+
+            val newEnd = end?.let { oldEnd ->
+                val tz = TimeZone.currentSystemDefault()
+                val duration = oldEnd.toInstant(tz) - start.toInstant(tz)
+                (newStart.toInstant(tz) + duration).toLocalDateTime(tz)
+            }
+
+            return copy(
+                start = newStart,
+                end = newEnd,
+                completed = false,
+                completionDate = null,
+                occurrenceIndex = occurrenceIndex + 1
+            )
+        }
+
+        fun occurrencesBetween(rangeStart: LocalDate, rangeEnd: LocalDate): List<LocalDateTime> {
+            val results = mutableListOf<LocalDateTime>()
+
+            val currentOccurrenceEndDate = end?.date ?: start.date
+            if (start.date <= rangeEnd && currentOccurrenceEndDate >= rangeStart) {
+                results += start
+            }
+
+            repeatFrequency?.let { schedule ->
+                results += schedule.occurrencesAfter(start, occurrenceIndex, rangeEnd)
+                    .filter { it.date >= rangeStart }
+            }
+
+            return results
+        }
+    }
 
     @Entity(tableName = "PoolTask")
     data class Pool(
@@ -82,43 +124,17 @@ sealed class Task {
         }
         return (id.toInt() * 4) + tag
     }
-}
 
-fun Task.Set.completeAndAdvance(completedAt: LocalDateTime): Task.Set {
-    val schedule = repeatFrequency
-    val newStart = schedule?.nextOccurrenceStart(start, occurrenceIndex)
-
-    if (schedule == null || newStart == null) {
-        return copy(completed = true, completionDate = completedAt)
+    fun nextNotificationTime(now: LocalDateTime, zone: TimeZone = TimeZone.currentSystemDefault()): LocalDateTime? {
+        val reminderFire = reminderSchedule.nextFireDateTime(now)
+        return if (this is Task.Set) {
+            val fifteenBefore = start.toInstant(zone)
+                .minus(15, DateTimeUnit.MINUTE, zone)
+                .toLocalDateTime(zone)
+                .takeIf { it >= now }
+            listOfNotNull(reminderFire, fifteenBefore).minOrNull()
+        } else {
+            reminderFire
+        }
     }
-
-    val newEnd = end?.let { oldEnd ->
-        val tz = TimeZone.currentSystemDefault()
-        val duration = oldEnd.toInstant(tz) - start.toInstant(tz)
-        (newStart.toInstant(tz) + duration).toLocalDateTime(tz)
-    }
-
-    return copy(
-        start = newStart,
-        end = newEnd,
-        completed = false,
-        completionDate = null,
-        occurrenceIndex = occurrenceIndex + 1
-    )
-}
-
-fun Task.Set.occurrencesBetween(rangeStart: LocalDate, rangeEnd: LocalDate): List<LocalDateTime> {
-    val results = mutableListOf<LocalDateTime>()
-
-    val currentOccurrenceEndDate = end?.date ?: start.date
-    if (start.date <= rangeEnd && currentOccurrenceEndDate >= rangeStart) {
-        results += start
-    }
-
-    repeatFrequency?.let { schedule ->
-        results += schedule.occurrencesAfter(start, occurrenceIndex, rangeEnd)
-            .filter { it.date >= rangeStart }
-    }
-
-    return results
 }
