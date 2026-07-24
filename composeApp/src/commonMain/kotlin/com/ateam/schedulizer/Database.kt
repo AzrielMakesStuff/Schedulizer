@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
@@ -151,6 +152,8 @@ abstract class AppDatabase : RoomDatabase() {
     suspend fun rescheduleAllNotifications() {
         val tasks = getAll()
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val zone = TimeZone.currentSystemDefault()
+
         tasks.forEach { task ->
             NotificationSystem.clearNotification(task)
 
@@ -160,7 +163,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
             if (!shouldSchedule) return@forEach
 
-            val nextDateTime = task.reminderSchedule.nextFireDateTime(now) ?: return@forEach
+            val reminderFire = task.reminderSchedule.nextFireDateTime(now)
+
+            val nextDateTime = if (task is Task.Set) {
+                val fifteenBefore = task.start.toInstant(zone)
+                    .minus(15, DateTimeUnit.MINUTE, zone)
+                    .toLocalDateTime(zone)
+                    .takeIf { it >= now }
+
+                listOfNotNull(reminderFire, fifteenBefore).minOrNull()
+            } else {
+                reminderFire
+            } ?: return@forEach
+
             NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
         }
     }

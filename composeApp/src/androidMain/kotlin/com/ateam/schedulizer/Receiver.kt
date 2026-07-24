@@ -11,7 +11,10 @@ import com.ateam.schedulizer.entities.Task
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
@@ -30,6 +33,8 @@ class Receiver : BroadcastReceiver() {
         GlobalScope.launch {
             try {
                 val task = databaseInstance.getTask(id, typeTag) ?: return@launch
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                val zone = TimeZone.currentSystemDefault()
                 Log.d("NotifDebug", "Task=${task.title} isComplete=${task.isComplete()}")
 
                 if (!task.isComplete()) {
@@ -42,14 +47,22 @@ class Receiver : BroadcastReceiver() {
                     is Task.Set, is Task.Pool -> !task.isComplete()
                 }
 
-                if (shouldReschedule) {
-                    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                    val nextDateTime = task.reminderSchedule.nextFireDateTime(now)
-                    if (nextDateTime != null) {
-                        NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
-                        Log.d("NotifDebug", "Rescheduled OK for $nextDateTime")
-                    }
-                }
+                if (!shouldReschedule) return@launch
+
+                val reminderFire = task.reminderSchedule.nextFireDateTime(now)
+
+                val nextDateTime = if (task is Task.Set) {
+                    val fifteenBefore = task.start.toInstant(zone)
+                        .minus(15, DateTimeUnit.MINUTE, zone)
+                        .toLocalDateTime(zone)
+                        .takeIf { it >= now }
+
+                    listOfNotNull(reminderFire, fifteenBefore).minOrNull()
+                } else {
+                    reminderFire
+                } ?: return@launch
+
+                NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
             } finally {
                 pendingResult.finish()
             }
