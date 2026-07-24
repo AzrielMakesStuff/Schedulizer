@@ -5,7 +5,6 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.ateam.schedulizer.CalendarRepeatSchedule
 import com.ateam.schedulizer.ReminderSchedule
-import com.ateam.schedulizer.RecurrenceEnd
 import com.ateam.schedulizer.nextFireDateTime
 import com.ateam.schedulizer.nextOccurrenceStart
 import com.ateam.schedulizer.occurrencesAfter
@@ -44,20 +43,14 @@ sealed class Task {
         @ColumnInfo(defaultValue = "1")
         val occurrenceIndex: Int = 1
     ) : Task() {
-        fun completeAndAdvance(completedAt: LocalDateTime): Set {
-            val schedule = repeatFrequency
-            val newStart = schedule?.nextOccurrenceStart(start, occurrenceIndex)
-
-            if (schedule == null || newStart == null) {
-                return copy(completed = true, completionDate = completedAt)
-            }
-
+        private fun advanceOnce(): Set? {
+            val schedule = repeatFrequency ?: return null
+            val newStart = schedule.nextOccurrenceStart(start, occurrenceIndex) ?: return null
             val newEnd = end?.let { oldEnd ->
                 val tz = TimeZone.currentSystemDefault()
                 val duration = oldEnd.toInstant(tz) - start.toInstant(tz)
                 (newStart.toInstant(tz) + duration).toLocalDateTime(tz)
             }
-
             return copy(
                 start = newStart,
                 end = newEnd,
@@ -65,6 +58,16 @@ sealed class Task {
                 completionDate = null,
                 occurrenceIndex = occurrenceIndex + 1
             )
+        }
+
+        fun advanceToUpcomingOccurrence(now: LocalDateTime): Set {
+            var current = this
+            var safety = 0
+            while (current.start < now && safety < 10_000) {
+                current = current.advanceOnce() ?: break
+                safety++
+            }
+            return current
         }
 
         fun occurrencesBetween(rangeStart: LocalDate, rangeEnd: LocalDate): List<LocalDateTime> {

@@ -93,11 +93,7 @@ fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Uni
                             updated
                         }
 
-                        is Task.Set -> if (checked) {
-                            task.completeAndAdvance(now())
-                        } else {
-                            task.copy(completed = false, completionDate = null)
-                        }
+                        is Task.Set -> task.copy(completed = checked, completionDate = if (checked) now() else null)
 
                         is Task.Pool -> task.copy(
                             completed = checked,

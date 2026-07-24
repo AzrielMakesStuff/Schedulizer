@@ -32,8 +32,9 @@ class Receiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         GlobalScope.launch {
             try {
-                val task = databaseInstance.getTask(id, typeTag) ?: return@launch
+                val rawTask = databaseInstance.getTask(id, typeTag) ?: return@launch
                 val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                val task = databaseInstance.advanceIfStale(rawTask, now)
                 val zone = TimeZone.currentSystemDefault()
 
                 if (!task.isComplete()) {

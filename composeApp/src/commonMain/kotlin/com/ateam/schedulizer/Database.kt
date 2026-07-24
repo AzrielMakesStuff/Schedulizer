@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toInstant
@@ -84,8 +85,11 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun taskDao(): TaskDao
 
-    suspend fun getAll(): List<Task> =
-        taskDao().run { getAllSet() + getAllPool() + getAllDaily() }
+    suspend fun getAll(): List<Task> {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val sets = taskDao().getAllSet().map { advanceIfStale(it, now) as Task.Set }
+        return sets + taskDao().getAllPool() + taskDao().getAllDaily()
+    }
 
     suspend fun getTask(id: Long, type: String) = when (type) {
         "Set" -> taskDao().getSet(id)
@@ -146,6 +150,13 @@ abstract class AppDatabase : RoomDatabase() {
             is Task.Daily -> taskDao().deleteDaily(task.id)
         }
         refresh()
+    }
+
+    suspend fun advanceIfStale(task: Task, now: LocalDateTime): Task {
+        if (task !is Task.Set) return task
+        val advanced = task.advanceToUpcomingOccurrence(now)
+        if (advanced != task) taskDao().upsert(advanced) // persist so scheduling sees the real current occurrence
+        return advanced
     }
 
     suspend fun rescheduleAllNotifications() {
