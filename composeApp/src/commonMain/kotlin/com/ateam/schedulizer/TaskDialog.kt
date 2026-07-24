@@ -930,7 +930,7 @@ fun TaskDialog(
                         modifier = Modifier.weight(1f),
                         enabled = title.isNotBlank()
                     ) {
-                        Text(if (isEditing) "Save Changes" else "Save")
+                        Text("Save")
                     }
                 }
             }

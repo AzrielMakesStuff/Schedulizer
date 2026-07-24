@@ -9,41 +9,29 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.ateam.schedulizer.data.BusyBlock
+import com.ateam.schedulizer.data.BusyBlockCodec
+import com.ateam.schedulizer.entities.Task
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
+import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
@@ -64,9 +52,17 @@ fun ImportDialog(
 ) {
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
     var weekAnchor by remember { mutableStateOf(today()) }
-    
+
     var dragAccumulator by remember { mutableFloatStateOf(0f) }
     var weekChangedThisDrag by remember { mutableStateOf(false) }
+
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+
+    // Friend's busy blocks, parsed from a pasted string. Preview-only — never turned
+    // into Task entries, since there's no title/content to give them meaning as tasks.
+    var friendBlocks by remember { mutableStateOf<List<BusyBlock>?>(null) }
+    var statusMessage by remember { mutableStateOf<String?>(null) }
 
     Popup(
         onDismissRequest = onDismiss,
@@ -96,7 +92,7 @@ fun ImportDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Import Calendar",
+                        text = "Compare Schedules",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(start = 8.dp)
@@ -159,19 +155,36 @@ fun ImportDialog(
                             today = today(),
                             selectedDateOne = null,
                             onCellTapped = { _, _, _ -> },
-                            onTaskTapped = { _, _ -> }
+                            onTaskTapped = { _, _ -> },
+                            overlayBusyBlocks = friendBlocks.orEmpty()
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Text(
-                    text = "Select a file to import tasks. Preview changes in the grid above.",
+                    text = when {
+                        friendBlocks == null ->
+                            "Paste a schedule string from a friend to overlay their busy times, " +
+                                    "or export yours to share with them."
+                        friendBlocks!!.isEmpty() -> "No busy times in that data."
+                        else -> "Showing ${friendBlocks!!.size} busy block(s) overlaid above (hatched)."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(horizontal = 8.dp),
                     textAlign = TextAlign.Center,
+                )
+
+                statusMessage?.let {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -180,18 +193,41 @@ fun ImportDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
-                        onClick = { /* TODO: Import logic */ },
+                        onClick = {
+                            scope.launch {
+                                val clip = clipboard.getClipEntry()
+                                val text = clip?.readPlainText()
+                                val decoded = text?.let { BusyBlockCodec.decode(it) }
+                                if (decoded == null) {
+                                    statusMessage = "Couldn't read a schedule from the clipboard."
+                                } else {
+                                    friendBlocks = decoded
+                                    statusMessage = "Loaded ${decoded.size} busy block(s)."
+                                }
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Import")
+                        Text("Paste & Preview")
                     }
                     Button(
-                        onClick = { /* TODO: Export logic */ },
+                        onClick = {
+                            scope.launch {
+                                val weekDates = weekDatesFor(weekAnchor, firstDayOfWeek)
+                                val myTasks = databaseInstance.tasks.value
+                                    .filterIsInstance<Task.Set>()
+                                    .filter { it.start.date in weekDates }
+                                val blocks = BusyBlockCodec.fromTasks(myTasks)
+                                val encoded = BusyBlockCodec.encode(blocks)
+                                clipboard.setClipEntry(clipEntryOf(encoded))
+                                statusMessage = "Copied this week's busy times to clipboard."
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Export")
+                        Text("Export This Week")
                     }
                 }
             }

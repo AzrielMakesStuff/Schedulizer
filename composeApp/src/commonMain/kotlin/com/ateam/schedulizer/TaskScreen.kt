@@ -1,6 +1,5 @@
 package com.ateam.schedulizer
 
-import ShareDialog
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,9 +32,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ImportExport
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -81,6 +77,8 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearMonth
 import kotlin.time.Clock
 import cafe.adriel.voyager.navigator.internal.BackHandler
+import com.ateam.schedulizer.data.BusyBlock
+import com.ateam.schedulizer.data.endDateTime
 
 /**
  * A single occurrence of a task, positioned within a specific date range. For a
@@ -206,6 +204,9 @@ private fun occurrencesForDate(
             totalLanesOf[it] ?: 1
         )
     }
+
+private fun busyBlocksForDate(blocks: List<BusyBlock>, date: LocalDate): List<BusyBlock> =
+    blocks.filter { it.start.date <= date && it.endDateTime().date >= date }
 
 private fun weekDatesFor(
     anchor: LocalDate,
@@ -518,7 +519,8 @@ fun WeeklyScheduleGrid(
     today: LocalDate,
     selectedDateOne: LocalDateTime?,
     onCellTapped: (LocalDate, Int, Int) -> Unit,
-    onTaskTapped: (task: Task, occurrenceStart: LocalDateTime) -> Unit
+    onTaskTapped: (task: Task, occurrenceStart: LocalDateTime) -> Unit,
+    overlayBusyBlocks: List<BusyBlock> = emptyList()
 ) {
     val tasks by databaseInstance.tasks.collectAsState(initial = emptyList())
     val hours = remember { (0..23).toList() }
@@ -811,6 +813,44 @@ fun WeeklyScheduleGrid(
                                         .padding(end = 4.dp)
                                 )
                             }
+                        }
+
+                        val overlayColor = MaterialTheme.colorScheme.tertiary
+                        busyBlocksForDate(overlayBusyBlocks, date).forEach { block ->
+                            val blockEnd = block.endDateTime()
+
+                            val startHour = if (block.start.date < date) 0 else block.start.hour
+                            val startMinute = if (block.start.date < date) 0 else block.start.minute
+                            val endHour = if (blockEnd.date > date) 24 else blockEnd.hour + (if (blockEnd.minute > 0) 1 else 0)
+                            val endMinute = if (blockEnd.date > date) 0 else blockEnd.minute
+
+                            val startFraction = startHour + startMinute / 60f
+                            val endFraction = (endHour + endMinute / 60f).coerceAtLeast(startFraction + 0.25f)
+                            val spanHours = endFraction - startFraction
+
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = hourWidth * startFraction, y = 0.dp)
+                                    .width(hourWidth * spanHours)
+                                    .fillMaxHeight()
+                                    .padding(vertical = 2.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(overlayColor.copy(alpha = 0.14f))
+                                    .drawWithContent {
+                                        drawContent()
+                                        val step = 6.dp.toPx()
+                                        var x = -size.height
+                                        while (x < size.width) {
+                                            drawLine(
+                                                color = overlayColor.copy(alpha = 0.35f),
+                                                start = Offset(x, size.height),
+                                                end = Offset(x + size.height, 0f),
+                                                strokeWidth = 1.dp.toPx()
+                                            )
+                                            x += step
+                                        }
+                                    }
+                            )
                         }
                     }
                 }
