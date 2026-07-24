@@ -61,8 +61,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
+import cafe.adriel.voyager.navigator.internal.BackHandler
+import com.ateam.schedulizer.data.BusyBlock
+import com.ateam.schedulizer.data.endDateTime
 import com.ateam.schedulizer.entities.Task
-import com.ateam.schedulizer.entities.occurrencesBetween
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -76,9 +78,6 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearMonth
 import kotlin.time.Clock
-import cafe.adriel.voyager.navigator.internal.BackHandler
-import com.ateam.schedulizer.data.BusyBlock
-import com.ateam.schedulizer.data.endDateTime
 
 /**
  * A single occurrence of a task, positioned within a specific date range. For a
