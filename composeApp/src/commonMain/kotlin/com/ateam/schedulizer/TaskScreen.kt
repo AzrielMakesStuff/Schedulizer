@@ -31,6 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ImportExport
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -234,6 +235,7 @@ fun now() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 fun TaskScreen() {
     var createTaskDialog by remember { mutableStateOf(false) }
     var shareCalendarDialog by remember { mutableStateOf(false) }
+    var importCalendarDialog by remember { mutableStateOf(false) }
 
     if (createTaskDialog) {
         TaskDialog(
@@ -244,6 +246,12 @@ fun TaskScreen() {
     if (shareCalendarDialog) {
         ShareDialog(
             onDismiss = { shareCalendarDialog = false }
+        )
+    }
+
+    if (importCalendarDialog) {
+        ImportDialog(
+            onDismiss = { importCalendarDialog = false }
         )
     }
 
@@ -372,6 +380,16 @@ fun TaskScreen() {
                         Icon(
                             imageVector = Icons.Filled.Share,
                             contentDescription = "Share Calendar",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { importCalendarDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ImportExport,
+                            contentDescription = "Import Calendar",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
