@@ -1,5 +1,10 @@
 package com.ateam.schedulizer
 
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+
 expect val databaseInstance : AppDatabase
 
 expect object WidgetManager {
@@ -7,3 +12,36 @@ expect object WidgetManager {
 }
 
 expect suspend fun purgeData();
+
+@Composable
+fun alertDialogBuilder(title : String, description: String, confirmationRequest : () -> Unit, onDismissRequest : () -> Unit) {
+    AlertDialog(
+        title = {
+            Text(text = title)
+        },
+        text = {
+            Text(text = description)
+        },
+        onDismissRequest = {
+            onDismissRequest()
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    confirmationRequest()
+                }
+            ) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismissRequest()
+                }
+            ) {
+                Text("Dismiss")
+            }
+        }
+    )
+}
