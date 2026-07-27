@@ -5,6 +5,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.ateam.schedulizer.NotificationSystem.createNotification
 import com.ateam.schedulizer.NotificationSystem.requestCode
 import com.ateam.schedulizer.entities.Task
@@ -37,7 +39,7 @@ class Receiver : BroadcastReceiver() {
                 val task = databaseInstance.advanceIfStale(rawTask, now)
                 val zone = TimeZone.currentSystemDefault()
 
-                    if (!task.isComplete()) {
+                    if (NotificationManagerCompat.from(ContextHolder.context).areNotificationsEnabled() && !task.isComplete()) {
                         val notification = createNotification(title, body, task.id, task.typeTag())
                         notificationManager.notify(
                             requestCode(task.id, task.typeTag()),
@@ -50,7 +52,7 @@ class Receiver : BroadcastReceiver() {
                         is Task.Set, is Task.Pool -> !task.isComplete()
                     }
 
-                if (!shouldReschedule) return@launch
+                if (NotificationManagerCompat.from(ContextHolder.context).areNotificationsEnabled() && !shouldReschedule) return@launch
                 val nextDateTime = task.nextNotificationTime(now, zone) ?: return@launch
                 NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
             } catch (e: Exception) {
