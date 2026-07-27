@@ -1,6 +1,5 @@
 package com.ateam.schedulizer
 
-import ShareDialog
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -31,10 +30,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ImportExport
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,8 +61,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
+import cafe.adriel.voyager.navigator.internal.BackHandler
+import com.ateam.schedulizer.data.BusyBlock
+import com.ateam.schedulizer.data.endDateTime
 import com.ateam.schedulizer.entities.Task
-import com.ateam.schedulizer.entities.occurrencesBetween
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -79,7 +78,6 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearMonth
 import kotlin.time.Clock
-import cafe.adriel.voyager.navigator.internal.BackHandler
 
 /**
  * A single occurrence of a task, positioned within a specific date range. For a
@@ -206,6 +204,9 @@ private fun occurrencesForDate(
         )
     }
 
+private fun busyBlocksForDate(blocks: List<BusyBlock>, date: LocalDate): List<BusyBlock> =
+    blocks.filter { it.start.date <= date && it.endDateTime().date >= date }
+
 private fun weekDatesFor(
     anchor: LocalDate,
     firstDayOfWeek: kotlinx.datetime.DayOfWeek
@@ -234,6 +235,7 @@ fun now() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 fun TaskScreen() {
     var createTaskDialog by remember { mutableStateOf(false) }
     var shareCalendarDialog by remember { mutableStateOf(false) }
+    var importCalendarDialog by remember { mutableStateOf(false) }
 
     if (createTaskDialog) {
         TaskDialog(
@@ -244,6 +246,12 @@ fun TaskScreen() {
     if (shareCalendarDialog) {
         ShareDialog(
             onDismiss = { shareCalendarDialog = false }
+        )
+    }
+
+    if (importCalendarDialog) {
+        ImportDialog(
+            onDismiss = { importCalendarDialog = false }
         )
     }
 
@@ -375,6 +383,16 @@ fun TaskScreen() {
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
+
+                    IconButton(
+                        onClick = { importCalendarDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ImportExport,
+                            contentDescription = "Import Calendar",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
 
 
@@ -500,7 +518,8 @@ fun WeeklyScheduleGrid(
     today: LocalDate,
     selectedDateOne: LocalDateTime?,
     onCellTapped: (LocalDate, Int, Int) -> Unit,
-    onTaskTapped: (task: Task, occurrenceStart: LocalDateTime) -> Unit
+    onTaskTapped: (task: Task, occurrenceStart: LocalDateTime) -> Unit,
+    overlayBusyBlocks: List<BusyBlock> = emptyList()
 ) {
     val tasks by databaseInstance.tasks.collectAsState(initial = emptyList())
     val hours = remember { (0..23).toList() }
@@ -793,6 +812,44 @@ fun WeeklyScheduleGrid(
                                         .padding(end = 4.dp)
                                 )
                             }
+                        }
+
+                        val overlayColor = MaterialTheme.colorScheme.tertiary
+                        busyBlocksForDate(overlayBusyBlocks, date).forEach { block ->
+                            val blockEnd = block.endDateTime()
+
+                            val startHour = if (block.start.date < date) 0 else block.start.hour
+                            val startMinute = if (block.start.date < date) 0 else block.start.minute
+                            val endHour = if (blockEnd.date > date) 24 else blockEnd.hour + (if (blockEnd.minute > 0) 1 else 0)
+                            val endMinute = if (blockEnd.date > date) 0 else blockEnd.minute
+
+                            val startFraction = startHour + startMinute / 60f
+                            val endFraction = (endHour + endMinute / 60f).coerceAtLeast(startFraction + 0.25f)
+                            val spanHours = endFraction - startFraction
+
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = hourWidth * startFraction, y = 0.dp)
+                                    .width(hourWidth * spanHours)
+                                    .fillMaxHeight()
+                                    .padding(vertical = 2.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(overlayColor.copy(alpha = 0.14f))
+                                    .drawWithContent {
+                                        drawContent()
+                                        val step = 6.dp.toPx()
+                                        var x = -size.height
+                                        while (x < size.width) {
+                                            drawLine(
+                                                color = overlayColor.copy(alpha = 0.35f),
+                                                start = Offset(x, size.height),
+                                                end = Offset(x + size.height, 0f),
+                                                strokeWidth = 1.dp.toPx()
+                                            )
+                                            x += step
+                                        }
+                                    }
+                            )
                         }
                     }
                 }

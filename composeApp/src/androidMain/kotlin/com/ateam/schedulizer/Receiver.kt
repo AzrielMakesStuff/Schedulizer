@@ -5,14 +5,16 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import androidx.core.app.NotificationManagerCompat
 import com.ateam.schedulizer.NotificationSystem.createNotification
 import com.ateam.schedulizer.NotificationSystem.requestCode
 import com.ateam.schedulizer.entities.Task
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
@@ -30,9 +32,10 @@ class Receiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         GlobalScope.launch {
             try {
-                if (NotificationManagerCompat.from(ContextHolder.context).areNotificationsEnabled()){
-                    val task = databaseInstance.getTask(id, typeTag) ?: return@launch
-                    Log.d("NotifDebug", "Task=${task.title} isComplete=${task.isComplete()}")
+                val rawTask = databaseInstance.getTask(id, typeTag) ?: return@launch
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                val task = databaseInstance.advanceIfStale(rawTask, now)
+                val zone = TimeZone.currentSystemDefault()
 
                     if (!task.isComplete()) {
                         val notification = createNotification(title, body, task.id, task.typeTag())
@@ -47,21 +50,11 @@ class Receiver : BroadcastReceiver() {
                         is Task.Set, is Task.Pool -> !task.isComplete()
                     }
 
-                    if (shouldReschedule) {
-                        val now =
-                            Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                        val nextDateTime = task.reminderSchedule.nextFireDateTime(now)
-                        if (nextDateTime != null) {
-                            NotificationSystem.scheduleNotification(
-                                task.title,
-                                task.description,
-                                nextDateTime,
-                                task
-                            )
-                            Log.d("NotifDebug", "Rescheduled OK for $nextDateTime")
-                        }
-                    }
-                }
+                if (!shouldReschedule) return@launch
+                val nextDateTime = task.nextNotificationTime(now, zone) ?: return@launch
+                NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
+            } catch (e: Exception) {
+                Log.e("NotifDebug", "Failed to handle notification for task=$id", e)
             } finally {
                 pendingResult.finish()
             }

@@ -23,7 +23,11 @@ object ICSParser {
 
         for (block in extractVEvents(icsText)) {
             val props = parseProperties(block)
-            val task = propsToTask(props, defaultReminderSchedule) ?: continue
+            val task = try {
+                propsToTask(props, defaultReminderSchedule)
+            } catch (_: Exception) {
+                null
+            } ?: continue
             databaseInstance.upsertTask(task)
             imported += task
         }
@@ -37,15 +41,21 @@ object ICSParser {
         val unfolded = unfold(icsText)
         val blocks = mutableListOf<String>()
         var current: MutableList<String>? = null
+        var nestedDepth = 0
 
         for (line in unfolded.lines()) {
             when {
-                line == "BEGIN:VEVENT" -> current = mutableListOf()
+                line == "BEGIN:VEVENT" -> {
+                    current = mutableListOf()
+                    nestedDepth = 0
+                }
                 line == "END:VEVENT" -> {
                     current?.let { blocks += it.joinToString("\n") }
                     current = null
                 }
-                current != null -> current.add(line)
+                current != null && line.startsWith("BEGIN:") -> nestedDepth++
+                current != null && line.startsWith("END:") -> nestedDepth--
+                current != null && nestedDepth == 0 -> current.add(line)
             }
         }
         return blocks
@@ -116,7 +126,17 @@ object ICSParser {
             LocalDateTime(clean.take(4).toInt(), clean.substring(4, 6).toInt(), clean.substring(6, 8).toInt(), 0, 0, 0)
         }
 
-        return if (isUtc) local.toInstant(TimeZone.UTC).toLocalDateTime(TimeZone.currentSystemDefault()) else local
+        val timeZoneId = prop.params["TZID"]
+        return when {
+            isUtc -> local.toInstant(TimeZone.UTC).toLocalDateTime(TimeZone.currentSystemDefault())
+            timeZoneId != null -> {
+                val zone = try { TimeZone.of(timeZoneId) } catch (_: IllegalTimeZoneException) {
+                    TimeZone.currentSystemDefault()
+                }
+                local.toInstant(zone).toLocalDateTime(TimeZone.currentSystemDefault())
+            }
+            else -> local
+        }
     }
 
     private fun parseIcsDate(value: String): LocalDate {
@@ -133,7 +153,8 @@ object ICSParser {
     /** Parses a BYDAY entry like "MO", "2TU", or "-1FR" into (ordinal, isoDayOfWeek). Ordinal is 0 when no numeric prefix is present. */
     private fun parseByDayEntry(entry: String): Pair<Int, Int> {
         val dayCode = entry.takeLast(2)
-        val ordinal = entry.dropLast(2).toIntOrNull() ?: 0
+        val rawOrdinal = entry.dropLast(2).toIntOrNull() ?: 0
+        val ordinal = if (rawOrdinal in setOf(1, 2, 3, 4, -1)) rawOrdinal else 0
         return ordinal to (isoDayFromIcs[dayCode] ?: 1)
     }
 
@@ -177,7 +198,7 @@ object ICSParser {
                 byMonthDay != null -> RecurrencePattern.MonthlyByDate(byMonthDay)
                 byDay.isNotEmpty() && byDay.first().first != 0 ->
                     RecurrencePattern.MonthlyByWeekday(byDay.first().first, byDay.first().second)
-                else -> null
+                else -> RecurrencePattern.MonthlyByDate(dtStart.date.day)
             }
 
             "YEARLY" -> {
@@ -186,8 +207,7 @@ object ICSParser {
                     byMonthDay != null -> RecurrencePattern.YearlyByDate(month, byMonthDay)
                     byDay.isNotEmpty() && byDay.first().first != 0 ->
                         RecurrencePattern.YearlyByWeekday(month, byDay.first().first, byDay.first().second)
-                    byMonth != null -> RecurrencePattern.YearlyByDate(month, dtStart.date.day)
-                    else -> null
+                    else -> RecurrencePattern.YearlyByDate(month, dtStart.date.day)
                 }
             }
 

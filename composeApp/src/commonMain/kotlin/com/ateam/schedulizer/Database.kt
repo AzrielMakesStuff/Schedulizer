@@ -22,8 +22,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
@@ -83,8 +85,11 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun taskDao(): TaskDao
 
-    suspend fun getAll(): List<Task> =
-        taskDao().run { getAllSet() + getAllPool() + getAllDaily() }
+    suspend fun getAll(): List<Task> {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val sets = taskDao().getAllSet().map { advanceIfStale(it, now) as Task.Set }
+        return sets + taskDao().getAllPool() + taskDao().getAllDaily()
+    }
 
     suspend fun getTask(id: Long, type: String) = when (type) {
         "Set" -> taskDao().getSet(id)
@@ -124,8 +129,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         if (shouldSchedule) {
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-            val nextDateTime = task.reminderSchedule.nextFireDateTime(now)
-            if (nextDateTime != null) {
+            task.nextNotificationTime(now)?.let { nextDateTime ->
                 NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
             }
         }
@@ -148,19 +152,27 @@ abstract class AppDatabase : RoomDatabase() {
         refresh()
     }
 
+    suspend fun advanceIfStale(task: Task, now: LocalDateTime): Task {
+        if (task !is Task.Set) return task
+        val advanced = task.advanceToUpcomingOccurrence(now)
+        if (advanced != task) taskDao().upsert(advanced) // persist so scheduling sees the real current occurrence
+        return advanced
+    }
+
     suspend fun rescheduleAllNotifications() {
         val tasks = getAll()
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val zone = TimeZone.currentSystemDefault()
+
         tasks.forEach { task ->
             NotificationSystem.clearNotification(task)
-
             val shouldSchedule = when (task) {
                 is Task.Daily -> true
                 is Task.Set, is Task.Pool -> !task.isComplete()
             }
             if (!shouldSchedule) return@forEach
 
-            val nextDateTime = task.reminderSchedule.nextFireDateTime(now) ?: return@forEach
+            val nextDateTime = task.nextNotificationTime(now, zone) ?: return@forEach
             NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
         }
     }

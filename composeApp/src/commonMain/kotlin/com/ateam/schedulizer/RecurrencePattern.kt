@@ -23,13 +23,17 @@ sealed class RecurrencePattern {
     data class MonthlyByDate(val dayOfMonth: Int) : RecurrencePattern()
 
     /** [ordinal] 1-4; -1 = last. [dayOfWeek] 1-7. */
-    data class MonthlyByWeekday(val ordinal: Int, val dayOfWeek: Int) : RecurrencePattern()
+    data class MonthlyByWeekday(val ordinal: Int, val dayOfWeek: Int) : RecurrencePattern() {
+        init { require(ordinal in setOf(1, 2, 3, 4, -1)) { "ordinal must be 1-4 or -1, was $ordinal" } }
+    }
 
     /** [month] 1-12, [day] 1-31 (clamped to the month's last day, e.g. Feb 29 in a non-leap year). */
     data class YearlyByDate(val month: Int, val day: Int) : RecurrencePattern()
 
     /** [month] 1-12. [ordinal] 1-4; -1 = last. [dayOfWeek] 1-7. E.g. "3rd Thursday of November". */
-    data class YearlyByWeekday(val month: Int, val ordinal: Int, val dayOfWeek: Int) : RecurrencePattern()
+    data class YearlyByWeekday(val month: Int, val ordinal: Int, val dayOfWeek: Int) : RecurrencePattern() {
+        init { require(ordinal in setOf(1, 2, 3, 4, -1)) { "ordinal must be 1-4 or -1, was $ordinal" } }
+    }
 }
 
 /** Short label for this pattern, e.g. "Every 3 days", "Weekly (Mon, Wed)". Does not include a time. */
@@ -71,7 +75,13 @@ fun RecurrencePattern.nextFireDate(from: LocalDate): LocalDate = when (this) {
         val todayIso = from.dayOfWeek.isoDayNumber
         val daysAhead = (dayOfWeek - todayIso + 7) % 7
         var candidate = from.plus(daysAhead.toLong(), DateTimeUnit.DAY)
-        while (isoWeekNumber(candidate) % 2 != weekParity) {
+
+        var reference = candidate
+        while (isoWeekNumber(reference) != 1) {
+            reference = reference.minus(7, DateTimeUnit.DAY)
+        }
+        val weeksBetween = (candidate.toEpochDays() - reference.toEpochDays()) / 7
+        if (weeksBetween % 2 != weekParity.toLong()) {
             candidate = candidate.plus(7, DateTimeUnit.DAY)
         }
         candidate

@@ -1,6 +1,9 @@
 package com.ateam.schedulizer
 
 import android.app.Application
+import android.content.ClipData
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.toClipEntry
 import android.widget.Toast
 import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.CoroutineScope
@@ -21,8 +24,6 @@ actual val databaseInstance: AppDatabase get() {
    return privateInstance
 }
 
-
-
 actual object WidgetManager {
     actual fun updateWidgets() {
         CoroutineScope(Dispatchers.IO).launch {
@@ -30,6 +31,17 @@ actual object WidgetManager {
             TaskWidget().updateAll(ContextHolder.context)
         }
     }
+}
+
+actual fun clipEntryOf(text: String): ClipEntry {
+    val clipData = ClipData.newPlainText("text", text)
+    return clipData.toClipEntry()
+}
+
+actual suspend fun ClipEntry.readPlainText(): String? {
+    val data = clipData
+    if (data.itemCount == 0) return null
+    return data.getItemAt(0).text?.toString()
 }
 
 actual suspend fun purgeData() {

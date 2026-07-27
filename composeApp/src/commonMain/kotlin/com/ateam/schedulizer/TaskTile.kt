@@ -28,7 +28,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ateam.schedulizer.entities.Task
-import com.ateam.schedulizer.entities.completeAndAdvance
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -94,7 +93,7 @@ fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Uni
                             updated
                         }
 
-                        is Task.Set -> task.completeAndAdvance(now())
+                        is Task.Set -> task.copy(completed = checked, completionDate = if (checked) now() else null)
 
                         is Task.Pool -> task.copy(
                             completed = checked,
