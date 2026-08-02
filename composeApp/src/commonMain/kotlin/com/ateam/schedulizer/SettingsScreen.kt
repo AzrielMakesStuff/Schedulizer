@@ -92,9 +92,9 @@ fun SettingsScreen() {
                     {
                         ThemeButton(
                             selected = currentMode == ThemeMode.AUTO,
-                             onClick = { setTheme(ThemeMode.AUTO) },
-                             color = MaterialTheme.colorScheme.outline,
-                             label = "A"
+                            onClick = { setTheme(ThemeMode.AUTO) },
+                            color = MaterialTheme.colorScheme.outline,
+                            label = "A"
                         )
                         ThemeButton(
                             selected = currentMode == ThemeMode.DARK,
@@ -112,15 +112,34 @@ fun SettingsScreen() {
                 }
             }
 
-            Button(
-
-                onClick = {
-                    openAlertDialog.value = true
-            }) {
-Text("Purge Database Data")
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.25f)
+                    .padding(15.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
+            )
+            {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Data",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(onClick = { openAlertDialog.value = true }) {
+                            Text("Purge Database Data")
+                        }
+                    }
+                }
             }
         }
-
     }
 }
 
