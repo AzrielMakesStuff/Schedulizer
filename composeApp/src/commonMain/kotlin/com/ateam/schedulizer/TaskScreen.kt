@@ -30,6 +30,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarViewWeek
 import androidx.compose.material.icons.filled.ImportExport
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
@@ -236,6 +238,7 @@ fun TaskScreen() {
     var createTaskDialog by remember { mutableStateOf(false) }
     var shareCalendarDialog by remember { mutableStateOf(false) }
     var importCalendarDialog by remember { mutableStateOf(false) }
+    var isCalendarView by remember { mutableStateOf(false) }
 
     if (createTaskDialog) {
         TaskDialog(
@@ -258,8 +261,13 @@ fun TaskScreen() {
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
 
     var weekAnchor by remember { mutableStateOf(today()) }
-    val visibleMonth by remember(weekAnchor) {
-        derivedStateOf { weekDatesFor(weekAnchor, firstDayOfWeek).first().yearMonth }
+    var calendarVisibleMonth by remember { mutableStateOf(today().yearMonth) }
+
+    val visibleMonth by remember(weekAnchor, isCalendarView, calendarVisibleMonth) {
+        derivedStateOf {
+            if (isCalendarView) calendarVisibleMonth
+            else weekDatesFor(weekAnchor, firstDayOfWeek).first().yearMonth
+        }
     }
 
     var selectedDateOne by remember { mutableStateOf<LocalDateTime?>(null) }
@@ -393,64 +401,99 @@ fun TaskScreen() {
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
+
+                    IconButton(
+                        onClick = { isCalendarView = !isCalendarView }
+                    ) {
+                        if(!isCalendarView)
+                        Icon(
+                            imageVector = Icons.Filled.CalendarMonth,
+                            contentDescription = "Switch to Calendar",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        else
+                        Icon(
+                            imageVector = Icons.Filled.CalendarViewWeek,
+                            contentDescription = "Switch to Week View",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
 
 
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .pointerInput(Unit) {
-                            detectVerticalDragGestures(
-                                onDragEnd = {
-                                    dragAccumulator = 0f
-                                    weekChangedThisDrag = false
-                                },
-                                onDragCancel = {
-                                    dragAccumulator = 0f
-                                    weekChangedThisDrag = false
-                                },
-                                onVerticalDrag = { _, dragAmount ->
-                                    if (weekChangedThisDrag) return@detectVerticalDragGestures
-                                    dragAccumulator += dragAmount
-                                    if (dragAccumulator < -300f) {
-                                        weekAnchor = weekAnchor.plus(7, DateTimeUnit.DAY)
-                                        weekChangedThisDrag = true
-                                    } else if (dragAccumulator > 300f) {
-                                        weekAnchor = weekAnchor.minus(7, DateTimeUnit.DAY)
-                                        weekChangedThisDrag = true
+                if (!isCalendarView) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .pointerInput(Unit) {
+                                detectVerticalDragGestures(
+                                    onDragEnd = {
+                                        dragAccumulator = 0f
+                                        weekChangedThisDrag = false
+                                    },
+                                    onDragCancel = {
+                                        dragAccumulator = 0f
+                                        weekChangedThisDrag = false
+                                    },
+                                    onVerticalDrag = { _, dragAmount ->
+                                        if (weekChangedThisDrag) return@detectVerticalDragGestures
+                                        dragAccumulator += dragAmount
+                                        if (dragAccumulator < -300f) {
+                                            weekAnchor = weekAnchor.plus(7, DateTimeUnit.DAY)
+                                            weekChangedThisDrag = true
+                                        } else if (dragAccumulator > 300f) {
+                                            weekAnchor = weekAnchor.minus(7, DateTimeUnit.DAY)
+                                            weekChangedThisDrag = true
+                                        }
+                                    }
+                                )
+                            }
+                    ) {
+                        AnimatedContent(
+                            targetState = weekAnchor,
+                            transitionSpec = {
+                                if (targetState > initialState) {
+                                    (slideInVertically { it } + fadeIn()) togetherWith
+                                            (slideOutVertically { -it } + fadeOut())
+                                } else {
+                                    (slideInVertically { -it } + fadeIn()) togetherWith
+                                            (slideOutVertically { it } + fadeOut())
+                                }
+                            },
+                            label = "weekTransition"
+                        ) { anchor ->
+                            val dates = remember(anchor) { weekDatesFor(anchor, firstDayOfWeek) }
+                            WeeklyScheduleGrid(
+                                visibleDates = dates,
+                                now = now(),
+                                today = today(),
+                                selectedDateOne = selectedDateOne,
+                                onCellTapped = ::onCellTapped,
+                                onTaskTapped = { task, occurrenceStart ->
+                                    weekAnchor = occurrenceStart.date
+                                    val index = filteredTasks.indexOf(task)
+                                    if (index >= 0) scope.launch {
+                                        listState.animateScrollToItem(
+                                            index + 1
+                                        )
                                     }
                                 }
                             )
                         }
-                ) {
-                    AnimatedContent(
-                        targetState = weekAnchor,
-                        transitionSpec = {
-                            if (targetState > initialState) {
-                                (slideInVertically { it } + fadeIn()) togetherWith
-                                        (slideOutVertically { -it } + fadeOut())
-                            } else {
-                                (slideInVertically { -it } + fadeIn()) togetherWith
-                                        (slideOutVertically { it } + fadeOut())
-                            }
-                        },
-                        label = "weekTransition"
-                    ) { anchor ->
-                        val dates = remember(anchor) { weekDatesFor(anchor, firstDayOfWeek) }
-                        WeeklyScheduleGrid(
-                            visibleDates = dates,
-                            now = now(),
-                            today = today(),
-                            selectedDateOne = selectedDateOne,
-                            onCellTapped = ::onCellTapped,
-                            onTaskTapped = { task, occurrenceStart ->
-                                weekAnchor = occurrenceStart.date
-                                val index = filteredTasks.indexOf(task)
-                                if (index >= 0) scope.launch { listState.animateScrollToItem(index + 1) }
-                            }
+                    }
+                }
+                else
+                {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    )
+                    {
+                        Calendar(
+                            onVisibleMonthChanged = { calendarVisibleMonth = it }
                         )
                     }
                 }

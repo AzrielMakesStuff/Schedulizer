@@ -30,17 +30,17 @@ val navigationItemsLists = listOf(
         title = "Home",
         route = Routes.Home.route,
     ),
-    NavigationItem(
-        unSelectedIcon = Icons.Outlined.AddTask,
-        selectedIcon = Icons.Filled.AddTask,
-        title = "Tasks",
-        route = Routes.Tasks.route,
-    ),
+//    NavigationItem(
+//        unSelectedIcon = Icons.Outlined.AddTask,
+//        selectedIcon = Icons.Filled.AddTask,
+//        title = "Tasks",
+//        route = Routes.Tasks.route,
+//    ),
     NavigationItem(
         unSelectedIcon = Icons.Outlined.CalendarMonth,
         selectedIcon = Icons.Filled.CalendarMonth,
         title = "Calendar",
-        route = Routes.Calendar.route,
+        route = Routes.Tasks.route,
     ),
     NavigationItem(
         unSelectedIcon = Icons.Outlined.Settings,

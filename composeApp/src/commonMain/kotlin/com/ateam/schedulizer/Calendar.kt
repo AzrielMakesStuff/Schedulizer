@@ -69,6 +69,8 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock.System
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 fun today() = System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -120,7 +122,7 @@ private fun Task.occurrencesInRange(rangeStart: LocalDate, rangeEnd: LocalDate):
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun Calendar() {
+fun Calendar(onVisibleMonthChanged: (YearMonth) -> Unit = {}) {
     val tasks by databaseInstance.tasks.collectAsState(initial = emptyList())
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
     val daysOfWeek = remember(firstDayOfWeek) { daysOfWeek(firstDayOfWeek = firstDayOfWeek)}
@@ -180,51 +182,30 @@ fun Calendar() {
         map
     }
 
-    val background = MaterialTheme.colorScheme.background
+    val state = rememberCalendarState(
+        startMonth = startMonth,
+        endMonth = endMonth,
+        firstVisibleMonth = currentMonth,
+        firstDayOfWeek = daysOfWeek.first(),
+        outDateStyle = OutDateStyle.EndOfGrid
+    )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            //.background(background)
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        val state = rememberCalendarState(
-            startMonth = startMonth,
-            endMonth = endMonth,
-            firstVisibleMonth = currentMonth,
-            firstDayOfWeek = daysOfWeek.first(),
-            outDateStyle = OutDateStyle.EndOfGrid)
+    LaunchedEffect(state) {
+        snapshotFlow { state.firstVisibleMonth }
+            .collect { month -> onVisibleMonthChanged(month.yearMonth) }
+    }
 
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .padding(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                HorizontalCalendar(
-                    modifier = Modifier.fillMaxSize(),
-                    state = state,
-                    dayContent = { Day(it, occurrencesByDate[it.date] ?: emptyList(), laneOf, daysOfWeek.first())},
-                    monthHeader = { month: CalendarMonth ->
-                        val monthName = month.yearMonth.month.name
-                            .lowercase()
-                            .replaceFirstChar {it.uppercase() }
-                        val year = month.yearMonth.year
-                        Column(modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)) {
-                            MonthName(monthName = monthName, year = year, modifier = Modifier.fillMaxWidth())
-                            Spacer(Modifier.height(8.dp))
-                            MonthHeader(daysOfWeek = daysOfWeek)
-                            Spacer(Modifier.height(8.dp))
-                        }
-                    }
-                )
+    HorizontalCalendar(
+        modifier = Modifier.fillMaxWidth(),
+        state = state,
+        dayContent = { Day(it, occurrencesByDate[it.date] ?: emptyList(), laneOf, daysOfWeek.first()) },
+        monthHeader = {
+            Column(modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)) {
+                MonthHeader(daysOfWeek = daysOfWeek)
+                Spacer(Modifier.height(8.dp))
             }
         }
-    }
+    )
 }
 
 @Composable
