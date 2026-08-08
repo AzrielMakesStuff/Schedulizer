@@ -9,13 +9,12 @@ import com.ateam.schedulizer.nextFireDateTime
 import com.ateam.schedulizer.nextOccurrenceStart
 import com.ateam.schedulizer.occurrencesAfter
 import com.ateam.schedulizer.today
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration
 
 sealed class Task {
     abstract val id: Long
@@ -42,7 +41,7 @@ sealed class Task {
         val repeatFrequency: CalendarRepeatSchedule? = null,
         @ColumnInfo(defaultValue = "1")
         val occurrenceIndex: Int = 1,
-        val preReminder: LocalDateTime? = null
+        val preReminder: Duration? = null
     ) : Task() {
         private fun advanceOnce(): Set? {
             val schedule = repeatFrequency ?: return null
@@ -132,11 +131,15 @@ sealed class Task {
     fun nextNotificationTime(now: LocalDateTime, zone: TimeZone = TimeZone.currentSystemDefault()): LocalDateTime? {
         val reminderFire = reminderSchedule.nextFireDateTime(now)
         return if (this is Set) {
-            val fifteenBefore = start.toInstant(zone)
-                .minus(15, DateTimeUnit.MINUTE, zone)
-                .toLocalDateTime(zone)
-                .takeIf { it >= now }
-            listOfNotNull(reminderFire, fifteenBefore).minOrNull()
+            val nowInstant = now.toInstant(zone)
+            val startInstant = start.toInstant(zone)
+
+            val preNotifTime = preReminder
+                ?.let { duration -> startInstant - duration }
+                ?.takeIf { it >= nowInstant }
+                ?.toLocalDateTime(zone)
+
+            listOfNotNull(reminderFire, preNotifTime).minOrNull()
         } else {
             reminderFire
         }
