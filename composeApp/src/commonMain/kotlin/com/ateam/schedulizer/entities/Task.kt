@@ -41,7 +41,8 @@ sealed class Task {
         val completionDate: LocalDateTime? = null,
         val repeatFrequency: CalendarRepeatSchedule? = null,
         @ColumnInfo(defaultValue = "1")
-        val occurrenceIndex: Int = 1
+        val occurrenceIndex: Int = 1,
+        val preReminder: LocalDateTime? = null
     ) : Task() {
         private fun advanceOnce(): Set? {
             val schedule = repeatFrequency ?: return null
@@ -130,7 +131,7 @@ sealed class Task {
 
     fun nextNotificationTime(now: LocalDateTime, zone: TimeZone = TimeZone.currentSystemDefault()): LocalDateTime? {
         val reminderFire = reminderSchedule.nextFireDateTime(now)
-        return if (this is Task.Set) {
+        return if (this is Set) {
             val fifteenBefore = start.toInstant(zone)
                 .minus(15, DateTimeUnit.MINUTE, zone)
                 .toLocalDateTime(zone)
