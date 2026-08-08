@@ -33,7 +33,6 @@ import kotlin.time.Clock
     columnName = "notificationTime"
 )
 class Migration10 : AutoMigrationSpec
-class Migration12 : AutoMigrationSpec
 
 @Database(
     entities = [
@@ -45,8 +44,7 @@ class Migration12 : AutoMigrationSpec
     ],
     version = 12,
     autoMigrations = [
-        AutoMigration(from = 9, to = 10, spec = Migration10::class),
-        AutoMigration(from = 11, to = 12, spec = Migration12::class)
+        AutoMigration(from = 9, to = 10, spec = Migration10::class)
     ]
 )
 @TypeConverters(Converters::class)
@@ -186,6 +184,36 @@ val MIGRATION11 = object : Migration(10, 11) {
     }
 }
 
+val MIGRATION12 = object : Migration(11, 12) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("""
+            CREATE TABLE SetTask_new (
+                id INTEGER NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                start TEXT NOT NULL,
+                end TEXT,
+                completed INTEGER NOT NULL,
+                completionDate TEXT,
+                reminderSchedule TEXT NOT NULL,
+                preReminder TEXT,
+                repeatFrequency TEXT,
+                occurrenceIndex INTEGER NOT NULL DEFAULT 1
+            )
+        """)
+        connection.execSQL("""
+            INSERT INTO SetTask_new
+            (id, title, description, start, end, completed, completionDate,
+             reminderSchedule, preReminder, repeatFrequency, occurrenceIndex)
+            SELECT id, title, description, start, end, completed, completionDate,
+                   reminderSchedule, NULL, repeatFrequency, occurrenceIndex
+            FROM SetTask
+        """)
+        connection.execSQL("DROP TABLE SetTask")
+        connection.execSQL("ALTER TABLE SetTask_new RENAME TO SetTask")
+    }
+}
+
 fun getRoomDatabase(
     builder: RoomDatabase.Builder<AppDatabase>
 ): AppDatabase {
@@ -193,6 +221,7 @@ fun getRoomDatabase(
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
         .addMigrations(MIGRATION11)
+        .addMigrations(MIGRATION12)
         .fallbackToDestructiveMigrationOnDowngrade(true)
         .build()
 }
