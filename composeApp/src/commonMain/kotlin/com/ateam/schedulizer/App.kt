@@ -77,7 +77,7 @@ fun App() {
                         Calendar()
                     }
                     composable(Routes.Money.route) {
-                        BudgetPlanner()
+                        TaxCalculator()
                     }
                     composable(Routes.SettingDetail.route)
                     {

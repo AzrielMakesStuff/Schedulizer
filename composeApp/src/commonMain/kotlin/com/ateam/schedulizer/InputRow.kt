@@ -33,11 +33,16 @@ enum class InputType {
 }
 
 class InputRow(val title : String, val toggleable : Boolean, vararg tInputTypes : InputType)  {
-    private val results = mutableListOf<String>();
+    var results = mutableListOf<String>()
     private var checked = true
     val inputTypes = tInputTypes;
     @Composable
     fun BuildRow() {
+        if (results.isEmpty()) {
+            for (listIndex in 0..<inputTypes.size) {
+                results.add("0")
+            }
+        }
         Row (Modifier.height(50.dp), verticalAlignment = Alignment.CenterVertically){
             Row(modifier = Modifier.fillMaxHeight().weight(2f), verticalAlignment = Alignment.CenterVertically) {
 
@@ -74,7 +79,7 @@ class InputRow(val title : String, val toggleable : Boolean, vararg tInputTypes 
           }
            Row (modifier = Modifier.weight(1.5f), verticalAlignment = Alignment.CenterVertically){
                for (listIndex in 0..<inputTypes.size) {
-                   var input by remember { mutableStateOf("") }
+                   var input by remember { mutableStateOf("0") }
                    TextField(modifier = Modifier.weight(1f),value = input, onValueChange = { input = it; results[listIndex] = input })
                }
            }
@@ -82,9 +87,8 @@ class InputRow(val title : String, val toggleable : Boolean, vararg tInputTypes 
     }
 
     fun getResult() : List<String> {
-        return if (checked) {
-            results;
-        } else mutableListOf()
+        println(results.toString())
+        return results
     }
 }
 
