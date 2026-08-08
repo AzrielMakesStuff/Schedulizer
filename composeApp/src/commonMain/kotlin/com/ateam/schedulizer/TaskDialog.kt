@@ -50,10 +50,14 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.number
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 
 /** Small caps section header used throughout the task dialog for visual grouping. */
 @Composable
@@ -73,6 +77,54 @@ private fun DialogSectionDivider() {
     Spacer(Modifier.height(14.dp))
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     Spacer(Modifier.height(14.dp))
+}
+
+private val PRE_REMINDER_OPTIONS: List<Pair<String, Duration?>> = listOf(
+    "No Reminder" to null,
+    "At start time" to Duration.ZERO,
+    "5 minutes before" to 5.minutes,
+    "15 minutes before" to 15.minutes,
+    "30 minutes before" to 30.minutes,
+    "1 hour before" to 1.hours,
+    "2 hours before" to 2.hours,
+    "1 day before" to 1.days,
+    "2 days before" to 2.days,
+    "1 week before" to 7.days
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PreReminderPicker(
+    selected: Duration?,
+    onSelected: (Duration?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val label = PRE_REMINDER_OPTIONS.firstOrNull { it.second == selected }?.first
+        ?: "No Reminder"
+
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier) {
+        OutlinedTextField(
+            value = label,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Remind Me") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            PRE_REMINDER_OPTIONS.forEach { (text, value) ->
+                DropdownMenuItem(
+                    text = { Text(text) },
+                    onClick = {
+                        onSelected(value)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }
 
 /** Default time-of-day used when a schedule needs one but none was picked yet. */
@@ -116,8 +168,8 @@ fun ReminderSchedulePicker(
     var hour by remember { mutableStateOf(if (schedule is ReminderSchedule.None) 5 else schedule.time.hour) }
     var minute by remember { mutableStateOf(if (schedule is ReminderSchedule.None) 0 else schedule.time.minute) }
 
-    // Anchor only matters for EveryNDays — fixed once, at whatever date the
-    // task already had, or today for a brand new task. Never silently recomputed.
+    // Anchor only matters for EveryNDays - fixed once, at whatever date the
+    // task already had, or today for a brand-new task. Never silently recomputed.
     val anchor = remember {
         (schedule as? ReminderSchedule.EveryNDays)?.anchor ?: LocalDate.now()
     }
@@ -325,7 +377,7 @@ private fun MonthChipRow(selected: Int, onSelected: (Int) -> Unit) {
 private enum class RepeatEndType { NEVER, UNTIL, AFTER }
 
 /**
- * Configures an optional [CalendarRepeatSchedule] for a [Task.Set] — the recurrence
+ * Configures an optional [CalendarRepeatSchedule] for a [Task.Set] - the recurrence
  * pattern plus its end condition. [anchorDate] is the task's current start date and is
  * used both as the reference point for day-of-week/day-of-month defaults and as the
  * `anchor` for an "Every N Days" pattern.
@@ -578,6 +630,9 @@ fun TaskDialog(
     var repeatSchedule by remember {
         mutableStateOf((task as? Task.Set)?.repeatFrequency)
     }
+    var preReminder by remember {
+        mutableStateOf((task as? Task.Set)?.preReminder)
+    }
 
     var ignoreTime by remember {
         mutableStateOf(
@@ -638,9 +693,6 @@ fun TaskDialog(
         )
     }
 
-    // Daily tasks always send a same-time-every-day reminder — there's no meaningful
-    // choice of frequency, so we lock it in as soon as this becomes a Daily task
-    // rather than exposing the frequency picker at all.
     LaunchedEffect(taskTypeSelection) {
         if (taskTypeSelection is TaskTypeSelection.Daily) {
             val current = reminderSchedule
@@ -701,7 +753,10 @@ fun TaskDialog(
                                     ignoreTime = false
                                     hasExpiry = false
                                     oneDay = false
-                                    if (type != TaskTypeSelection.Set) repeatSchedule = null
+                                    if (type != TaskTypeSelection.Set) {
+                                        repeatSchedule = null
+                                        preReminder = null
+                                    }
                                     expanded = false
                                 }
                             )
@@ -742,14 +797,6 @@ fun TaskDialog(
                                 showTime = !ignoreTime
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SectionLabel("Repeat")
-                        CalendarRepeatPicker(
-                            schedule = repeatSchedule,
-                            anchorDate = startState.toLocalDateTime(timeZone)?.date ?: LocalDate.now(),
-                            onScheduleChange = { repeatSchedule = it }
-                        )
                     }
 
                     is TaskTypeSelection.Pool -> {
@@ -799,53 +846,70 @@ fun TaskDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                DialogSectionDivider()
-
-                SectionLabel("Reminder")
-                if (taskTypeSelection is TaskTypeSelection.Daily) {
-                    // No frequency choice for Daily tasks — always fires once a day.
-                    // Only the time of day is configurable.
-                    Text(
-                        "A reminder is sent every day at the same time.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                if (taskTypeSelection is TaskTypeSelection.Set) {
+                    DialogSectionDivider()
+                    SectionLabel("Repeat")
+                    CalendarRepeatPicker(
+                        schedule = repeatSchedule,
+                        anchorDate = startState.toLocalDateTime(timeZone)?.date ?: LocalDate.now(),
+                        onScheduleChange = { repeatSchedule = it }
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    val dailySchedule = reminderSchedule as? ReminderSchedule.EveryNDays
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            NumberScrollPicker(
-                                range = 0..23,
-                                selected = dailySchedule?.time?.hour ?: DEFAULT_REMINDER_TIME.hour,
-                                onSelected = { h ->
-                                    val anchor = dailySchedule?.anchor ?: LocalDate.now()
-                                    val minute = dailySchedule?.time?.minute ?: DEFAULT_REMINDER_TIME.minute
-                                    reminderSchedule = ReminderSchedule.EveryNDays(1, anchor, LocalTime(h, minute))
-                                }
-                            )
-                        }
-                        Text(":", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 4.dp))
-                        Box(modifier = Modifier.weight(1f)) {
-                            NumberScrollPicker(
-                                range = 0..59,
-                                selected = dailySchedule?.time?.minute ?: DEFAULT_REMINDER_TIME.minute,
-                                onSelected = { m ->
-                                    val anchor = dailySchedule?.anchor ?: LocalDate.now()
-                                    val hour = dailySchedule?.time?.hour ?: DEFAULT_REMINDER_TIME.hour
-                                    reminderSchedule = ReminderSchedule.EveryNDays(1, anchor, LocalTime(hour, m))
-                                }
-                            )
+                }
+
+                DialogSectionDivider()
+                SectionLabel("Reminder")
+
+                when (taskTypeSelection) {
+                    is TaskTypeSelection.Set -> {
+                        PreReminderPicker(
+                            selected = preReminder,
+                            onSelected = { preReminder = it }
+                        )
+                    }
+                    is TaskTypeSelection.Daily -> {
+                        Text(
+                            "A reminder is sent every day at the same time.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val dailySchedule = reminderSchedule as? ReminderSchedule.EveryNDays
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                NumberScrollPicker(
+                                    range = 0..23,
+                                    selected = dailySchedule?.time?.hour ?: DEFAULT_REMINDER_TIME.hour,
+                                    onSelected = { h ->
+                                        val anchor = dailySchedule?.anchor ?: LocalDate.now()
+                                        val minute = dailySchedule?.time?.minute ?: DEFAULT_REMINDER_TIME.minute
+                                        reminderSchedule = ReminderSchedule.EveryNDays(1, anchor, LocalTime(h, minute))
+                                    }
+                                )
+                            }
+                            Text(":", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 4.dp))
+                            Box(modifier = Modifier.weight(1f)) {
+                                NumberScrollPicker(
+                                    range = 0..59,
+                                    selected = dailySchedule?.time?.minute ?: DEFAULT_REMINDER_TIME.minute,
+                                    onSelected = { m ->
+                                        val anchor = dailySchedule?.anchor ?: LocalDate.now()
+                                        val hour = dailySchedule?.time?.hour ?: DEFAULT_REMINDER_TIME.hour
+                                        reminderSchedule = ReminderSchedule.EveryNDays(1, anchor, LocalTime(hour, m))
+                                    }
+                                )
+                            }
                         }
                     }
-                } else {
-                    ReminderSchedulePicker(
-                        schedule = reminderSchedule,
-                        onScheduleChange = { reminderSchedule = it }
-                    )
+                    is TaskTypeSelection.Pool -> {
+                        ReminderSchedulePicker(
+                            schedule = reminderSchedule,
+                            onScheduleChange = { reminderSchedule = it }
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -891,7 +955,8 @@ fun TaskDialog(
                                         completed = (task as? Task.Set)?.completed ?: false,
                                         completionDate = (task as? Task.Set)?.completionDate,
                                         repeatFrequency = repeatSchedule,
-                                        occurrenceIndex = (task as? Task.Set)?.occurrenceIndex ?: 1
+                                        occurrenceIndex = (task as? Task.Set)?.occurrenceIndex ?: 1,
+                                        preReminder = preReminder
                                     )
                                 }
 

@@ -129,19 +129,16 @@ sealed class Task {
     }
 
     fun nextNotificationTime(now: LocalDateTime, zone: TimeZone = TimeZone.currentSystemDefault()): LocalDateTime? {
-        val reminderFire = reminderSchedule.nextFireDateTime(now)
         return if (this is Set) {
             val nowInstant = now.toInstant(zone)
             val startInstant = start.toInstant(zone)
 
-            val preNotifTime = preReminder
+            preReminder
                 ?.let { duration -> startInstant - duration }
                 ?.takeIf { it >= nowInstant }
                 ?.toLocalDateTime(zone)
-
-            listOfNotNull(reminderFire, preNotifTime).minOrNull()
         } else {
-            reminderFire
+            reminderSchedule.nextFireDateTime(now)
         }
     }
 }

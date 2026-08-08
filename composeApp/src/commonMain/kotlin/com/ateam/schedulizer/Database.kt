@@ -25,7 +25,6 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
-import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
@@ -34,6 +33,7 @@ import kotlin.time.Clock
     columnName = "notificationTime"
 )
 class Migration10 : AutoMigrationSpec
+class Migration12 : AutoMigrationSpec
 
 @Database(
     entities = [
@@ -43,9 +43,10 @@ class Migration10 : AutoMigrationSpec
         Streak::class,
         Settings::class
     ],
-    version = 11,
+    version = 12,
     autoMigrations = [
-        AutoMigration(from = 9, to = 10, spec = Migration10::class)
+        AutoMigration(from = 9, to = 10, spec = Migration10::class),
+        AutoMigration(from = 11, to = 12, spec = Migration12::class)
     ]
 )
 @TypeConverters(Converters::class)

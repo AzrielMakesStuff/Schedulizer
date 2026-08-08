@@ -5,6 +5,7 @@ import com.kizitonwose.calendar.core.now
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
+import kotlin.time.Duration
 
 class Converters {
     @TypeConverter fun fromLocalDateTime(value: LocalDateTime?): String? = value?.toString()?.replace("T", " ")
@@ -15,6 +16,9 @@ class Converters {
 
     @TypeConverter fun fromLocalTime(value: LocalTime?): String? = value?.toString()
     @TypeConverter fun toLocalTime(value: String?): LocalTime? = value?.let { LocalTime.parse(it) }
+
+    @TypeConverter fun fromDuration(value: Duration?): String? = value?.toString()
+    @TypeConverter fun toDuration(value: String?): Duration? = value?.let { Duration.parse(it) }
 
     @TypeConverter
     fun fromSchedule(s: ReminderSchedule): String {
