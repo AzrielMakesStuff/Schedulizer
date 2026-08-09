@@ -4,12 +4,18 @@ import com.ateam.schedulizer.CalendarRepeatSchedule
 import com.ateam.schedulizer.RecurrenceEnd
 import com.ateam.schedulizer.RecurrencePattern
 import com.ateam.schedulizer.ReminderSchedule
+import com.ateam.schedulizer.data.ICSParser.fromICS
 import com.ateam.schedulizer.databaseInstance
 import com.ateam.schedulizer.entities.Task
 import com.ateam.schedulizer.isoWeekNumber
-import kotlinx.datetime.*
+import kotlinx.datetime.IllegalTimeZoneException
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.number
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 
 object ICSParser {
     fun toICS(tasks: List<Task.Set>, dtStamp: LocalDateTime): String =
@@ -19,23 +25,21 @@ object ICSParser {
         icsText: String,
         defaultReminderSchedule: ReminderSchedule = ReminderSchedule.None
     ): List<Task.Set> {
-        val imported = mutableListOf<Task.Set>()
-
-        for (block in extractVEvents(icsText)) {
-            val props = parseProperties(block)
-            val task = try {
-                propsToTask(props, defaultReminderSchedule)
-            } catch (_: Exception) {
-                null
-            } ?: continue
-            databaseInstance.upsertTask(task)
-            imported += task
-        }
-
+        val imported = parseVEvents(icsText, defaultReminderSchedule)
+        imported.forEach { databaseInstance.upsertTask(it) }
         return imported
     }
 
     // ---- VCALENDAR/VEVENT splitting ----
+    suspend fun parseVEvents(
+        icsText: String,
+        defaultReminderSchedule: ReminderSchedule = ReminderSchedule.None,
+        subscriptionId: Long? = null
+    ): List<Task.Set> =
+        extractVEvents(icsText).mapNotNull { block ->
+            val props = parseProperties(block)
+            try { propsToTask(props, defaultReminderSchedule, subscriptionId) } catch (_: Exception) { null }
+        }
 
     private fun extractVEvents(icsText: String): List<String> {
         val unfolded = unfold(icsText)
@@ -61,7 +65,7 @@ object ICSParser {
         return blocks
     }
 
-    /** RFC 5545 line unfolding: a line starting with a space/tab continues the previous line. */
+    /** A line starting with a space/tab continues the previous line. */
     private fun unfold(text: String): String {
         val normalized = text.replace("\r\n", "\n").replace("\r", "\n")
         val result = StringBuilder()
@@ -219,14 +223,18 @@ object ICSParser {
 
     // ---- assembling a Task.Set ----
 
-    private fun propsToTask(props: Map<String, IcsProperty>, defaultReminderSchedule: ReminderSchedule): Task.Set? {
+    private fun propsToTask(
+        props: Map<String, IcsProperty>,
+        defaultReminderSchedule: ReminderSchedule,
+        subscriptionId: Long? = null
+    ): Task.Set? {
         val dtStartProp = props["DTSTART"] ?: return null
         val dtStart = parseIcsDateTime(dtStartProp)
         val dtEnd = props["DTEND"]?.let { parseIcsDateTime(it) }
         val title = props["SUMMARY"]?.value ?: "Imported event"
         val description = props["DESCRIPTION"]?.value ?: ""
+        val uid = props["UID"]?.value
 
-        // A present-but-unmappable RRULE falls through to null here, which just means
         val repeatFrequency = props["RRULE"]?.value
             ?.let { parseRRule(it, dtStart) }
             ?.let { (pattern, end) -> CalendarRepeatSchedule(pattern, end) }
@@ -238,7 +246,9 @@ object ICSParser {
             start = dtStart,
             end = dtEnd,
             repeatFrequency = repeatFrequency,
-            occurrenceIndex = 1
+            occurrenceIndex = 1,
+            icsUid = uid,
+            subscriptionId = subscriptionId
         )
     }
 }

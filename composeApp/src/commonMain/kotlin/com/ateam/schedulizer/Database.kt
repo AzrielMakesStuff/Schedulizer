@@ -13,6 +13,7 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import com.ateam.schedulizer.dao.TaskDao
+import com.ateam.schedulizer.entities.CalendarSubscription
 import com.ateam.schedulizer.entities.Settings
 import com.ateam.schedulizer.entities.Streak
 import com.ateam.schedulizer.entities.Task
@@ -40,9 +41,10 @@ class Migration10 : AutoMigrationSpec
         Task.Pool::class,
         Task.Daily::class,
         Streak::class,
-        Settings::class
+        Settings::class,
+        CalendarSubscription::class
     ],
-    version = 12,
+    version = 13,
     autoMigrations = [
         AutoMigration(from = 9, to = 10, spec = Migration10::class)
     ]
@@ -56,6 +58,8 @@ abstract class AppDatabase : RoomDatabase() {
     val streak: StateFlow<Int> = _streak.asStateFlow()
     private val _settings = MutableStateFlow<Settings?>(null)
     val settings: StateFlow<Settings?> = _settings.asStateFlow()
+    private val _subscriptions = MutableStateFlow<List<CalendarSubscription>>(emptyList())
+    val subscriptions: StateFlow<List<CalendarSubscription>> = _subscriptions.asStateFlow()
 
     data class StreakStatus(val lost: Boolean, val completedToday: Boolean)
 
@@ -100,6 +104,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     suspend fun refresh() {
         _tasks.value = getAll()
+        _subscriptions.value = taskDao().getAllSubscriptions()
         _streak.value = (taskDao().getStreak() ?: Streak().also { taskDao().upsert(it) }).streakLength
         _settings.value = taskDao().getSettings() ?: Settings()
         WidgetManager.updateWidgets() // Refresh widgets
@@ -234,14 +239,29 @@ val MIGRATION12 = object : Migration(11, 12) {
     }
 }
 
+val MIGRATION13 = object : Migration(12, 13) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE SetTask ADD COLUMN icsUid TEXT DEFAULT NULL")
+        connection.execSQL("ALTER TABLE SetTask ADD COLUMN subscriptionId INTEGER DEFAULT NULL")
+        connection.execSQL("""
+            CREATE TABLE IF NOT EXISTS CalendarSubscription (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                url TEXT NOT NULL,
+                name TEXT NOT NULL,
+                lastSyncedAt TEXT,
+                autoSyncEnabled INTEGER NOT NULL DEFAULT 1
+            )
+        """)
+    }
+}
+
 fun getRoomDatabase(
     builder: RoomDatabase.Builder<AppDatabase>
 ): AppDatabase {
     return builder
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION11)
-        .addMigrations(MIGRATION12)
+        .addMigrations(MIGRATION11, MIGRATION12, MIGRATION13)
         .fallbackToDestructiveMigrationOnDowngrade(true)
         .build()
 }

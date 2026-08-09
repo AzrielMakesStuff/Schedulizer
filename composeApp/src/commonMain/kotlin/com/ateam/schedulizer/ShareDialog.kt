@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -43,9 +44,7 @@ import com.ateam.schedulizer.data.ICSParser
 import com.ateam.schedulizer.data.rememberIcsExporter
 import com.ateam.schedulizer.data.rememberIcsImporter
 import com.ateam.schedulizer.data.rememberIcsSharer
-import com.ateam.schedulizer.databaseInstance
 import com.ateam.schedulizer.entities.Task
-import com.ateam.schedulizer.now
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -54,7 +53,9 @@ import kotlinx.coroutines.withContext
 @Composable
 fun ShareDialog(onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
+
     var statusMessage by remember { mutableStateOf<String?>(null) }
+    var showSubscriptions by remember { mutableStateOf(false) }
 
     val exportIcs = rememberIcsExporter { success ->
         statusMessage = if (success) "Exported" else "Export failed"
@@ -121,11 +122,18 @@ fun ShareDialog(onDismiss: () -> Unit) {
                             label = "Import ICS file",
                             onClick = { importIcs() }
                         )
+                        ShareOption(
+                            icon = Icons.Filled.CalendarMonth,
+                            label = "Subscriptions",
+                            onClick = { showSubscriptions = true }
+                        )
                     }
                     statusMessage?.let {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+
+                    if (showSubscriptions) CalendarSubscriptionsDialog(onDismiss = { showSubscriptions = false })
                 }
             }
         }

@@ -31,6 +31,11 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.security.crypto.ktx) // Storage
             implementation(libs.androidx.glance.appwidget) // Widgets
+
+            implementation(libs.ktor.client.cio) // Networking
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin) // Networking
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime) // Defaults
@@ -59,6 +64,9 @@ kotlin {
             implementation(libs.screen.size)
 
             implementation(libs.material.icons.extended)
+
+            implementation(libs.ktor.client.core) // Networking
+            implementation(libs.ktor.client.content.negotiation)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

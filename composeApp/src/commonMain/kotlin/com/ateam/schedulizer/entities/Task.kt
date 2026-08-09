@@ -41,7 +41,9 @@ sealed class Task {
         val repeatFrequency: CalendarRepeatSchedule? = null,
         @ColumnInfo(defaultValue = "1")
         val occurrenceIndex: Int = 1,
-        val preReminder: Duration? = null
+        val preReminder: Duration? = null,
+        val icsUid: String? = null,
+        val subscriptionId: Long? = null
     ) : Task() {
         private fun advanceOnce(): Set? {
             val schedule = repeatFrequency ?: return null
