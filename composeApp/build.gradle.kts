@@ -33,6 +33,8 @@ kotlin {
             implementation(libs.androidx.glance.appwidget) // Widgets
 
             implementation(libs.ktor.client.cio) // Networking
+
+            implementation(libs.androidx.work.runtime.ktx)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin) // Networking

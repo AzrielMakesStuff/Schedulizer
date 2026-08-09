@@ -26,6 +26,7 @@ ui = "1.11.3"
 voyagerNavigator = "2.2.21-1.10.3"
 appcrawlerPlatform = "0.0.1-alpha03"
 workRuntimeKtx = "2.11.2"
+workRuntimeKtxVersion = "2.11.2"
 
 [libraries]
 androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glanceAppwidget" }
@@ -58,7 +59,7 @@ androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref =
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyagerNavigator" }
 appcrawler-platform = { group = "com.google.android.appcrawler", name = "appcrawler-platform", version.ref = "appcrawlerPlatform" }
-androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtx" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtxVersion" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
