@@ -79,6 +79,7 @@ abstract class AppDatabase : RoomDatabase() {
             println("STREAK LOST")
         }
         refresh()
+        refreshStreakReminders()
         return StreakStatus(lost = lost, completedToday = completedToday)
     }
 
@@ -136,8 +137,12 @@ abstract class AppDatabase : RoomDatabase() {
         when (task) {
             is Task.Set -> taskDao().upsert(task)
             is Task.Pool -> taskDao().upsert(task)
-            is Task.Daily -> taskDao().upsert(task)
+            is Task.Daily -> {
+                taskDao().upsert(task)
+                refreshStreakReminders()
+            }
         }
+
         refresh()
     }
 
@@ -173,6 +178,21 @@ abstract class AppDatabase : RoomDatabase() {
 
             val nextDateTime = task.nextNotificationTime(now, zone) ?: return@forEach
             NotificationSystem.scheduleNotification(task.title, task.description, nextDateTime, task)
+        }
+
+        refreshStreakReminders()
+    }
+
+    suspend fun refreshStreakReminders() {
+        NotificationSystem.clearStreakReminders()
+        val dailies = taskDao().getAllDaily()
+        if (dailies.isEmpty()) return
+
+        val atRisk = dailies.any { it.lastCompleted?.date != today() }
+        if (!atRisk) return
+
+        StreakReminders.SLOTS.forEach { slot ->
+            NotificationSystem.scheduleStreakReminder(slot)
         }
     }
 }

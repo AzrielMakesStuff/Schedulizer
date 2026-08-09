@@ -15,9 +15,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.lifecycle.LifecycleCoroutineScope
 import com.ateam.schedulizer.entities.Task
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.number
 import java.util.Calendar
@@ -91,6 +89,48 @@ actual object NotificationSystem {
                 calendar.timeInMillis,
                 pendingIntent
             )
+        }
+    }
+
+    actual fun scheduleStreakReminder(slot: StreakReminders.Slot) {
+        if (!NotificationManagerCompat.from(ContextHolder.context).areNotificationsEnabled()) return
+
+        val intent = Intent(ContextHolder.context, Receiver::class.java).apply {
+            putExtra("is_streak_reminder", true)
+            putExtra("streak_hour", slot.hour)
+            putExtra("streak_minute", slot.minute)
+            putExtra("streak_code", slot.requestCode)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            ContextHolder.context, slot.requestCode, intent,
+            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, slot.hour)
+            set(Calendar.MINUTE, slot.minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            pendingIntent
+        )
+    }
+
+    actual fun clearStreakReminders() {
+        val alarmManager = ContextHolder.context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        StreakReminders.SLOTS.forEach { slot ->
+            val intent = Intent(ContextHolder.context, Receiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                ContextHolder.context, slot.requestCode, intent,
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            ) ?: return@forEach
+            alarmManager.cancel(pendingIntent)
         }
     }
 
