@@ -328,13 +328,7 @@ fun TaskScreen() {
             tasks.filter { task ->
                 when (task) {
                     is Task.Daily -> true
-                    is Task.Set -> {
-                        if (task.completed) {
-                            val completedYesterday = task.completionDate?.date?.let { it < today() } ?: false
-                            val pastEnd = task.end?.let { it < now() } ?: true
-                            !(completedYesterday && pastEnd)
-                        } else true
-                    }
+                    is Task.Set -> task.start.date <= today() && (task.end?.date ?: today()) >= today()
                     is Task.Pool -> {
                         if (task.completed) {
                             val completedYesterday = task.completionDate?.date?.let { it < today() } ?: false
@@ -546,7 +540,6 @@ fun TaskScreen() {
 
         deletingTask?.let { taskToDelete ->
             DeleteDialog(taskToDelete) {
-                databaseInstance.deleteTask(taskToDelete)
                 deletingTask = null
             }
         }
@@ -775,12 +768,12 @@ fun WeeklyScheduleGrid(
                             val startHour = if (occStart.date < date) 0 else occStart.hour
                             val startMinute = if (occStart.date < date) 0 else occStart.minute
                             val endHour = when {
-                                occEnd != null && occEnd.date > date -> 24
+                                (occEnd != null) && (occEnd.date > date) -> 24
                                 occEnd != null -> occEnd.hour + 1
                                 else -> startHour + 1
                             }
                             val endMinute = when {
-                                occEnd != null && occEnd.date > date -> 0
+                                (occEnd != null) && (occEnd.date > date) -> 0
                                 occEnd != null -> occEnd.minute
                                 else -> 0
                             }

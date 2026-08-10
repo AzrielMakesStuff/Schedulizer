@@ -9,7 +9,7 @@ import com.ateam.schedulizer.entities.Task
 import kotlinx.coroutines.launch
 
 @Composable
-fun DeleteDialog(task: Task, onDismiss: suspend () -> Unit) {
+fun DeleteDialog(task: Task, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = { scope.launch { onDismiss() } },

@@ -26,7 +26,17 @@ import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.color.ColorProvider
-import androidx.glance.layout.*
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
+import androidx.glance.layout.Column
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.layout.padding
+import androidx.glance.layout.size
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextDecoration
@@ -143,13 +153,7 @@ class TaskWidget : GlanceAppWidget() {
                     .filter { task ->
                         when (task) {
                             is Task.Daily -> true
-                            is Task.Set -> {
-                                if (task.completed) {
-                                    val doneYesterday = task.completionDate?.date?.let { it < today() } ?: false
-                                    val pastEnd = task.end?.let { it < now() } ?: true
-                                    !(doneYesterday && pastEnd)
-                                } else true
-                            }
+                            is Task.Set -> task.start.date <= today() && (task.end?.date ?: today()) >= today()
                             is Task.Pool -> {
                                 if (task.completed) {
                                     val doneYesterday = task.completionDate?.date?.let { it < today() } ?: false

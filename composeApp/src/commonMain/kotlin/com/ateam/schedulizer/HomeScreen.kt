@@ -2,6 +2,7 @@ package com.ateam.schedulizer
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,7 +31,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
 import cafe.adriel.voyager.navigator.internal.BackHandler
 import com.ateam.schedulizer.entities.Task
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.compose.resources.painterResource
 import schedulizer.composeapp.generated.resources.Res
@@ -67,11 +66,10 @@ fun HomeScreen()
 
     val streak by databaseInstance.streak.collectAsState()
 
-    var createTaskDialog by remember { mutableStateOf(false) }
     var deletingTask by remember { mutableStateOf<Task?>(null) }
+    var totalTasksVisible by remember { mutableStateOf(false) }
     var editingTask by remember { mutableStateOf<Task?>(null) }
-
-    val scope = rememberCoroutineScope()
+    var createTaskDialog by remember { mutableStateOf(false) }
 
     BackHandler(enabled = editingTask != null || deletingTask != null) {
         when {
@@ -87,16 +85,19 @@ fun HomeScreen()
     }
 
     val tasks by databaseInstance.tasks.collectAsState()
-    val filteredTasks = remember(tasks) {
+    val filteredTasks = remember(tasks, totalTasksVisible) {
         tasks.filter { task ->
             when (task) {
                 is Task.Daily -> true
                 is Task.Set -> {
-                    if (task.completed) {
-                        val completedYesterday = task.completionDate?.date?.let { it < today() } ?: false
-                        val pastEnd = task.end?.let { it < now() } ?: true
-                        !(completedYesterday && pastEnd)
-                    } else true
+                    if (totalTasksVisible) {
+                        if (task.completed) {
+                            val completedYesterday =
+                                task.completionDate?.date?.let { it < today() } ?: false
+                            val pastEnd = task.end?.let { it < now() } ?: true
+                            !(completedYesterday && pastEnd)
+                        } else true
+                    } else task.start.date <= today() && (task.end?.date ?: today()) >= today()
                 }
                 is Task.Pool -> {
                     if (task.completed) {
@@ -205,11 +206,20 @@ fun HomeScreen()
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(15.dp),
+                            .padding(15.dp)
+                            .clickable {
+                                totalTasksVisible = true
+                            }
+                            .background(
+                                if (totalTasksVisible) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                                else MaterialTheme.colorScheme.surface.copy(alpha = 0f),
+                                RoundedCornerShape(24.dp)
+                            ),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Top
                     )
                     {
+                        Spacer(modifier = Modifier.height(5.dp))
                         Icon(
                             imageVector = Icons.Default.Task,
                             contentDescription = "Tasks",
@@ -234,15 +244,25 @@ fun HomeScreen()
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.titleLarge,
                         )
+                        Spacer(modifier = Modifier.height(5.dp))
                     }
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(15.dp),
+                            .padding(15.dp)
+                            .clickable {
+                                totalTasksVisible = false
+                            }
+                            .background(
+                                if (totalTasksVisible) MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+                                else MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                RoundedCornerShape(24.dp)
+                            ),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Top
                     )
                     {
+                        Spacer(modifier = Modifier.height(5.dp))
                         Icon(
                             imageVector = Icons.Default.Today,
                             contentDescription = "tasksToday",
@@ -267,6 +287,7 @@ fun HomeScreen()
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.titleLarge,
                         )
+                        Spacer(modifier = Modifier.height(5.dp))
                     }
                 }
             }
@@ -314,7 +335,6 @@ fun HomeScreen()
 
     deletingTask?.let { taskToDelete ->
         DeleteDialog(taskToDelete) {
-            databaseInstance.deleteTask(taskToDelete)
             deletingTask = null
         }
     }
