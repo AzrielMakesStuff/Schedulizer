@@ -34,6 +34,7 @@ enum class InputType {
 
 class InputRow(val title : String, val toggleable : Boolean, vararg tInputTypes : InputType)  {
     var results = mutableListOf<String>()
+    var uncheckedReturnVal = mutableListOf<String>()
     private var checked = true
     val inputTypes = tInputTypes;
     @Composable
@@ -41,7 +42,9 @@ class InputRow(val title : String, val toggleable : Boolean, vararg tInputTypes 
         if (results.isEmpty()) {
             for (listIndex in 0..<inputTypes.size) {
                 results.add("0")
+                uncheckedReturnVal.add("0")
             }
+
         }
         Row (Modifier.height(50.dp), verticalAlignment = Alignment.CenterVertically){
             Row(modifier = Modifier.fillMaxHeight().weight(2f), verticalAlignment = Alignment.CenterVertically) {
@@ -80,15 +83,23 @@ class InputRow(val title : String, val toggleable : Boolean, vararg tInputTypes 
            Row (modifier = Modifier.weight(1.5f), verticalAlignment = Alignment.CenterVertically){
                for (listIndex in 0..<inputTypes.size) {
                    var input by remember { mutableStateOf("0") }
-                   TextField(modifier = Modifier.weight(1f),value = input, onValueChange = { input = it; results[listIndex] = input })
+                   if (inputTypes[listIndex] == InputType.int) {
+                       TextField(modifier = Modifier.weight(1f),value = input, onValueChange = { newVal -> input = newVal.filter { it.isDigit()}; results[listIndex] = input; input = "$$input" })
+                   }
+                   else {
+                           TextField(modifier = Modifier.weight(1f),value = input, onValueChange = { newVal -> input = newVal.filter { it.isDigit()}; results[listIndex] = input; input = "$input%"})
+                   }
                }
            }
         }
     }
 
     fun getResult() : List<String> {
-        println(results.toString())
-        return results
+        return if (checked) {
+            results
+        } else {
+            uncheckedReturnVal
+        }
     }
 }
 
