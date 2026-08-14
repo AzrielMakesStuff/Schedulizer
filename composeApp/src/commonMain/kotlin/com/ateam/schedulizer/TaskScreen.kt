@@ -6,8 +6,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -80,6 +83,7 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearMonth
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * A single occurrence of a task, positioned within a specific date range. For a
@@ -113,7 +117,7 @@ data class PositionedTask(
 private fun Task.occurrencesInRange(rangeStart: LocalDate, rangeEnd: LocalDate): List<TaskOccurrence> = when (this) {
     is Task.Set -> occurrencesBetween(rangeStart, rangeEnd).map { occStart ->
         // Preserve the original start→end duration for each projected occurrence.
-        val occEnd = end?.let { oldEnd ->
+        val occEnd = end.let { oldEnd ->
             val tz = TimeZone.currentSystemDefault()
             val duration = oldEnd.toInstant(tz) - start.toInstant(tz)
             (occStart.toInstant(tz) + duration).toLocalDateTime(tz)
@@ -328,7 +332,7 @@ fun TaskScreen() {
             tasks.filter { task ->
                 when (task) {
                     is Task.Daily -> true
-                    is Task.Set -> task.start.date <= today() && (task.end?.date ?: today()) >= today()
+                    is Task.Set -> task.start.date <= today() && (task.end.date) >= today()
                     is Task.Pool -> {
                         if (task.completed) {
                             val completedYesterday = task.completionDate?.date?.let { it < today() } ?: false
@@ -400,17 +404,17 @@ fun TaskScreen() {
                         onClick = { isCalendarView = !isCalendarView }
                     ) {
                         if(!isCalendarView)
-                        Icon(
-                            imageVector = Icons.Filled.CalendarMonth,
-                            contentDescription = "Switch to Calendar",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                            Icon(
+                                imageVector = Icons.Filled.CalendarMonth,
+                                contentDescription = "Switch to Calendar",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         else
-                        Icon(
-                            imageVector = Icons.Filled.CalendarViewWeek,
-                            contentDescription = "Switch to Week View",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                            Icon(
+                                imageVector = Icons.Filled.CalendarViewWeek,
+                                contentDescription = "Switch to Week View",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                     }
                 }
 
@@ -578,6 +582,13 @@ fun WeeklyScheduleGrid(
     }
     val (laneOf, totalLanesOf) = remember(occurrences) { computeLanes(occurrences) }
 
+    // Precompute the per-date occurrence lists once per (occurrences, dates) change
+    // instead of re-filtering + re-mapping the whole occurrence list on every
+    // recomposition of every day row (this was previously called inline per day).
+    val dayTasksByDate = remember(occurrences, visibleDates, laneOf, totalLanesOf) {
+        visibleDates.associateWith { d -> occurrencesForDate(occurrences, d, laneOf, totalLanesOf) }
+    }
+
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val hourWidth = (maxWidth - labelWidth) / visibleHours
         val totalWidth = hourWidth * 24
@@ -653,87 +664,81 @@ fun WeeklyScheduleGrid(
                 // Day rows
                 visibleDates.forEach { date ->
                     val primaryColor = MaterialTheme.colorScheme.primary
-                    val dayTasks = occurrencesForDate(occurrences, date, laneOf, totalLanesOf)
+                    val dayTasks = dayTasksByDate[date] ?: emptyList()
 
                     Box(
                         modifier = Modifier
                             .width(totalWidth)
                             .height(dayHeight)
                     ) {
-                        // Tappable cells — each hour split into two half-hour halves
-                        Row(modifier = Modifier.fillMaxSize()) {
-                            hours.forEach { hour ->
-                                val isHourPending = selectedDateOne?.let {
-                                    it.date == date && it.hour == hour && it.minute == 0
-                                } ?: false
-                                val isHalfPending = selectedDateOne?.let {
-                                    it.date == date && it.hour == hour && it.minute == 30
-                                } ?: false
+                        // Tappable cells — previously 48 Box composables per day (336 for
+                        // the whole week), each carrying its own clickable/background/
+                        // drawWithContent. That's what made scrolling this row back into
+                        // view expensive. A single Canvas draws every hour/half-hour line
+                        // and selection highlight in one pass, and one pointerInput resolves
+                        // taps by math instead of 48 separate click targets.
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(date, hourWidth) {
+                                    detectTapGestures { offset ->
+                                        val hourWidthPx = hourWidth.toPx()
+                                        val hour = (offset.x / hourWidthPx).toInt().coerceIn(0, 23)
+                                        val withinHour = offset.x - hour * hourWidthPx
+                                        val minute = if (withinHour < hourWidthPx / 2) 0 else 30
+                                        onCellTapped(date, hour, minute)
+                                    }
+                                }
+                        ) {
+                            val hourWidthPx = hourWidth.toPx()
+                            val borderColor = Color.Gray.copy(alpha = 0.15f)
+                            val dotColor = Color.Gray.copy(alpha = 0.25f)
+                            val strokeThin = 0.5.dp.toPx()
+                            val dotSize = 2.dp.toPx()
+                            val gap = 3.dp.toPx()
 
-                                // :00 half
-                                Box(
-                                    modifier = Modifier
-                                        .width(hourWidth / 2)
-                                        .fillMaxHeight()
-                                        .clickable { onCellTapped(date, hour, 0) }
-                                        .background(
-                                            if (isHourPending) primaryColor.copy(alpha = 0.12f)
-                                            else Color.Transparent
-                                        )
-                                        .drawWithContent {
-                                            drawContent()
-                                            // Bottom border
-                                            drawLine(
-                                                color = Color.Gray.copy(alpha = 0.15f),
-                                                start = Offset(0f, size.height),
-                                                end = Offset(size.width, size.height),
-                                                strokeWidth = 0.5.dp.toPx()
-                                            )
-                                        }
-                                )
+                            for (hour in 0 until 24) {
+                                val xHour = hourWidthPx * hour
+                                val xHalf = xHour + hourWidthPx / 2
 
-                                // :30 half — dotted left edge + solid right edge
-                                Box(
-                                    modifier = Modifier
-                                        .width(hourWidth / 2)
-                                        .fillMaxHeight()
-                                        .clickable { onCellTapped(date, hour, 30) }
-                                        .background(
-                                            if (isHalfPending) primaryColor.copy(alpha = 0.12f)
-                                            else Color.Transparent
-                                        )
-                                        .drawWithContent {
-                                            drawContent()
-                                            // Dotted half-hour divider on left edge
-                                            val dotSize = 2.dp.toPx()
-                                            val gap = 3.dp.toPx()
-                                            var y = 0f
-                                            while (y < size.height) {
-                                                drawLine(
-                                                    color = Color.Gray.copy(alpha = 0.25f),
-                                                    start = Offset(0f, y),
-                                                    end = Offset(0f, (y + dotSize).coerceAtMost(size.height)),
-                                                    strokeWidth = 0.5.dp.toPx()
-                                                )
-                                                y += dotSize + gap
-                                            }
-                                            // Bottom border
-                                            drawLine(
-                                                color = Color.Gray.copy(alpha = 0.15f),
-                                                start = Offset(0f, size.height),
-                                                end = Offset(size.width, size.height),
-                                                strokeWidth = 0.5.dp.toPx()
-                                            )
-                                            // Solid hour border on right
-                                            drawLine(
-                                                color = Color.Gray.copy(alpha = 0.15f),
-                                                start = Offset(size.width, 0f),
-                                                end = Offset(size.width, size.height),
-                                                strokeWidth = 0.5.dp.toPx()
-                                            )
-                                        }
+                                // Selection highlight for whichever half is pending
+                                if (selectedDateOne != null && selectedDateOne.date == date && selectedDateOne.hour == hour) {
+                                    val left = if (selectedDateOne.minute == 0) xHour else xHalf
+                                    drawRect(
+                                        color = primaryColor.copy(alpha = 0.12f),
+                                        topLeft = Offset(left, 0f),
+                                        size = Size(hourWidthPx / 2, size.height)
+                                    )
+                                }
+
+                                // Dotted half-hour divider
+                                var y = 0f
+                                while (y < size.height) {
+                                    drawLine(
+                                        color = dotColor,
+                                        start = Offset(xHalf, y),
+                                        end = Offset(xHalf, (y + dotSize).coerceAtMost(size.height)),
+                                        strokeWidth = strokeThin
+                                    )
+                                    y += dotSize + gap
+                                }
+
+                                // Solid hour border on the right edge of this hour
+                                drawLine(
+                                    color = borderColor,
+                                    start = Offset(xHour + hourWidthPx, 0f),
+                                    end = Offset(xHour + hourWidthPx, size.height),
+                                    strokeWidth = strokeThin
                                 )
                             }
+
+                            // Bottom border across the full row
+                            drawLine(
+                                color = borderColor,
+                                start = Offset(0f, size.height),
+                                end = Offset(size.width, size.height),
+                                strokeWidth = strokeThin
+                            )
                         }
 
                         if (date == today) {
@@ -743,7 +748,7 @@ fun WeeklyScheduleGrid(
                             LaunchedEffect(Unit) {
                                 while (true) {
                                     now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                                    kotlinx.coroutines.delay(60_000)
+                                    kotlinx.coroutines.delay(60_000.milliseconds)
                                 }
                             }
 

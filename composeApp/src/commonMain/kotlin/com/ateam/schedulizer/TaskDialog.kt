@@ -1095,7 +1095,9 @@ fun TaskDialog(
                                         completionDate = (task as? Task.Set)?.completionDate,
                                         repeatFrequency = repeatSchedule,
                                         occurrenceIndex = (task as? Task.Set)?.occurrenceIndex ?: 1,
-                                        preReminders = preReminders
+                                        preReminders = preReminders,
+                                        icsUid = (task as? Task.Set)?.icsUid,
+                                        subscriptionId = (task as? Task.Set)?.subscriptionId
                                     )
                                 }
 
