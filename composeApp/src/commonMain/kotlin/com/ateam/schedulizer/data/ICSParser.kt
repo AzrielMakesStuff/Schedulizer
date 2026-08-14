@@ -229,8 +229,9 @@ object ICSParser {
         subscriptionId: Long? = null
     ): Task.Set? {
         val dtStartProp = props["DTSTART"] ?: return null
+        val dtEndProp = props["DTEND"] ?: return null
         val dtStart = parseIcsDateTime(dtStartProp)
-        val dtEnd = props["DTEND"]?.let { parseIcsDateTime(it) }
+        val dtEnd = parseIcsDateTime(dtEndProp)
         val title = props["SUMMARY"]?.value ?: "Imported event"
         val description = props["DESCRIPTION"]?.value ?: ""
         val uid = props["UID"]?.value

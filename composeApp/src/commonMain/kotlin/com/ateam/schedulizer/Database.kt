@@ -44,7 +44,7 @@ class Migration10 : AutoMigrationSpec
         Settings::class,
         CalendarSubscription::class
     ],
-    version = 13,
+    version = 14,
     autoMigrations = [
         AutoMigration(from = 9, to = 10, spec = Migration10::class)
     ]
@@ -255,13 +255,72 @@ val MIGRATION13 = object : Migration(12, 13) {
     }
 }
 
+val MIGRATION14 = object : Migration(13, 14) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("""
+            CREATE TABLE SetTask_new (
+                id INTEGER NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                start TEXT NOT NULL,
+                end TEXT NOT NULL,
+                completed INTEGER,
+                completionDate TEXT,
+                reminderSchedule TEXT NOT NULL,
+                repeatFrequency TEXT,
+                occurrenceIndex INTEGER NOT NULL DEFAULT 1,
+                preReminders TEXT NOT NULL,
+                icsUid TEXT,
+                subscriptionId INTEGER
+            )
+        """)
+
+        connection.execSQL("""
+            INSERT INTO SetTask_new
+            (
+                id,
+                title,
+                description,
+                start,
+                end,
+                completed,
+                completionDate,
+                reminderSchedule,
+                repeatFrequency,
+                occurrenceIndex,
+                preReminders,
+                icsUid,
+                subscriptionId
+            )
+            SELECT
+                id,
+                title,
+                description,
+                start,
+                end,
+                completed,
+                completionDate,
+                reminderSchedule,
+                repeatFrequency,
+                occurrenceIndex,
+                COALESCE(preReminder, ''),
+                icsUid,
+                subscriptionId
+            FROM SetTask
+        """)
+
+        connection.execSQL("DROP TABLE SetTask")
+        connection.execSQL("ALTER TABLE SetTask_new RENAME TO SetTask")
+    }
+}
+
 fun getRoomDatabase(
     builder: RoomDatabase.Builder<AppDatabase>
 ): AppDatabase {
     return builder
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION11, MIGRATION12, MIGRATION13)
+        .addMigrations(MIGRATION11, MIGRATION12, MIGRATION13, MIGRATION14)
         .fallbackToDestructiveMigrationOnDowngrade(true)
         .build()
 }
@@ -271,4 +330,3 @@ fun getRoomDatabase(
 expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
     override fun initialize(): AppDatabase
 }
-

@@ -79,8 +79,61 @@ private fun DialogSectionDivider() {
     Spacer(Modifier.height(14.dp))
 }
 
-private val PRE_REMINDER_OPTIONS: List<Pair<String, Duration?>> = listOf(
-    "No Reminder" to null,
+/** A single hour:minute row built from two [NumberScrollPicker]s, used anywhere a
+ *  bare time-of-day (no date) needs to be edited. */
+@Composable
+private fun TimeOfDayRow(
+    hour: Int,
+    minute: Int,
+    onHourChange: (Int) -> Unit,
+    onMinuteChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.weight(1f)) {
+            NumberScrollPicker(range = 0..23, selected = hour, onSelected = onHourChange)
+        }
+        Text(":", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 4.dp))
+        Box(modifier = Modifier.weight(1f)) {
+            NumberScrollPicker(range = 0..59, selected = minute, onSelected = onMinuteChange)
+        }
+    }
+}
+
+@Composable
+private fun TimeField(
+    hour: Int,
+    minute: Int,
+    onTimeChange: (Int, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showTimeDialog by remember { mutableStateOf(false) }
+
+    OutlinedButton(
+        onClick = { showTimeDialog = true },
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Text(
+            "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}",
+            maxLines = 1
+        )
+    }
+
+    if (showTimeDialog) {
+        TimePickerDialog(
+            initialHour = hour,
+            initialMinute = minute,
+            onDismiss = { showTimeDialog = false },
+            onConfirm = { h, m -> onTimeChange(h, m) }
+        )
+    }
+}
+
+private val PRE_REMINDER_OPTIONS: List<Pair<String, Duration>> = listOf(
     "At start time" to Duration.ZERO,
     "5 minutes before" to 5.minutes,
     "15 minutes before" to 15.minutes,
@@ -94,34 +147,69 @@ private val PRE_REMINDER_OPTIONS: List<Pair<String, Duration?>> = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PreReminderPicker(
-    selected: Duration?,
-    onSelected: (Duration?) -> Unit,
+private fun PreReminderListPicker(
+    selected: List<Duration>,
+    onSelectedChange: (List<Duration>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val label = PRE_REMINDER_OPTIONS.firstOrNull { it.second == selected }?.first
-        ?: "No Reminder"
+    val remainingOptions = PRE_REMINDER_OPTIONS.filter { it.second !in selected }
 
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier) {
-        OutlinedTextField(
-            value = label,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Remind Me") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                .fillMaxWidth()
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            PRE_REMINDER_OPTIONS.forEach { (text, value) ->
-                DropdownMenuItem(
-                    text = { Text(text) },
-                    onClick = {
-                        onSelected(value)
-                        expanded = false
+    Column(modifier = modifier) {
+        Text("Remind Me", style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(6.dp))
+
+        if (selected.isEmpty()) {
+            Text(
+                "No reminders set",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            Spacer(Modifier.height(6.dp))
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                selected.sorted().forEach { duration ->
+                    val label = PRE_REMINDER_OPTIONS.firstOrNull { it.second == duration }?.first
+                        ?: "${duration.inWholeMinutes} minutes before"
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(label, style = MaterialTheme.typography.bodyMedium)
+                        OutlinedButton(
+                            onClick = { onSelectedChange(selected - duration) },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) { Text("Remove", style = MaterialTheme.typography.labelSmall) }
                     }
-                )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+        }
+
+        ExposedDropdownMenuBox(
+            expanded = expanded && remainingOptions.isNotEmpty(),
+            onExpandedChange = { if (remainingOptions.isNotEmpty()) expanded = it }
+        ) {
+            OutlinedTextField(
+                value = if (remainingOptions.isEmpty()) "All reminders added" else "Add a reminder",
+                onValueChange = {},
+                readOnly = true,
+                enabled = remainingOptions.isNotEmpty(),
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                    .fillMaxWidth()
+            )
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                remainingOptions.forEach { (text, value) ->
+                    DropdownMenuItem(
+                        text = { Text(text) },
+                        onClick = {
+                            onSelectedChange(selected + value)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -255,27 +343,12 @@ fun ReminderSchedulePicker(
         if (selectedType != "None") {
             Spacer(Modifier.height(8.dp))
             Text("Reminder Time", style = MaterialTheme.typography.labelMedium)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    NumberScrollPicker(
-                        range = 0..23,
-                        selected = hour,
-                        onSelected = { hour = it; emit() }
-                    )
-                }
-                Text(":", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 4.dp))
-                Box(modifier = Modifier.weight(1f)) {
-                    NumberScrollPicker(
-                        range = 0..59,
-                        selected = minute,
-                        onSelected = { minute = it; emit() }
-                    )
-                }
-            }
+            TimeOfDayRow(
+                hour = hour,
+                minute = minute,
+                onHourChange = { hour = it; emit() },
+                onMinuteChange = { minute = it; emit() }
+            )
         }
     }
 }
@@ -630,15 +703,21 @@ fun TaskDialog(
     var repeatSchedule by remember {
         mutableStateOf((task as? Task.Set)?.repeatFrequency)
     }
-    var preReminder by remember {
-        mutableStateOf((task as? Task.Set)?.preReminder)
+    var preReminders by remember {
+        mutableStateOf((task as? Task.Set)?.preReminders ?: emptyList())
+    }
+    // Whether this Set task's completion is manually tracked. Defaults to false
+    // (i.e. completed == null) for new tasks, matching Task.Set's own default:
+    // an untracked task simply auto-advances to its next occurrence by date.
+    var completable by remember {
+        mutableStateOf((task as? Task.Set)?.isCompletable ?: false)
     }
 
     var ignoreTime by remember {
         mutableStateOf(
             when (task) {
                 is Task.Set -> task.start.hour == 0 && task.start.minute == 0
-                        && task.end?.hour == 23 && task.end.minute == 59
+                        && task.end.hour == 23 && task.end.minute == 59
 
                 is Task.Pool -> task.expiry?.hour == 23 && task.expiry.minute == 59
                 else -> false
@@ -648,13 +727,25 @@ fun TaskDialog(
     var oneDay by remember {
         mutableStateOf(
             task is Task.Set
-                    && task.end != null
                     && task.start.date == task.end.date
                     && task.start.hour == 0 && task.end.hour == 23
         )
     }
     var hasExpiry by remember {
         mutableStateOf(task is Task.Pool && task.expiry != null)
+    }
+
+    var oneDayStartHour by remember {
+        mutableStateOf((task as? Task.Set)?.start?.hour ?: initialHour ?: 9)
+    }
+    var oneDayStartMinute by remember {
+        mutableStateOf((task as? Task.Set)?.start?.minute ?: initialMinute ?: 0)
+    }
+    var oneDayEndHour by remember {
+        mutableStateOf((task as? Task.Set)?.end?.hour ?: initialEndHour ?: 17)
+    }
+    var oneDayEndMinute by remember {
+        mutableStateOf((task as? Task.Set)?.end?.minute ?: initialEndMinute ?: 0)
     }
 
     val startState = remember {
@@ -676,17 +767,17 @@ fun TaskDialog(
     val endState = remember {
         DateTimePickerState(
             initialMillis = when (task) {
-                is Task.Set -> task.end?.date?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
+                is Task.Set -> task.end.date.atStartOfDayIn(timeZone).toEpochMilliseconds()
                 is Task.Pool -> task.expiry?.date?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
                 else -> initialEndDate?.atStartOfDayIn(timeZone)?.toEpochMilliseconds()
             },
             initialHour = when (task) {
-                is Task.Set -> task.end?.hour ?: 0
+                is Task.Set -> task.end.hour
                 is Task.Pool -> task.expiry?.hour ?: 0
                 else -> initialEndHour ?: 0
             },
             initialMinute = when (task) {
-                is Task.Set -> task.end?.minute ?: 0
+                is Task.Set -> task.end.minute
                 is Task.Pool -> task.expiry?.minute ?: 0
                 else -> initialEndMinute ?: 0
             }
@@ -755,7 +846,8 @@ fun TaskDialog(
                                     oneDay = false
                                     if (type != TaskTypeSelection.Set) {
                                         repeatSchedule = null
-                                        preReminder = null
+                                        preReminders = emptyList()
+                                        completable = false
                                     }
                                     expanded = false
                                 }
@@ -769,24 +861,31 @@ fun TaskDialog(
                 SectionLabel("Schedule")
                 when (taskTypeSelection) {
                     is TaskTypeSelection.Set -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = oneDay, onCheckedChange = { oneDay = it })
-                            Text("One Day")
-                        }
-                        if (!oneDay) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(
-                                    checked = ignoreTime,
-                                    onCheckedChange = { ignoreTime = it })
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(checked = oneDay, onCheckedChange = { oneDay = it })
+                                Text("One Day")
+                            }
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(checked = ignoreTime, onCheckedChange = { ignoreTime = it })
                                 Text("Ignore Time")
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Start", style = MaterialTheme.typography.labelMedium)
+                        Text(if (oneDay) "Day" else "Start", style = MaterialTheme.typography.labelMedium)
                         DateTimePickerField(
-                            label = "Pick start date",
+                            label = if (oneDay) "Pick date" else "Pick start date",
                             dateTimeState = startState,
-                            showTime = !ignoreTime && !oneDay
+                            showTime = !oneDay && !ignoreTime
                         )
                         if (!oneDay) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -796,6 +895,32 @@ fun TaskDialog(
                                 dateTimeState = endState,
                                 showTime = !ignoreTime
                             )
+                        }
+                        if (oneDay && !ignoreTime) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Start Time", style = MaterialTheme.typography.labelMedium)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    TimeField(
+                                        hour = oneDayStartHour,
+                                        minute = oneDayStartMinute,
+                                        onTimeChange = { h, m -> oneDayStartHour = h; oneDayStartMinute = m }
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("End Time", style = MaterialTheme.typography.labelMedium)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    TimeField(
+                                        hour = oneDayEndHour,
+                                        minute = oneDayEndMinute,
+                                        onTimeChange = { h, m -> oneDayEndHour = h; oneDayEndMinute = m }
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -854,6 +979,23 @@ fun TaskDialog(
                         anchorDate = startState.toLocalDateTime(timeZone)?.date ?: LocalDate.now(),
                         onScheduleChange = { repeatSchedule = it }
                     )
+
+                    DialogSectionDivider()
+                    SectionLabel("Completion")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = completable, onCheckedChange = { completable = it })
+                        Column {
+                            Text("Track completion")
+                            Text(
+                                if (completable)
+                                    "You'll mark each occurrence done yourself; it won't auto-advance."
+                                else
+                                    "This task automatically moves to its next occurrence based on date alone.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
                 }
 
                 DialogSectionDivider()
@@ -861,9 +1003,9 @@ fun TaskDialog(
 
                 when (taskTypeSelection) {
                     is TaskTypeSelection.Set -> {
-                        PreReminderPicker(
-                            selected = preReminder,
-                            onSelected = { preReminder = it }
+                        PreReminderListPicker(
+                            selected = preReminders,
+                            onSelectedChange = { preReminders = it }
                         )
                     }
                     is TaskTypeSelection.Daily -> {
@@ -874,35 +1016,20 @@ fun TaskDialog(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         val dailySchedule = reminderSchedule as? ReminderSchedule.EveryNDays
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                NumberScrollPicker(
-                                    range = 0..23,
-                                    selected = dailySchedule?.time?.hour ?: DEFAULT_REMINDER_TIME.hour,
-                                    onSelected = { h ->
-                                        val anchor = dailySchedule?.anchor ?: LocalDate.now()
-                                        val minute = dailySchedule?.time?.minute ?: DEFAULT_REMINDER_TIME.minute
-                                        reminderSchedule = ReminderSchedule.EveryNDays(1, anchor, LocalTime(h, minute))
-                                    }
-                                )
+                        TimeOfDayRow(
+                            hour = dailySchedule?.time?.hour ?: DEFAULT_REMINDER_TIME.hour,
+                            minute = dailySchedule?.time?.minute ?: DEFAULT_REMINDER_TIME.minute,
+                            onHourChange = { h ->
+                                val anchor = dailySchedule?.anchor ?: LocalDate.now()
+                                val minute = dailySchedule?.time?.minute ?: DEFAULT_REMINDER_TIME.minute
+                                reminderSchedule = ReminderSchedule.EveryNDays(1, anchor, LocalTime(h, minute))
+                            },
+                            onMinuteChange = { m ->
+                                val anchor = dailySchedule?.anchor ?: LocalDate.now()
+                                val hour = dailySchedule?.time?.hour ?: DEFAULT_REMINDER_TIME.hour
+                                reminderSchedule = ReminderSchedule.EveryNDays(1, anchor, LocalTime(hour, m))
                             }
-                            Text(":", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 4.dp))
-                            Box(modifier = Modifier.weight(1f)) {
-                                NumberScrollPicker(
-                                    range = 0..59,
-                                    selected = dailySchedule?.time?.minute ?: DEFAULT_REMINDER_TIME.minute,
-                                    onSelected = { m ->
-                                        val anchor = dailySchedule?.anchor ?: LocalDate.now()
-                                        val hour = dailySchedule?.time?.hour ?: DEFAULT_REMINDER_TIME.hour
-                                        reminderSchedule = ReminderSchedule.EveryNDays(1, anchor, LocalTime(hour, m))
-                                    }
-                                )
-                            }
-                        }
+                        )
                     }
                     is TaskTypeSelection.Pool -> {
                         ReminderSchedulePicker(
@@ -934,17 +1061,28 @@ fun TaskDialog(
                             val newTask: Task = when (taskTypeSelection) {
                                 is TaskTypeSelection.Set -> {
                                     val start = when {
-                                        oneDay || ignoreTime -> startState.toStartOfDay(timeZone)
-                                            ?: return@Button
-
-                                        else -> startState.toLocalDateTime(timeZone)
-                                            ?: return@Button
+                                        oneDay && ignoreTime -> startState.toStartOfDay(timeZone) ?: return@Button
+                                        oneDay -> startState.toStartOfDay(timeZone)?.date?.let {
+                                            LocalDateTime(it, LocalTime(oneDayStartHour, oneDayStartMinute))
+                                        } ?: return@Button
+                                        ignoreTime -> startState.toStartOfDay(timeZone) ?: return@Button
+                                        else -> startState.toLocalDateTime(timeZone) ?: return@Button
                                     }
                                     val end = when {
-                                        oneDay -> startState.toEndOfDay(timeZone) ?: return@Button
+                                        oneDay && ignoreTime -> startState.toEndOfDay(timeZone) ?: return@Button
+                                        oneDay -> startState.toStartOfDay(timeZone)?.date?.let {
+                                            LocalDateTime(it, LocalTime(oneDayEndHour, oneDayEndMinute))
+                                        } ?: return@Button
                                         ignoreTime -> endState.toEndOfDay(timeZone) ?: return@Button
-                                        else -> endState.toLocalDateTime(timeZone)
+                                        else -> endState.toLocalDateTime(timeZone) ?: return@Button
                                     }
+
+                                    if (oneDay && !ignoreTime) {
+                                        val startMinutes = oneDayStartHour * 60 + oneDayStartMinute
+                                        val endMinutes = oneDayEndHour * 60 + oneDayEndMinute
+                                        if (endMinutes <= startMinutes) return@Button
+                                    }
+
                                     Task.Set(
                                         id = task?.id ?: 0,
                                         title = title,
@@ -952,11 +1090,12 @@ fun TaskDialog(
                                         reminderSchedule = reminderSchedule,
                                         start = start,
                                         end = end,
-                                        completed = (task as? Task.Set)?.completed ?: false,
+                                        // completed == null means not completable - the task auto-advances.
+                                        completed = if (completable) ((task as? Task.Set)?.completed ?: false) else null,
                                         completionDate = (task as? Task.Set)?.completionDate,
                                         repeatFrequency = repeatSchedule,
                                         occurrenceIndex = (task as? Task.Set)?.occurrenceIndex ?: 1,
-                                        preReminder = preReminder
+                                        preReminders = preReminders
                                     )
                                 }
 

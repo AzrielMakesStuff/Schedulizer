@@ -341,7 +341,7 @@ fun TaskScreen() {
                 { task ->
                     when (task) {
                         is Task.Daily if task.lastCompleted?.date == today() -> 1
-                        is Task.Set if task.completed -> 1
+                        is Task.Set if (task.completed == true || (!task.isCompletable && task.end < now())) -> 1
                         is Task.Pool if task.completed -> 1
                         else -> 0
                     }
@@ -803,7 +803,7 @@ fun WeeklyScheduleGrid(
                             val isCurrentOccurrence = (task as? Task.Set)?.start == occStart
 
                             val pillColor = when {
-                                task is Task.Set && task.completed && isCurrentOccurrence ->
+                                task is Task.Set && (task.completed == true || (!task.isCompletable && task.end < now())) && isCurrentOccurrence ->
                                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
 
                                 task is Task.Pool && task.completed ->

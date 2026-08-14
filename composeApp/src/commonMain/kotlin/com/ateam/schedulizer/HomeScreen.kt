@@ -91,13 +91,13 @@ fun HomeScreen()
                 is Task.Daily -> true
                 is Task.Set -> {
                     if (totalTasksVisible) {
-                        if (task.completed) {
+                        if (task.completed == true) {
                             val completedYesterday =
                                 task.completionDate?.date?.let { it < today() } ?: false
-                            val pastEnd = task.end?.let { it < now() } ?: true
+                            val pastEnd = task.end.let { it < now() }
                             !(completedYesterday && pastEnd)
                         } else true
-                    } else task.start.date <= today() && (task.end?.date ?: today()) >= today()
+                    } else task.start.date <= today() && (task.end.date) >= today()
                 }
                 is Task.Pool -> {
                     if (task.completed) {
@@ -111,7 +111,7 @@ fun HomeScreen()
             { task ->
                 when (task) {
                     is Task.Daily if task.lastCompleted?.date == today() -> 1
-                    is Task.Set if task.completed -> 1
+                    is Task.Set if (task.completed == true || (!task.isCompletable && task.end < now())) -> 1
                     is Task.Pool if task.completed -> 1
                     else -> 0
                 }
@@ -236,7 +236,7 @@ fun HomeScreen()
                                 tasks.count { task ->
                                     when (task) {
                                         is Task.Daily -> task.lastCompleted?.date != today()
-                                        is Task.Set -> !task.completed
+                                        is Task.Set -> !(task.completed ?: (task.end < now()))
                                         is Task.Pool -> !task.completed
                                     }
                                 }
@@ -279,7 +279,7 @@ fun HomeScreen()
                                 tasks.count { task ->
                                     when (task) {
                                         is Task.Daily -> task.lastCompleted?.date != today()
-                                        is Task.Set -> !task.completed && task.start.date <= today() && (task.end == null || task.end.date >= today())
+                                        is Task.Set -> !(task.completed ?: (task.end < now())) && task.start.date <= today() && (task.end.date >= today())
                                         is Task.Pool -> !task.completed && (task.expiry == null || task.expiry.date <= today())
                                     }
                                 }

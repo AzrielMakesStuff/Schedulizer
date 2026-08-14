@@ -24,12 +24,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,7 +51,6 @@ import com.ateam.schedulizer.entities.Task
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
-import com.kizitonwose.calendar.core.CalendarMonth
 import com.kizitonwose.calendar.core.DayPosition
 import com.kizitonwose.calendar.core.OutDateStyle
 import com.kizitonwose.calendar.core.daysOfWeek
@@ -69,12 +70,9 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock.System
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.snapshotFlow
 
 val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 fun today() = System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-//fun now() = System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 
 private fun formatTime(time: LocalDateTime?) = time?.time?.toString()?.take(5) ?: ""
 
@@ -104,7 +102,7 @@ private data class DatedOccurrence(
  */
 private fun Task.occurrencesInRange(rangeStart: LocalDate, rangeEnd: LocalDate): List<DatedOccurrence> = when (this) {
     is Task.Set -> {
-        val spanDays = end?.date?.let { it.toEpochDays() - start.date.toEpochDays() } ?: 0
+        val spanDays = end.date.toEpochDays() - start.date.toEpochDays()
         occurrencesBetween(rangeStart, rangeEnd).map { occStart ->
             val occStartDate = occStart.date
             val occEndDate = occStartDate.plus(spanDays.toInt(), DateTimeUnit.DAY)
@@ -288,8 +286,8 @@ private fun Day(day: CalendarDay, occurrences: List<DatedOccurrence>, laneOf: Ma
 
                     val pillColor = when (task) {
                         is Task.Set -> when {
-                            task.completed && isCurrentOccurrence -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            isCurrentOccurrence && task.end != null && task.end < now -> MaterialTheme.colorScheme.error
+                            task.completed ?: (task.end < now()) && isCurrentOccurrence -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            isCurrentOccurrence && task.end < now -> MaterialTheme.colorScheme.error
                             else -> primaryColor
                         }
                         is Task.Pool -> when {

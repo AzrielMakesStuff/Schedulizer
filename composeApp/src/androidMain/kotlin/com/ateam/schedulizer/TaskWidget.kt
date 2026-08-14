@@ -68,10 +68,14 @@ class ToggleTaskAction : ActionCallback {
                 val yesterday = LocalDateTime(today().minus(1, DateTimeUnit.DAY), LocalTime(0, 0))
                 task.copy(lastCompleted = if (alreadyDone) yesterday else now())
             }
-            is Task.Set -> task.copy(
-                completed = !task.completed,
-                completionDate = if (!task.completed) now() else null
-            )
+            is Task.Set -> {
+                if (task.isCompletable)
+                    task.copy(
+                        completed = !task.completed!!,
+                        completionDate = if (!task.completed) now() else null
+                    )
+                else task
+            }
             is Task.Pool -> task.copy(
                 completed = !task.completed,
                 completionDate = if (!task.completed) now() else null
@@ -153,7 +157,7 @@ class TaskWidget : GlanceAppWidget() {
                     .filter { task ->
                         when (task) {
                             is Task.Daily -> true
-                            is Task.Set -> task.start.date <= today() && (task.end?.date ?: today()) >= today()
+                            is Task.Set -> task.start.date <= today() && (task.end.date) >= today()
                             is Task.Pool -> {
                                 if (task.completed) {
                                     val doneYesterday = task.completionDate?.date?.let { it < today() } ?: false
@@ -167,7 +171,7 @@ class TaskWidget : GlanceAppWidget() {
                         { task ->
                             when (task) {
                                 is Task.Daily if task.lastCompleted?.date == today() -> 1
-                                is Task.Set if task.completed -> 1
+                                is Task.Set if (task.completed == true || (!task.isCompletable && task.end < now())) -> 1
                                 is Task.Pool if task.completed -> 1
                                 else -> 0
                             }
@@ -251,13 +255,18 @@ private fun WidgetContent(tasks: List<Task>) {
             items(tasks) { task ->
                 val isChecked = when (task) {
                     is Task.Daily -> task.lastCompleted?.date == today()
-                    is Task.Set -> task.completed
+                    is Task.Set -> task.completed ?: (task.end < now())
                     is Task.Pool  -> task.completed
                 }
                 val isExpired = when (task) {
-                    is Task.Set -> !task.completed && task.end != null && task.end < now()
+                    is Task.Set -> !(task.completed ?: false) && task.end < now()
                     is Task.Pool -> !task.completed && task.expiry != null && task.expiry < now()
                     is Task.Daily -> false
+                }
+                val isCompletable = when (task) {
+                    is Task.Daily -> true
+                    is Task.Set -> task.isCompletable
+                    is Task.Pool -> true
                 }
 
                 val rowBg = if (isExpired) errorBg else if (isChecked) checkedBg else surface
@@ -270,7 +279,7 @@ private fun WidgetContent(tasks: List<Task>) {
                     is Task.Daily -> "Daily"
                 }
                 val metaLine = when (task) {
-                    is Task.Set -> if (task.end != null) "${task.start.fmt()} -> ${task.end.fmt()}" else task.start.fmt()
+                    is Task.Set -> "${task.start.fmt()} -> ${task.end.fmt()}"
                     is Task.Pool -> if (task.expiry != null) "Expires ${task.expiry.fmt()}" else "No expiry"
                     is Task.Daily -> "Daily task"
                 }
@@ -284,27 +293,29 @@ private fun WidgetContent(tasks: List<Task>) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Checkbox
-                        Image(
-                            provider = ImageProvider(
-                                if (isChecked) R.drawable.ic_widget_check_on
-                                else R.drawable.ic_widget_check_off
-                            ),
-                            contentDescription = if (isChecked) "Mark incomplete" else "Mark complete",
-                            colorFilter = androidx.glance.ColorFilter.tint(
-                                if (isChecked) accent else muted
-                            ),
-                            modifier = GlanceModifier
-                                .size(28.dp)
-                                .clickable(
-                                    actionRunCallback<ToggleTaskAction>(
-                                        actionParametersOf(
-                                            taskIdKey to task.id,
+                        if (isCompletable) {
+                            Image(
+                                provider = ImageProvider(
+                                    if (isChecked) R.drawable.ic_widget_check_on
+                                    else R.drawable.ic_widget_check_off
+                                ),
+                                contentDescription = if (isChecked) "Mark incomplete" else "Mark complete",
+                                colorFilter = androidx.glance.ColorFilter.tint(
+                                    if (isChecked) accent else muted
+                                ),
+                                modifier = GlanceModifier
+                                    .size(28.dp)
+                                    .clickable(
+                                        actionRunCallback<ToggleTaskAction>(
+                                            actionParametersOf(
+                                                taskIdKey to task.id,
                                                 taskTypeKey to task.typeTag()
                                             )
+                                        )
                                     )
-                                )
-                                .padding(end = 6.dp)
-                        )
+                                    .padding(end = 6.dp)
+                            )
+                        } else Spacer(GlanceModifier.width(30.dp))
 
                         // Task body
                         Column(modifier = GlanceModifier.defaultWeight()) {

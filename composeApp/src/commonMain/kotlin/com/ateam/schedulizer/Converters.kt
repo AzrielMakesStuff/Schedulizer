@@ -17,8 +17,8 @@ class Converters {
     @TypeConverter fun fromLocalTime(value: LocalTime?): String? = value?.toString()
     @TypeConverter fun toLocalTime(value: String?): LocalTime? = value?.let { LocalTime.parse(it) }
 
-    @TypeConverter fun fromDuration(value: Duration?): String? = value?.toString()
-    @TypeConverter fun toDuration(value: String?): Duration? = value?.let { Duration.parse(it) }
+    @TypeConverter fun fromDurationList(value: List<Duration>): String = value.joinToString("|") { it.toString() }
+    @TypeConverter fun toDurationList(value: String): List<Duration> = if (value.isBlank()) emptyList() else value.split("|").map { Duration.parse(it) }
 
     @TypeConverter
     fun fromSchedule(s: ReminderSchedule): String {
@@ -73,7 +73,7 @@ class Converters {
                 )
                 else -> ReminderSchedule.None
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ReminderSchedule.None
         }
     }
@@ -160,7 +160,7 @@ class Converters {
             }
 
             CalendarRepeatSchedule(pattern, end)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }

@@ -1,38 +1,35 @@
 [versions]
+#noinspection AndroidGradlePluginVersion
 agp = "8.13.2"
+#noinspection GradleDependency
 android-compileSdk = "36"
 android-minSdk = "26"
+#noinspection OldTargetApi
 android-targetSdk = "36"
 androidx-activity = "1.13.0"
-androidx-lifecycle = "2.10.0"
+androidx-lifecycle = "2.8.4"
 composeMultiplatform = "1.11.1"
 #noinspection GradleDependency
 composeMultiplatformVersion = "2.10.1"
 glanceAppwidget = "1.1.1"
-kotlin = "2.3.21"
-ksp = "2.3.7"
-ktorClientContentNegotiation = "3.5.1"
+kotlin = "2.4.10"
+ksp = "2.3.10"
+ktorClientContentNegotiation = "3.5.2"
 materialIconsExtended = "1.7.3"
 room = "2.8.4"
-runtime = "1.11.3"
-sqlite = "2.6.2"
+sqlite = "2.7.0"
 material3 = "1.10.0-alpha05"
 kotlinx-datetime = "0.8.0"
 multiplatformSettings = "1.3.0"
 securityCryptoKtx = "1.1.0"
 navigationCompose = "2.9.2"
 size = "0.5.0"
-ui = "1.11.3"
 voyagerNavigator = "2.2.21-1.10.3"
-appcrawlerPlatform = "0.0.1-alpha03"
-workRuntimeKtx = "2.11.2"
 workRuntimeKtxVersion = "2.11.2"
 
 [libraries]
 androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glanceAppwidget" }
-androidx-runtime = { module = "androidx.compose.runtime:runtime", version.ref = "runtime" }
 androidx-security-crypto-ktx = { module = "androidx.security:security-crypto-ktx", version.ref = "securityCryptoKtx" }
-androidx-ui = { module = "androidx.compose.ui:ui", version.ref = "ui" }
 compose-multiplatform = { module = "com.kizitonwose.calendar:compose-multiplatform", version.ref = "composeMultiplatformVersion" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
@@ -58,7 +55,6 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyagerNavigator" }
-appcrawler-platform = { group = "com.google.android.appcrawler", name = "appcrawler-platform", version.ref = "appcrawlerPlatform" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtxVersion" }
 
 [plugins]

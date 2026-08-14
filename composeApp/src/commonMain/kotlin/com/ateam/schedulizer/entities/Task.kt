@@ -35,34 +35,36 @@ sealed class Task {
         override val description: String,
         override val reminderSchedule: ReminderSchedule,
         val start: LocalDateTime,
-        val end: LocalDateTime?,
-        val completed: Boolean = false,
-        val completionDate: LocalDateTime? = null,
-        val repeatFrequency: CalendarRepeatSchedule? = null,
+        val end: LocalDateTime,
+        val completed: Boolean? = null, // Null means auto advance - non-completable
+        val completionDate: LocalDateTime? = null, // Null means not complete yet
+        val repeatFrequency: CalendarRepeatSchedule? = null, // Defaults to null for no repeat
         @ColumnInfo(defaultValue = "1")
-        val occurrenceIndex: Int = 1,
-        val preReminder: Duration? = null,
-        val icsUid: String? = null,
-        val subscriptionId: Long? = null
+        val occurrenceIndex: Int = 1, // An index for recurring tasks for ICS compatibility
+        val preReminders: List<Duration> = emptyList(),
+        val icsUid: String? = null, // ICS reference
+        val subscriptionId: Long? = null // Subscription reference
     ) : Task() {
+        val isCompletable: Boolean get() = completed != null
+
         private fun advanceOnce(): Set? {
             val schedule = repeatFrequency ?: return null
             val newStart = schedule.nextOccurrenceStart(start, occurrenceIndex) ?: return null
-            val newEnd = end?.let { oldEnd ->
-                val tz = TimeZone.currentSystemDefault()
-                val duration = oldEnd.toInstant(tz) - start.toInstant(tz)
-                (newStart.toInstant(tz) + duration).toLocalDateTime(tz)
-            }
+            val tz = TimeZone.currentSystemDefault()
+            val newEnd = (newStart.toInstant(tz) + (end.toInstant(tz) - start.toInstant(tz))).toLocalDateTime(tz)
+
             return copy(
                 start = newStart,
                 end = newEnd,
-                completed = false,
+                completed = completed?.let { false },
                 completionDate = null,
                 occurrenceIndex = occurrenceIndex + 1
             )
         }
 
         fun advanceToUpcomingOccurrence(now: LocalDateTime): Set {
+
+
             var current = this
             var safety = 0
             while (current.start < now && safety < 10_000) {
@@ -75,7 +77,7 @@ sealed class Task {
         fun occurrencesBetween(rangeStart: LocalDate, rangeEnd: LocalDate): List<LocalDateTime> {
             val results = mutableListOf<LocalDateTime>()
 
-            val currentOccurrenceEndDate = end?.date ?: start.date
+            val currentOccurrenceEndDate = end.date
             if (start.date <= rangeEnd && currentOccurrenceEndDate >= rangeStart) {
                 results += start
             }
@@ -117,7 +119,7 @@ sealed class Task {
 
     fun isComplete(): Boolean = when (this) {
         is Daily -> lastCompleted?.date == today()
-        is Set -> completed
+        is Set -> completed ?: (end.date > today())
         is Pool -> completed
     }
 
@@ -126,9 +128,10 @@ sealed class Task {
             val nowInstant = now.toInstant(zone)
             val startInstant = start.toInstant(zone)
 
-            preReminder
-                ?.let { duration -> startInstant - duration }
-                ?.takeIf { it >= nowInstant }
+            preReminders
+                .map { duration -> startInstant - duration }
+                .filter { it >= nowInstant }
+                .minOrNull()
                 ?.toLocalDateTime(zone)
         } else {
             reminderSchedule.nextFireDateTime(now)

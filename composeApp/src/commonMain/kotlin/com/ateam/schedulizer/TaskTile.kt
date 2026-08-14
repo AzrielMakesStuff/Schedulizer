@@ -2,17 +2,20 @@ package com.ateam.schedulizer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,15 +44,21 @@ fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Uni
 
     val isCompletedToday = task is Task.Daily && task.lastCompleted?.date == today()
 
+    val isCompletable = when (task) {
+        is Task.Daily -> true
+        is Task.Set -> task.isCompletable
+        is Task.Pool -> true
+    }
+
     val isExpired = when (task) {
-        is Task.Set -> !task.completed && task.end != null && task.end < now()
+        is Task.Set -> !(task.completed ?: false) && task.end < now()
         is Task.Pool -> !task.completed && task.expiry != null && task.expiry < now()
         is Task.Daily -> false
     }
 
     val isChecked = when (task) {
         is Task.Daily -> isCompletedToday
-        is Task.Set -> task.completed
+        is Task.Set -> task.completed ?: (task.end < now())
         is Task.Pool -> task.completed
     }
 
@@ -82,40 +91,56 @@ fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Uni
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Checkbox(
-            checked = isChecked,
-            onCheckedChange = { checked ->
-                scope.launch {
-                    val updated = when (task) {
-                        is Task.Daily -> {
-                            val updated = task.copy(lastCompleted = if (checked) now() else LocalDateTime(now().date.minus(1, DateTimeUnit.DAY), now().time))
-                            println("DAILY STREAK RESET TO: ${updated.lastCompleted}")
-                            updated
+        if (isCompletable) {
+            Checkbox(
+                checked = isChecked,
+                onCheckedChange = { checked ->
+                    scope.launch {
+                        val updated = when (task) {
+                            is Task.Daily -> {
+                                val updated = task.copy(lastCompleted = if (checked) now() else LocalDateTime(now().date.minus(1, DateTimeUnit.DAY), now().time))
+                                println("DAILY STREAK RESET TO: ${updated.lastCompleted}")
+                                updated
+                            }
+
+                            is Task.Set -> task.copy(completed = checked, completionDate = if (checked) now() else null)
+
+                            is Task.Pool -> task.copy(
+                                completed = checked,
+                                completionDate = if (checked) now() else null
+                            )
                         }
-
-                        is Task.Set -> task.copy(completed = checked, completionDate = if (checked) now() else null)
-
-                        is Task.Pool -> task.copy(
-                            completed = checked,
-                            completionDate = if (checked) now() else null
-                        )
+                        databaseInstance.upsertTask(updated)
                     }
-                    databaseInstance.upsertTask(updated)
                 }
+            )
+        } else {
+            Box(
+                modifier = Modifier.size(40.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Outlined.Schedule,
+                    contentDescription = "Auto-advances by date",
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                    modifier = Modifier.size(20.dp)
+                )
             }
-        )
-
+        }
         Spacer(Modifier.width(8.dp))
 
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = task.title,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     textDecoration = if (isChecked) androidx.compose.ui.text.style.TextDecoration.LineThrough
-                    else androidx.compose.ui.text.style.TextDecoration.None
+                    else androidx.compose.ui.text.style.TextDecoration.None,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
@@ -125,6 +150,7 @@ fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Uni
                         isExpired -> MaterialTheme.colorScheme.error
                         else -> MaterialTheme.colorScheme.primary.copy(alpha = alpha)
                     },
+                    maxLines = 1,
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(
@@ -154,14 +180,10 @@ fun TaskTile(task: Task, onScrollToTop: (LocalDate) -> Unit, editTask: () -> Uni
 
             when (task) {
                 is Task.Set -> {
-                    if (task.end != null) {
-                        Text(
-                            "${task.start.fmt()} to ${task.end.fmt()}",
-                            fontSize = 11.sp, color = subtleColor
-                        )
-                    } else {
-                        Text(task.start.fmt(), fontSize = 11.sp, color = subtleColor)
-                    }
+                    Text(
+                        "${task.start.fmt()} to ${task.end.fmt()}",
+                        fontSize = 11.sp, color = subtleColor
+                    )
                 }
 
                 is Task.Pool -> {
