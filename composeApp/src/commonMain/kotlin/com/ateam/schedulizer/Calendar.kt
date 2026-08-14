@@ -269,8 +269,7 @@ private fun Day(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.75f)
-            .pointerInput(isMonthDate, occurrences) {
-                if (!isMonthDate) return@pointerInput
+            .pointerInput( occurrences) {
 
                 detectTapGestures { offset ->
                     val relativeY = offset.y - taskTopPx
@@ -367,7 +366,7 @@ private fun Day(
                         else -> primaryColor
                     }
                     else -> primaryColor
-                }
+                }.let { if (isMonthDate) it else it.copy(alpha = it.alpha * 0.3f) }
 
                 val y = taskTopPx + laneIndex * laneHeightPx
                 val startX = if (isStart) 2.dp.toPx() else 0f
@@ -511,7 +510,6 @@ private fun Day(
             }
         }
 
-        if (isMonthDate) {
             DetailsOverlay(
                 isVisible = showOverlay,
                 onDismiss = {
@@ -524,7 +522,6 @@ private fun Day(
                     .distinct(),
                 selectedTask = selectedTask
             )
-        }
     }
 }
 
