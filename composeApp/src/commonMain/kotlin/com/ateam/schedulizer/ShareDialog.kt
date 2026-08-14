@@ -103,7 +103,7 @@ fun ShareDialog(onDismiss: () -> Unit) {
                     .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp))
                     .clickable(enabled = false) { }
             ) {
-                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(modifier = Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Share", fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(20.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -144,7 +144,7 @@ fun ShareDialog(onDismiss: () -> Unit) {
 private fun ShareOption(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(84.dp).padding(horizontal = 8.dp, vertical = 4.dp)
+        modifier = Modifier.width(63.dp).padding(horizontal = 6.dp, vertical = 4.dp)
     ) {
         IconButton(onClick = onClick) {
             Icon(imageVector = icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
