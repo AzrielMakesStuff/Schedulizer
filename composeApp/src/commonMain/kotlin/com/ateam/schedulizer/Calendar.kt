@@ -1,8 +1,9 @@
 package com.ateam.schedulizer
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,13 +35,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -76,30 +79,12 @@ fun today() = System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
 private fun formatTime(time: LocalDateTime?) = time?.time?.toString()?.take(5) ?: ""
 
-private fun formatDate(date: LocalDate) =
-    "${date.dayOfWeek.name.take(3)}, ${date.month.name.take(3)} ${date.day}"
-
-/**
- * A single day-granular occurrence of a [Task] within some date range — the calendar
- * equivalent of [com.ateam.schedulizer.TaskOccurrence] on the weekly grid, but using
- * plain [LocalDate]s since month cells don't render time-of-day. For a non-repeating
- * [Task.Set] or a [Task.Pool] this is just that task's own start/end; for a repeating
- * [Task.Set] there's one entry per firing. [task] is always the same persisted row
- * (repeating tasks advance in place), so tapping any occurrence acts on [task] directly.
- */
 private data class DatedOccurrence(
     val task: Task,
     val start: LocalDate,
     val end: LocalDate
 )
 
-/**
- * Expands [this] task into its day-granular occurrences within [rangeStart, rangeEnd].
- * Daily tasks never contribute (they don't appear on the calendar at all). Pool tasks
- * contribute at most one (their expiry, if it falls in range). Set tasks contribute one
- * occurrence per repeat firing in range — via [occurrencesBetween] — each keeping the
- * original start→end day-span.
- */
 private fun Task.occurrencesInRange(rangeStart: LocalDate, rangeEnd: LocalDate): List<DatedOccurrence> = when (this) {
     is Task.Set -> {
         val spanDays = end.date.toEpochDays() - start.date.toEpochDays()
@@ -168,16 +153,26 @@ fun Calendar(onVisibleMonthChanged: (YearMonth) -> Unit = {}) {
         laneMap
     }
 
-    val occurrencesByDate = remember(occurrences) {
-        val map = mutableMapOf<LocalDate, MutableList<DatedOccurrence>>()
-        occurrences.forEach { occ ->
-            var current = occ.start
-            while (current <= occ.end) {
-                map.getOrPut(current) { mutableListOf() }.add(occ)
-                current = current.plus(1, DateTimeUnit.DAY)
+    val occurrencesByDate = remember(occurrences, laneOf) {
+        buildMap(occurrences.size) {
+            occurrences.forEach { occ ->
+                val lane = laneOf[occ] ?: return@forEach
+
+                var current = occ.start
+
+                while (current <= occ.end) {
+                    val lanes = get(current) ?: arrayOfNulls(3)
+
+                    if (lane < 3) {
+                        lanes[lane] = occ
+                    }
+
+                    put(current, lanes)
+
+                    current = current.plus(1, DateTimeUnit.DAY)
+                }
             }
         }
-        map
     }
 
     val state = rememberCalendarState(
@@ -196,7 +191,13 @@ fun Calendar(onVisibleMonthChanged: (YearMonth) -> Unit = {}) {
     HorizontalCalendar(
         modifier = Modifier.fillMaxWidth(),
         state = state,
-        dayContent = { Day(it, occurrencesByDate[it.date] ?: emptyList(), laneOf, daysOfWeek.first()) },
+        dayContent = {
+            Day(
+                day = it,
+                occurrences = occurrencesByDate[it.date] ?: arrayOfNulls(3),
+                firstDayOfWeek = daysOfWeek.first()
+            )
+        },
         monthHeader = {
             Column(modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)) {
                 MonthHeader(daysOfWeek = daysOfWeek)
@@ -234,138 +235,293 @@ fun MonthName(monthName: String, year: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Day(day: CalendarDay, occurrences: List<DatedOccurrence>, laneOf: Map<DatedOccurrence, Int>, firstDayOfWeek: DayOfWeek) {
+private fun Day(
+    day: CalendarDay,
+    occurrences: Array<DatedOccurrence?>,
+    firstDayOfWeek: DayOfWeek
+) {
     val isMonthDate = day.position == DayPosition.MonthDate
     val baseColor = MaterialTheme.colorScheme.onSurface
     val textColor = if (isMonthDate) baseColor else baseColor.copy(alpha = 0.3f)
+
     val isToday = day.date == today()
     val primaryColor = MaterialTheme.colorScheme.primary
+    val errorColor = MaterialTheme.colorScheme.error
+
+    val textMeasurer = rememberTextMeasurer()
 
     var showOverlay by remember { mutableStateOf(false) }
     var selectedTask by remember { mutableStateOf<Task?>(null) }
+
     val now = remember { now() }
+
+    val density = androidx.compose.ui.platform.LocalDensity.current
+
+    val dayNumberTop = 4.dp
+    val taskTop = 24.dp
+    val laneHeight = 18.dp
+
+    val dayNumberTopPx = with(density) { dayNumberTop.toPx() }
+    val taskTopPx = with(density) { taskTop.toPx() }
+    val laneHeightPx = with(density) { laneHeight.toPx() }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.75f)
-            .border(
-                color = if (isToday && isMonthDate) primaryColor.copy(alpha = 0.5f) else Color.Gray.copy(alpha = 0.1f),
-                width = 0.5.dp,
-            )
-            .clickable(enabled = isMonthDate, onClick = {
-                selectedTask = null
-                showOverlay = true
-            })
-            .background(
-                color = if (isToday && isMonthDate) primaryColor.copy(alpha = 0.15f) else Color.Transparent
-            ),
-        contentAlignment = Alignment.TopCenter
+            .pointerInput(isMonthDate, occurrences) {
+                if (!isMonthDate) return@pointerInput
+
+                detectTapGestures { offset ->
+                    val relativeY = offset.y - taskTopPx
+
+                    val lane = if (relativeY >= 0f) {
+                        (relativeY / laneHeightPx).toInt()
+                    } else {
+                        -1
+                    }
+
+                    if (lane in 0..2) {
+                        val task = occurrences[lane]?.task
+
+                        if (task != null) {
+                            selectedTask = task
+                            showOverlay = true
+                            return@detectTapGestures
+                        }
+                    }
+
+                    selectedTask = null
+                    showOverlay = true
+                }
+            }
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                modifier = Modifier.padding(top = 4.dp),
-                text = day.date.day.toString(),
-                color = if (isToday) primaryColor else textColor,
-                fontWeight = if (isToday) FontWeight.Bold else FontWeight.SemiBold,
-                fontSize = 12.sp
+        Canvas(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (isToday && isMonthDate) {
+                drawRect(
+                    color = primaryColor.copy(alpha = 0.15f),
+                    size = size
+                )
+            }
+
+            drawRect(
+                color = if (isToday && isMonthDate) {
+                    primaryColor.copy(alpha = 0.5f)
+                } else {
+                    Color.Gray.copy(alpha = 0.1f)
+                },
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = 0.5.dp.toPx()
+                )
             )
 
-            Spacer (Modifier.height(4.dp))
+            val dayText = day.date.day.toString()
+
+            val dayTextStyle = TextStyle(
+                color = if (isToday) primaryColor else textColor,
+                fontSize = 12.sp,
+                fontWeight = if (isToday) {
+                    FontWeight.Bold
+                } else {
+                    FontWeight.SemiBold
+                }
+            )
+
+            val dayLayout = textMeasurer.measure(
+                text = dayText,
+                style = dayTextStyle
+            )
+
+            drawText(
+                textMeasurer = textMeasurer,
+                text = dayText,
+                topLeft = Offset(
+                    x = (size.width - dayLayout.size.width) / 2f,
+                    y = dayNumberTopPx
+                ),
+                style = dayTextStyle
+            )
 
             for (laneIndex in 0..2) {
-                val occ = occurrences.find { laneOf[it] == laneIndex }
-                if (occ != null) {
-                    val task = occ.task
-                    val isStart = occ.start == day.date
-                    val isEnd = occ.end == day.date
+                val occ = occurrences[laneIndex] ?: continue
 
-                    // Whether this pill IS the task's current stored occurrence (vs. a
-                    // future/past projected one) — completed/overdue styling only makes
-                    // sense against the occurrence it actually describes.
-                    val isCurrentOccurrence = (task as? Task.Set)?.start?.date == occ.start
+                val task = occ.task
 
-                    val pillColor = when (task) {
-                        is Task.Set -> when {
-                            task.completed ?: (task.end < now()) && isCurrentOccurrence -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            isCurrentOccurrence && task.end < now -> MaterialTheme.colorScheme.error
-                            else -> primaryColor
-                        }
-                        is Task.Pool -> when {
-                            task.completed -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            task.expiry != null && task.expiry < now -> MaterialTheme.colorScheme.error
-                            else -> primaryColor
-                        }
+                val isStart = occ.start == day.date
+                val isEnd = occ.end == day.date
+
+                val isCurrentOccurrence = (task as? Task.Set)?.start?.date == occ.start
+
+                val pillColor = when (task) {
+                    is Task.Set -> when {
+                        task.completed == true && isCurrentOccurrence -> baseColor.copy(alpha = 0.3f)
+                        isCurrentOccurrence && task.end < now -> errorColor
                         else -> primaryColor
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(18.dp)
-                            .padding(vertical = 1.dp)
-                            .padding(
-                                start = if (isStart) 2.dp else 0.dp,
-                                end = if (isEnd) 2.dp else 0.dp
-                            )
-                            .clip(
-                                RoundedCornerShape(
-                                    topStart = if (isStart) 4.dp else 0.dp,
-                                    bottomStart = if (isStart) 4.dp else 0.dp,
-                                    topEnd = if (isEnd) 4.dp else 0.dp,
-                                    bottomEnd = if (isEnd) 4.dp else 0.dp
-                                )
-                            )
-                            .background(pillColor.copy(alpha = 0.18f))
-                            .drawWithContent {
-                                drawContent()
-                                if (isStart) {
-                                    drawLine(
-                                        color = pillColor,
-                                        start = Offset(0f, 4.dp.toPx()),
-                                        end = Offset(0f, size.height - 4.dp.toPx()),
-                                        strokeWidth = 3.dp.toPx(),
-                                        cap = StrokeCap.Round
-                                    )
-                                }
-                            }
-                            .clickable {
-                                selectedTask = task
-                                showOverlay = true
-                            },
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        if (isStart || day.date.dayOfWeek == firstDayOfWeek || day.date.day == 1) {
-                            Text(
-                                text = task.title,
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                lineHeight = 8.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                color = pillColor,
-                                modifier = Modifier.padding(start = if (isStart) 8.dp else 4.dp, end = 4.dp)
-                            )
-                        }
+                    is Task.Pool -> when {
+                        task.completed -> baseColor.copy(alpha = 0.3f)
+                        task.expiry != null && task.expiry < now -> errorColor
+                        else -> primaryColor
                     }
-                } else {
-                    Spacer(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(18.dp)
-                            .clickable(enabled = isMonthDate) {
-                                selectedTask = null
-                                showOverlay = true
-                            }
+                    else -> primaryColor
+                }
+
+                val y = taskTopPx + laneIndex * laneHeightPx
+                val startX = if (isStart) 2.dp.toPx() else 0f
+                val endX = if (isEnd) size.width - 2.dp.toPx() else size.width
+                val pillTop = y + 1.dp.toPx()
+                val pillBottom = y + laneHeightPx - 1.dp.toPx()
+                val radius = 4.dp.toPx()
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    val leftRadius = if (isStart) radius else 0f
+                    val rightRadius = if (isEnd) radius else 0f
+
+                    moveTo(startX + leftRadius, pillTop)
+
+                    lineTo(endX - rightRadius, pillTop)
+
+                    if (isEnd) {
+                        quadraticTo(
+                            endX,
+                            pillTop,
+                            endX,
+                            pillTop + rightRadius
+                        )
+                    } else {
+                        lineTo(endX, pillTop)
+                    }
+
+                    lineTo(
+                        endX,
+                        pillBottom - if (isEnd) radius else 0f
+                    )
+
+                    if (isEnd) {
+                        quadraticTo(
+                            endX,
+                            pillBottom,
+                            endX - rightRadius,
+                            pillBottom
+                        )
+                    }
+
+                    lineTo(
+                        startX + if (isStart) radius else 0f,
+                        pillBottom
+                    )
+
+                    if (isStart) {
+                        quadraticTo(
+                            startX,
+                            pillBottom,
+                            startX,
+                            pillBottom - leftRadius
+                        )
+                    }
+
+                    lineTo(
+                        startX,
+                        pillTop + if (isStart) radius else 0f
+                    )
+
+                    if (isStart) {
+                        quadraticTo(
+                            startX,
+                            pillTop,
+                            startX + leftRadius,
+                            pillTop
+                        )
+                    }
+
+                    close()
+                }
+
+                drawPath(
+                    path = path,
+                    color = pillColor.copy(alpha = 0.18f)
+                )
+
+                if (isStart) {
+                    drawLine(
+                        color = pillColor,
+                        start = Offset(
+                            x = startX,
+                            y = pillTop + 4.dp.toPx()
+                        ),
+                        end = Offset(
+                            x = startX,
+                            y = pillBottom - 4.dp.toPx()
+                        ),
+                        strokeWidth = 3.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                }
+
+                if (
+                    isStart ||
+                    day.date.dayOfWeek == firstDayOfWeek ||
+                    day.date.day == 1
+                ) {
+                    val leftPadding = if (isStart) {
+                        8.dp.toPx()
+                    } else {
+                        4.dp.toPx()
+                    }
+
+                    val rightPadding = 4.dp.toPx()
+
+                    val availableWidth =
+                        (endX - startX - leftPadding - rightPadding)
+                            .coerceAtLeast(1f)
+
+                    val titleStyle = TextStyle(
+                        color = pillColor,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = 8.sp
+                    )
+
+                    val layout = textMeasurer.measure(
+                        text = task.title,
+                        style = titleStyle,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        constraints = androidx.compose.ui.unit.Constraints(
+                            maxWidth = availableWidth.toInt()
+                        )
+                    )
+
+                    drawText(
+                        textMeasurer = textMeasurer,
+                        text = task.title,
+                        topLeft = Offset(
+                            x = startX + leftPadding,
+                            y = y + (laneHeightPx - layout.size.height) / 2f
+                        ),
+                        style = titleStyle,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
         }
+
         if (isMonthDate) {
             DetailsOverlay(
                 isVisible = showOverlay,
-                onDismiss = { showOverlay = false },
+                onDismiss = {
+                    showOverlay = false
+                },
                 day = day,
-                tasks = occurrences.map { it.task }.distinct(),
+                tasks = occurrences
+                    .filterNotNull()
+                    .map { it.task }
+                    .distinct(),
                 selectedTask = selectedTask
             )
         }
