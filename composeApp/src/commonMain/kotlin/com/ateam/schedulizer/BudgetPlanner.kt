@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlin.math.round
 
 class Expense() {
     var name = "Expense Name"
@@ -75,7 +76,7 @@ class Expense() {
 }
 
 enum class Frequency {
-    Weekly, Fortnightly,Monthly
+    Weekly, Fortnightly,Monthly, Yearly
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -145,14 +146,17 @@ fun BudgetPlanner() {
                   var timesBy = when (paidFrequency) {
                       Frequency.Weekly -> 1f
                       Frequency.Fortnightly -> 2f
-                      Frequency.Monthly -> 4f
+                      Frequency.Monthly -> 4.33f
+                      Frequency.Yearly -> 52f
                   }
                   cost = when (expense.frequency) {
 
                       Frequency.Weekly -> (expense.cost.toFloat() * timesBy).toString()
                       Frequency.Fortnightly -> (expense.cost.toFloat() / 2f * timesBy).toString()
-                      Frequency.Monthly -> (expense.cost.toFloat() / 4f * timesBy).toString()
+                      Frequency.Monthly -> (expense.cost.toFloat() / 4.33f * timesBy).toString()
+                      Frequency.Yearly -> (expense.cost.toFloat() / 52f * timesBy).toString()
                   }
+                  cost = ((round((cost.toFloat() * 100f))/ 100f).toString())
                   totalExpenses += cost.toFloat()
                   Row(Modifier.fillMaxWidth()) {
                       OutlinedCard(modifier = Modifier.weight(1.2f)) {
