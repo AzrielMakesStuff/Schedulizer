@@ -143,7 +143,7 @@ fun BudgetPlanner() {
                   val expense = expenses[index]
                   val totalEarned = amountEarned.toFloat()
                   var cost = "0";
-                  var timesBy = when (paidFrequency) {
+                  val timesBy = when (paidFrequency) {
                       Frequency.Weekly -> 1f
                       Frequency.Fortnightly -> 2f
                       Frequency.Monthly -> 4.33f
