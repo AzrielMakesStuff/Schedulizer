@@ -85,15 +85,6 @@ import kotlinx.datetime.yearMonth
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * A single occurrence of a task, positioned within a specific date range. For a
- * non-repeating [Task.Set] or a [Task.Pool] this is just that task's own start/end.
- * For a repeating [Task.Set], [task] is always the same underlying stored row (same
- * `id` — repeating tasks advance in place rather than existing as separate rows), while
- * [occurrenceStart]/[occurrenceEnd] vary per projected occurrence. Tapping any
- * occurrence should act on [task] directly, since that's the only thing actually
- * persisted.
- */
 data class TaskOccurrence(
     val task: Task,
     val occurrenceStart: LocalDateTime,
@@ -108,15 +99,9 @@ data class PositionedTask(
     val totalLanes: Int
 )
 
-/**
- * Expands [this] task into its occurrences within [rangeStart, rangeEnd]. Daily tasks
- * never contribute (they're rendered elsewhere, not on the weekly grid); Pool tasks
- * contribute at most one (their expiry, if it falls in range); Set tasks contribute
- * one occurrence per repeat firing in range, via [Task.Set.occurrencesBetween].
- */
 private fun Task.occurrencesInRange(rangeStart: LocalDate, rangeEnd: LocalDate): List<TaskOccurrence> = when (this) {
     is Task.Set -> occurrencesBetween(rangeStart, rangeEnd).map { occStart ->
-        // Preserve the original start→end duration for each projected occurrence.
+        // Preserve the original start->end duration for each projected occurrence.
         val occEnd = end.let { oldEnd ->
             val tz = TimeZone.currentSystemDefault()
             val duration = oldEnd.toInstant(tz) - start.toInstant(tz)
@@ -132,19 +117,30 @@ private fun Task.occurrencesInRange(rangeStart: LocalDate, rangeEnd: LocalDate):
     is Task.Daily -> emptyList()
 }
 
-/**
- * Assigns each occurrence a lane (for stacking overlapping pills) and, per
- * transitively-overlapping cluster, how many lanes that cluster needs in total.
- * Operates on [TaskOccurrence]s rather than raw [Task]s so two occurrences of the same
- * repeating task (different dates, same underlying row) are laid out independently.
- */
+private const val NEAR_INSTANT_MINUTES = 1
+
+private fun TaskOccurrence.isNearInstant(): Boolean {
+    val tz = TimeZone.currentSystemDefault()
+    val end = occurrenceEnd ?: occurrenceStart
+    return (end.toInstant(tz) - occurrenceStart.toInstant(tz)) <= NEAR_INSTANT_MINUTES.let {
+        kotlin.time.Duration.parse("${it}m")
+    }
+}
+
 private fun computeLanes(occurrences: List<TaskOccurrence>): Pair<Map<TaskOccurrence, Int>, Map<TaskOccurrence, Int>> {
     val sorted = occurrences.sortedBy { it.occurrenceStart }
     val lanes = mutableListOf<MutableList<TaskOccurrence>>()
     val laneOf = mutableMapOf<TaskOccurrence, Int>()
 
-    fun TaskOccurrence.spanStart() = occurrenceStart
-    fun TaskOccurrence.spanEnd() = occurrenceEnd ?: occurrenceStart
+    fun TaskOccurrence.spanStart(): LocalDateTime =
+        if (isNearInstant()) LocalDateTime(occurrenceStart.date, kotlinx.datetime.LocalTime(0, 0))
+        else occurrenceStart
+
+    fun TaskOccurrence.spanEnd(): LocalDateTime =
+        if (isNearInstant()) {
+            val nextDay = occurrenceStart.date.plus(1, DateTimeUnit.DAY)
+            LocalDateTime(nextDay, kotlinx.datetime.LocalTime(0, 0))
+        } else occurrenceEnd ?: occurrenceStart
 
     sorted.forEach { occ ->
         var placed = false
@@ -230,10 +226,6 @@ fun LocalDateTime.fmt(): String {
             "$year $h:$m"
 }
 
-fun LocalDate.fmt(): String =
-    "${dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
-            "$day ${month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} $year"
-
 fun now() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 
 @OptIn(InternalVoyagerApi::class)
@@ -244,23 +236,9 @@ fun TaskScreen() {
     var importCalendarDialog by remember { mutableStateOf(false) }
     var isCalendarView by remember { mutableStateOf(false) }
 
-    if (createTaskDialog) {
-        TaskDialog(
-            onDismiss = { createTaskDialog = false }
-        )
-    }
-
-    if (shareCalendarDialog) {
-        ShareDialog(
-            onDismiss = { shareCalendarDialog = false }
-        )
-    }
-
-    if (importCalendarDialog) {
-        ImportDialog(
-            onDismiss = { importCalendarDialog = false }
-        )
-    }
+    if (createTaskDialog) TaskDialog(onDismiss = { createTaskDialog = false })
+    if (shareCalendarDialog) ShareDialog(onDismiss = { shareCalendarDialog = false })
+    if (importCalendarDialog) ImportDialog(onDismiss = { importCalendarDialog = false })
 
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
 
@@ -313,9 +291,8 @@ fun TaskScreen() {
 
     fun onCellTapped(date: LocalDate, hour: Int, minute: Int = 0) {
         val tapped = LocalDateTime(date.year, date.month, date.day, hour, minute)
-        if (selectedDateOne == null) {
-            selectedDateOne = tapped
-        } else {
+        if (selectedDateOne == null) selectedDateOne = tapped
+        else {
             val dateOne = selectedDateOne!!
             if (tapped >= dateOne) selectedDateTwo = tapped
             else { selectedDateTwo = dateOne; selectedDateOne = tapped }
@@ -380,9 +357,7 @@ fun TaskScreen() {
                             .replaceFirstChar { it.uppercase() },
                         year = visibleMonth.year
                     )
-                    IconButton(
-                        onClick = { shareCalendarDialog = true }
-                    ) {
+                    IconButton(onClick = { shareCalendarDialog = true }) {
                         Icon(
                             imageVector = Icons.Filled.Share,
                             contentDescription = "Share Calendar",
@@ -390,9 +365,7 @@ fun TaskScreen() {
                         )
                     }
 
-                    IconButton(
-                        onClick = { importCalendarDialog = true }
-                    ) {
+                    IconButton(onClick = { importCalendarDialog = true }) {
                         Icon(
                             imageVector = Icons.Filled.ImportExport,
                             contentDescription = "Import Calendar",
@@ -400,21 +373,17 @@ fun TaskScreen() {
                         )
                     }
 
-                    IconButton(
-                        onClick = { isCalendarView = !isCalendarView }
-                    ) {
-                        if(!isCalendarView)
-                            Icon(
-                                imageVector = Icons.Filled.CalendarMonth,
-                                contentDescription = "Switch to Calendar",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        else
-                            Icon(
-                                imageVector = Icons.Filled.CalendarViewWeek,
-                                contentDescription = "Switch to Week View",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                    IconButton(onClick = { isCalendarView = !isCalendarView }) {
+                        if(!isCalendarView) Icon(
+                            imageVector = Icons.Filled.CalendarMonth,
+                            contentDescription = "Switch to Calendar",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        else Icon(
+                            imageVector = Icons.Filled.CalendarViewWeek,
+                            contentDescription = "Switch to Week View",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
 
@@ -769,12 +738,11 @@ fun WeeklyScheduleGrid(
                             val task = positioned.task
                             val occStart = positioned.occurrenceStart
                             val occEnd = positioned.occurrenceEnd
-
                             val startHour = if (occStart.date < date) 0 else occStart.hour
                             val startMinute = if (occStart.date < date) 0 else occStart.minute
                             val endHour = when {
                                 (occEnd != null) && (occEnd.date > date) -> 24
-                                occEnd != null -> occEnd.hour + 1
+                                occEnd != null -> occEnd.hour
                                 else -> startHour + 1
                             }
                             val endMinute = when {
@@ -782,31 +750,35 @@ fun WeeklyScheduleGrid(
                                 occEnd != null -> occEnd.minute
                                 else -> 0
                             }
-
                             val startFraction = startHour + startMinute / 60f
                             val endFraction = endHour + endMinute / 60f
-                            val spanHours = (endFraction - startFraction).coerceAtLeast(0.5f)
-
+                            val isNearInstant = positioned.let {
+                                val tz = TimeZone.currentSystemDefault()
+                                val end = it.occurrenceEnd ?: it.occurrenceStart
+                                (end.toInstant(tz) - it.occurrenceStart.toInstant(tz)) <= kotlin.time.Duration.parse("1m")
+                            }
+                            val pillStartFraction: Float
+                            val pillEndFraction: Float
+                            if (isNearInstant) {
+                                pillStartFraction = 0f
+                                pillEndFraction = 24f
+                            } else {
+                                val spanHours = (endFraction - startFraction).coerceAtLeast(0.5f)
+                                pillStartFraction = startFraction
+                                pillEndFraction = (startFraction + spanHours).coerceAtMost(24f)
+                            }
                             val pillHeight = 18.dp
                             val pillSpacing = 2.dp
                             val laneTop = (pillHeight + pillSpacing) * positioned.laneIndex
-
                             val pillPaddingPx = with(density) { 2.dp.toPx() }
-                            val pillStartPx = with(density) { (hourWidth * startFraction).toPx() } + pillPaddingPx
-                            val pillWidthPx = with(density) { (hourWidth * spanHours).toPx() } - pillPaddingPx * 2
+                            val pillStartPx = with(density) { (hourWidth * pillStartFraction).toPx() } + pillPaddingPx
+                            val pillWidthPx = with(density) { (hourWidth * (pillEndFraction - pillStartFraction)).toPx() } - pillPaddingPx * 2
                             val scrollOffset = hScroll.value.toFloat()
-
                             val visibleLeft = (scrollOffset - pillStartPx).coerceAtLeast(0f)
                             val maxTextOffset = (pillWidthPx - with(density) { 11.dp.toPx() }).coerceAtLeast(0f)
                             val textOffsetPx = visibleLeft.coerceAtMost(maxTextOffset)
-
                             val nowMoment = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-
-                            // Whether this pill IS the task's current stored occurrence
-                            // (vs. a future projected one) — completed/overdue styling
-                            // only makes sense against the occurrence it actually describes.
                             val isCurrentOccurrence = (task as? Task.Set)?.start == occStart
-
                             val pillColor = when {
                                 task is Task.Set && (task.completed == true || (!task.isCompletable && task.end < now())) && isCurrentOccurrence ->
                                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
@@ -822,8 +794,8 @@ fun WeeklyScheduleGrid(
 
                             Box(
                                 modifier = Modifier
-                                    .offset(x = hourWidth * startFraction, y = laneTop)
-                                    .width(hourWidth * spanHours)
+                                    .offset(x = hourWidth * pillStartFraction, y = laneTop)
+                                    .width(hourWidth * (pillEndFraction - pillStartFraction))
                                     .height(pillHeight)
                                     .padding(horizontal = 2.dp)
                                     .clip(RoundedCornerShape(15))
@@ -866,7 +838,7 @@ fun WeeklyScheduleGrid(
 
                             val startFraction = startHour + startMinute / 60f
                             val endFraction = (endHour + endMinute / 60f).coerceAtLeast(startFraction + 0.25f)
-                            val spanHours = endFraction - startFraction
+                            val spanHours = (endFraction - startFraction).coerceAtLeast(0.5f)
 
                             Box(
                                 modifier = Modifier

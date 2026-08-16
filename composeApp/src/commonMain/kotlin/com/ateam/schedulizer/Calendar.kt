@@ -68,13 +68,11 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.YearMonth
-import kotlinx.datetime.format.DayOfWeekNames
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock.System
 
-val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.THURSDAY)
 fun today() = System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
 private fun formatTime(time: LocalDateTime?) = time?.time?.toString()?.take(5) ?: ""
@@ -208,21 +206,6 @@ fun Calendar(onVisibleMonthChanged: (YearMonth) -> Unit = {}) {
 }
 
 @Composable
-fun DaysOfWeekTitle(daysOfWeek: List<DayOfWeek>) {
-    val textColoring = MaterialTheme.colorScheme.onBackground
-    Row(modifier = Modifier.fillMaxWidth()) {
-        for (dayOfWeek in daysOfWeek) {
-            Text(
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-                text = DayOfWeekNames.ENGLISH_ABBREVIATED.names[dayOfWeek.ordinal],
-                color = textColoring
-            )
-        }
-    }
-}
-
-@Composable
 fun MonthName(monthName: String, year: Int, modifier: Modifier = Modifier) {
     Text(
         modifier = modifier,
@@ -245,7 +228,7 @@ private fun Day(
     val textColor = if (isMonthDate) baseColor else baseColor.copy(alpha = 0.3f)
 
     val isToday = day.date == today()
-    val primaryColor = MaterialTheme.colorScheme.primary
+    val primaryColour = MaterialTheme.colorScheme.primary
     val errorColor = MaterialTheme.colorScheme.error
 
     val textMeasurer = rememberTextMeasurer()
@@ -300,14 +283,14 @@ private fun Day(
         ) {
             if (isToday && isMonthDate) {
                 drawRect(
-                    color = primaryColor.copy(alpha = 0.15f),
+                    color = primaryColour.copy(alpha = 0.15f),
                     size = size
                 )
             }
 
             drawRect(
                 color = if (isToday && isMonthDate) {
-                    primaryColor.copy(alpha = 0.5f)
+                    primaryColour.copy(alpha = 0.5f)
                 } else {
                     Color.Gray.copy(alpha = 0.1f)
                 },
@@ -319,7 +302,7 @@ private fun Day(
             val dayText = day.date.day.toString()
 
             val dayTextStyle = TextStyle(
-                color = if (isToday) primaryColor else textColor,
+                color = if (isToday) primaryColour else textColor,
                 fontSize = 12.sp,
                 fontWeight = if (isToday) {
                     FontWeight.Bold
@@ -355,17 +338,18 @@ private fun Day(
 
                 val pillColor = when (task) {
                     is Task.Set -> when {
-                        task.completed == true && isCurrentOccurrence -> baseColor.copy(alpha = 0.3f)
-                        isCurrentOccurrence && task.end < now -> errorColor
-                        else -> primaryColor
+                        (task.completed == true || (!task.isCompletable && task.end < now)) && isCurrentOccurrence ->
+                            baseColor.copy(alpha = 0.3f)
+                        isCurrentOccurrence && task.isCompletable && task.end < now -> errorColor
+                        else -> primaryColour
                     }
 
                     is Task.Pool -> when {
                         task.completed -> baseColor.copy(alpha = 0.3f)
                         task.expiry != null && task.expiry < now -> errorColor
-                        else -> primaryColor
+                        else -> primaryColour
                     }
-                    else -> primaryColor
+                    else -> primaryColour
                 }.let { if (isMonthDate) it else it.copy(alpha = it.alpha * 0.3f) }
 
                 val y = taskTopPx + laneIndex * laneHeightPx
