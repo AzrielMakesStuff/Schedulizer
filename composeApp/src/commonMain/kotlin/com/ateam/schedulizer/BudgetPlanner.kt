@@ -4,12 +4,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,6 +22,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -45,32 +51,62 @@ class Expense() {
         var nameT by remember { mutableStateOf("0") }
         var costT by remember { mutableStateOf("0") }
         var expanded by remember { mutableStateOf(false) }
-        Row (Modifier.fillMaxWidth()) {
-            OutlinedTextField(modifier = Modifier.weight(1.2f), value = nameT, onValueChange = {nameT = it; name = nameT}, label = { Text("Name")})
-            ExposedDropdownMenuBox(modifier = Modifier.weight(1f), expanded = expanded, onExpandedChange = { expanded = it }) {
+        Card(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            shape = RoundedCornerShape(12.dp)
+        )
+        {
+            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 20.dp)) {
                 OutlinedTextField(
-                    value = frequency.toString(),
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Cost") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    modifier = Modifier
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                )
-                
-                
-                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    modifier = Modifier.weight(1.1f),
+                    value = nameT,
+                    onValueChange = { nameT = it; name = nameT },
+                    label = { Text("Name") })
+                Spacer(modifier = Modifier.width(8.dp))
+                ExposedDropdownMenuBox(
+                    modifier = Modifier.weight(1f),
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it }) {
+                    OutlinedTextField(
+                        value = frequency.toString(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Occurance") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                    )
 
-                    Frequency.entries.forEach { payFre ->
-                        DropdownMenuItem(
-                            text = { Text(payFre.toString()) },
-                            onClick = {  expanded = false; frequency = payFre }
-                        )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }) {
+
+                        Frequency.entries.forEach { payFre ->
+                            DropdownMenuItem(
+                                text = { Text(payFre.toString()) },
+                                onClick = { expanded = false; frequency = payFre }
+                            )
+                        }
+
                     }
-
                 }
             }
-            OutlinedTextField(modifier = Modifier.weight(0.4f), value = "$$costT", onValueChange = { newVal -> costT = newVal.filter { it.isDigit() }; cost = costT}, label = { Text("Cost")})
+            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 20.dp)) {
+                OutlinedTextField(
+                    modifier = Modifier.weight(0.6f),
+                    value = "$$costT",
+                    onValueChange = { newVal ->
+                        costT = newVal.filter { it.isDigit() }; cost = costT
+                    },
+                    label = { Text("Cost") })
+            }
         }
     }
 }
@@ -92,7 +128,7 @@ fun BudgetPlanner() {
         var amountEarned by remember { mutableStateOf("0") }
      if (!calculated) {
 
-         ExposedDropdownMenuBox(modifier = Modifier.fillMaxWidth(0.8f) ,expanded = expanded, onExpandedChange = { expanded = it }) {
+         ExposedDropdownMenuBox(modifier = Modifier.fillMaxWidth(0.5f).padding(bottom = 20.dp) ,expanded = expanded, onExpandedChange = { expanded = it }) {
              OutlinedTextField(
                  value = paidFrequency.toString(),
                  onValueChange = {},
