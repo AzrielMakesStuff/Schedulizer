@@ -48,7 +48,7 @@ class Expense() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun Build() {
-        var nameT by remember { mutableStateOf("0") }
+        var nameT by remember { mutableStateOf("Expense Name") }
         var costT by remember { mutableStateOf("0") }
         var expanded by remember { mutableStateOf(false) }
         Card(
