@@ -112,10 +112,6 @@ fun Calendar(onVisibleMonthChanged: (YearMonth) -> Unit = {}) {
     val startMonth = remember { currentMonth.minusMonths(100) }
     val endMonth = remember { currentMonth.plusMonths(100) }
 
-    // Same [startMonth, endMonth] bounds the calendar itself scrolls across, expressed
-    // as plain dates so repeating tasks can be projected across the whole scrollable
-    // range once (occurrencesAfter bails out as soon as it passes rangeEnd, so this
-    // stays bounded even for tasks that repeat forever).
     val rangeStart = remember(startMonth) { LocalDate(startMonth.year, startMonth.month, 1) }
     val rangeEnd = remember(endMonth) {
         LocalDate(endMonth.year, endMonth.month, 1).plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
