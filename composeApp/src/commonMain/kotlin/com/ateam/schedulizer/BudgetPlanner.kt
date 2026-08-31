@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.round
 
 class Expense() {
@@ -175,6 +176,10 @@ fun BudgetPlanner() {
           var totalExpenses = 0f
 
           LazyColumn (horizontalAlignment = Alignment.CenterHorizontally){
+              item {
+                  Text( text = "Disclaimer: some results may have small inaccuracies, always verify the results",textAlign = TextAlign.Center, fontSize = 11.sp)
+
+              }
               items(expenses.size) { index ->
                   val expense = expenses[index]
                   val totalEarned = amountEarned.toFloat()
@@ -225,74 +230,6 @@ fun BudgetPlanner() {
     }
 }
 
-
-
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TaxCalculator() {
-    var calculated by remember {  mutableStateOf(false)}
-    val rows = remember {
-        mutableStateListOf(
-            InputRow("Enter Wage",false, InputType.int),
-            InputRow("Hours Worked", false,InputType.int),
-            InputRow("Kiwisaver", true,InputType.percent),
-            InputRow("Student Loan", true,InputType.int,InputType.percent),
-            InputRow("Holiday Pay", true, InputType.percent),
-            InputRow("Overtime", true,InputType.int,InputType.int),
-        )
-    }
-    if (!calculated) {
-        Column  (Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally){
-            rows.forEach { inputRow ->
-                inputRow.BuildRow()
-            }
-            var expanded by remember { mutableStateOf(false) }
-            var selectedVal by remember { mutableStateOf(WeekOptions.Weekly) }
-
-            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-                OutlinedTextField(
-                    value = selectedVal.toString(),
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Display pay for this..") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    modifier = Modifier
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-
-                    WeekOptions.entries.forEach { weekOptions ->
-                        DropdownMenuItem(
-                            text = { Text(weekOptions.toString()) },
-                            onClick = {  expanded = false; selectedVal = weekOptions }
-                        )
-                    }
-
-                }
-            }
-
-            OutlinedButton(modifier = Modifier.fillMaxWidth(0.8f), onClick = {
-                calculated = true
-            }) {
-                Text("Calculate")
-            }
-        }
-        }
-
-    if (calculated) {
-        val totalPay = rows[0].getResult()[0].toFloat() * rows[1].getResult()[0].toFloat() * (1f + (rows[4].getResult()[0].toFloat()/100f))
-        val studentLoan = 0f;
-        DisplayTaxResult(totalPay,studentLoan,rows[1].getResult()[0].toInt(),rows[2].getResult()[0].toFloat())
-    }
-
-
-
-
-
-}
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DisplayTaxResult(totalPay : Float, studentLoan : Float, hours: Int, kiwisaverPerc: Float) {
