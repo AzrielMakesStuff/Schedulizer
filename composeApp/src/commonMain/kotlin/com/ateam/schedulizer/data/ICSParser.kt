@@ -7,7 +7,7 @@ import com.ateam.schedulizer.ReminderSchedule
 import com.ateam.schedulizer.data.ICSParser.fromICS
 import com.ateam.schedulizer.databaseInstance
 import com.ateam.schedulizer.entities.Task
-import com.ateam.schedulizer.isoWeekNumber
+import com.ateam.schedulizer.fortnightlyWeekParityFor
 import kotlinx.datetime.IllegalTimeZoneException
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -16,6 +16,7 @@ import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.number
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration.Companion.days
 
 object ICSParser {
     fun toICS(tasks: List<Task.Set>, dtStamp: LocalDateTime): String =
@@ -193,7 +194,7 @@ object ICSParser {
                 when (interval) {
                     1 -> RecurrencePattern.Weekly(days)
                     // Fortnightly only holds one weekday; multi-day biweekly rules keep the first.
-                    2 -> RecurrencePattern.Fortnightly(days.first(), isoWeekNumber(dtStart.date) % 2)
+                    2 -> RecurrencePattern.Fortnightly(days.first(), fortnightlyWeekParityFor(dtStart.date))
                     else -> null // every-3-weeks and beyond aren't modeled
                 }
             }
@@ -249,7 +250,8 @@ object ICSParser {
             repeatFrequency = repeatFrequency,
             occurrenceIndex = 1,
             icsUid = uid,
-            subscriptionId = subscriptionId
+            subscriptionId = subscriptionId,
+            preReminders = listOf(1.days)
         )
     }
 }

@@ -116,7 +116,14 @@ fun HomeScreen()
                     else -> 0
                 }
             },
-            { if (it is Task.Daily) 0 else 1 },
+            { task ->
+                // Daily first, then Set, then Pool.
+                when (task) {
+                    is Task.Daily -> 0
+                    is Task.Set -> 1
+                    is Task.Pool -> 2
+                }
+            },
             { task ->
                 when (task) {
                     is Task.Pool -> task.expiry ?: LocalDateTime(today(), kotlinx.datetime.LocalTime(23, 30))

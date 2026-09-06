@@ -1,6 +1,11 @@
 package com.ateam.schedulizer
 
-import kotlinx.datetime.*
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.minus
+import kotlinx.datetime.number
+import kotlinx.datetime.plus
 
 /**
  * A pure day-of-week/day-of-month/day-of-year recurrence pattern — no notion of
@@ -54,6 +59,23 @@ fun RecurrencePattern.displayName(): String = when (this) {
 }
 
 /**
+ * The [RecurrencePattern.Fortnightly.weekParity] value whose "on" weeks include the
+ * ISO week containing [date]. Use this whenever deriving a fortnightly pattern's
+ * parity from a concrete date (a task's start/anchor date, an imported DTSTART,
+ * etc.) instead of computing `isoWeekNumber(date) % 2` inline — that expression is
+ * the *inverse* of the convention [RecurrencePattern.nextFireDate] uses to evaluate
+ * parity and will make the pattern fire on the wrong alternating week.
+ */
+fun fortnightlyWeekParityFor(date: LocalDate): Int {
+    var reference = date
+    while (isoWeekNumber(reference) != 1) {
+        reference = reference.minus(7, DateTimeUnit.DAY)
+    }
+    val weeksBetween = (date.toEpochDays() - reference.toEpochDays()) / 7
+    return (weeksBetween % 2).toInt()
+}
+
+/**
  * Returns the next date on or after [from] that this pattern fires.
  * Every pattern here fires eventually, so this is never null (unlike
  * [ReminderSchedule], which also has the non-recurring [ReminderSchedule.None] case).
@@ -76,12 +98,7 @@ fun RecurrencePattern.nextFireDate(from: LocalDate): LocalDate = when (this) {
         val daysAhead = (dayOfWeek - todayIso + 7) % 7
         var candidate = from.plus(daysAhead.toLong(), DateTimeUnit.DAY)
 
-        var reference = candidate
-        while (isoWeekNumber(reference) != 1) {
-            reference = reference.minus(7, DateTimeUnit.DAY)
-        }
-        val weeksBetween = (candidate.toEpochDays() - reference.toEpochDays()) / 7
-        if (weeksBetween % 2 != weekParity.toLong()) {
+        if (fortnightlyWeekParityFor(candidate) != weekParity) {
             candidate = candidate.plus(7, DateTimeUnit.DAY)
         }
         candidate

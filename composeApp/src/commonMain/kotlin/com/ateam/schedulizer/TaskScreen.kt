@@ -305,13 +305,31 @@ fun TaskScreen() {
 
     Box {
         val tasks by databaseInstance.tasks.collectAsState()
-        val filteredTasks = remember(tasks) {
+
+        // The date range currently visible on the swipeable calendar/week strip above,
+        // so the task list below tracks whatever the user has swiped to.
+        val (rangeStart, rangeEnd) = remember(weekAnchor, isCalendarView, calendarVisibleMonth, firstDayOfWeek) {
+            if (isCalendarView) {
+                val monthStart = LocalDate(calendarVisibleMonth.year, calendarVisibleMonth.month, 1)
+                val monthEnd = monthStart.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
+                monthStart to monthEnd
+            } else {
+                val dates = weekDatesFor(weekAnchor, firstDayOfWeek)
+                dates.first() to dates.last()
+            }
+        }
+
+        val filteredTasks = remember(tasks, rangeStart, rangeEnd) {
             tasks.filter { task ->
                 when (task) {
-                    is Task.Daily -> true
-                    is Task.Set -> task.start.date <= today() && (task.end.date) >= today()
+                    is Task.Daily -> true // dailies aren't date-scoped, always show
+                    is Task.Set -> task.occurrencesInRange(rangeStart, rangeEnd).isNotEmpty()
                     is Task.Pool -> {
-                        if (task.completed) {
+                        // Pool tasks with no deadline aren't tied to any week/month, so keep showing them.
+                        // Ones with a deadline only show while that deadline falls in the visible range.
+                        val inRange = task.expiry?.let { it.date in rangeStart..rangeEnd } ?: true
+                        if (!inRange) false
+                        else if (task.completed) {
                             val completedYesterday = task.completionDate?.date?.let { it < today() } ?: false
                             val pastExpiry = task.expiry?.let { it < now() } ?: true
                             !(completedYesterday && pastExpiry)
@@ -327,7 +345,14 @@ fun TaskScreen() {
                         else -> 0
                     }
                 },
-                { if (it is Task.Daily) 0 else 1 },
+                { task ->
+                    // Daily first, then Set, then Pool.
+                    when (task) {
+                        is Task.Daily -> 0
+                        is Task.Set -> 1
+                        is Task.Pool -> 2
+                    }
+                },
                 { task ->
                     when (task) {
                         is Task.Pool -> task.expiry ?: LocalDateTime(today(), kotlinx.datetime.LocalTime(23, 30))

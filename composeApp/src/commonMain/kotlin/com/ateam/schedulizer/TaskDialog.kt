@@ -218,6 +218,47 @@ private fun PreReminderListPicker(
 /** Default time-of-day used when a schedule needs one but none was picked yet. */
 private val DEFAULT_REMINDER_TIME = LocalTime(9, 0)
 
+/**
+ * Lets the user pick which of the two alternating weeks a fortnightly pattern fires
+ * on. Rather than exposing raw parity (0/1), each option previews the actual next
+ * date it would land on relative to [referenceDate], so "this week" vs "next week"
+ * is unambiguous regardless of ISO week numbering.
+ */
+@Composable
+private fun FortnightlyWeekToggle(
+    dayOfWeek: Int,
+    referenceDate: LocalDate,
+    weekParity: Int,
+    onWeekParityChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text("Which week?", style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(4.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(0, 1).forEach { parity ->
+                val active = weekParity == parity
+                val nextDate = RecurrencePattern.Fortnightly(dayOfWeek, parity).nextFireDate(referenceDate)
+                OutlinedButton(
+                    onClick = { onWeekParityChange(parity) },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (active)
+                            MaterialTheme.colorScheme.primaryContainer else
+                            MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Text(
+                        "Starting ${monthName(nextDate.month.number)} ${nextDate.day}",
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderSchedulePicker(
@@ -262,6 +303,14 @@ fun ReminderSchedulePicker(
         (schedule as? ReminderSchedule.EveryNDays)?.anchor ?: LocalDate.now()
     }
 
+    // Which of the two alternating weeks a Fortnightly schedule fires on. Derived
+    // from the existing schedule's own parity when editing, or from `anchor` (via
+    // fortnightlyWeekParityFor, NOT a bare isoWeekNumber % 2) for a brand-new one —
+    // see the doc on fortnightlyWeekParityFor for why that distinction matters.
+    var fortnightlyWeekParity by remember { mutableStateOf(
+        (schedule as? ReminderSchedule.Fortnightly)?.weekParity ?: fortnightlyWeekParityFor(anchor)
+    ) }
+
     fun emit() {
         val time = LocalTime(hour, minute)
         val s = when (selectedType) {
@@ -270,7 +319,7 @@ fun ReminderSchedulePicker(
                 nDays.toIntOrNull()?.coerceAtLeast(2) ?: 2, anchor, time
             )
             "Weekly" -> ReminderSchedule.Weekly(weeklyDay, time)
-            "Fortnightly" -> ReminderSchedule.Fortnightly(weeklyDay, 0, time)
+            "Fortnightly" -> ReminderSchedule.Fortnightly(weeklyDay, fortnightlyWeekParity, time)
             "Monthly by Date" -> ReminderSchedule.MonthlyByDate(monthDay, time)
             "Monthly by Weekday" -> ReminderSchedule.MonthlyByWeekday(ordinal, ordinalDay, time)
             else -> ReminderSchedule.None
@@ -313,8 +362,18 @@ fun ReminderSchedulePicker(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            "Weekly", "Fortnightly" -> {
+            "Weekly" -> {
                 DayOfWeekPicker(selected = weeklyDay) { weeklyDay = it; emit() }
+            }
+            "Fortnightly" -> {
+                DayOfWeekPicker(selected = weeklyDay) { weeklyDay = it; emit() }
+                Spacer(Modifier.height(8.dp))
+                FortnightlyWeekToggle(
+                    dayOfWeek = weeklyDay,
+                    referenceDate = anchor,
+                    weekParity = fortnightlyWeekParity,
+                    onWeekParityChange = { fortnightlyWeekParity = it; emit() }
+                )
             }
             "Monthly by Date" -> {
                 NumberScrollPicker(
@@ -490,6 +549,12 @@ fun CalendarRepeatPicker(
             ?: setOf(anchorDate.dayOfWeek.isoDayNumber)) }
     var fortnightlyDay by remember { mutableStateOf(
         (existingPattern as? RecurrencePattern.Fortnightly)?.dayOfWeek ?: anchorDate.dayOfWeek.isoDayNumber) }
+    // Which of the two alternating weeks. Derived from the existing pattern's own
+    // parity when editing, or from anchorDate (via fortnightlyWeekParityFor) for a
+    // brand-new pattern, so the default matches whatever week anchorDate falls in.
+    var fortnightlyWeekParity by remember { mutableStateOf(
+        (existingPattern as? RecurrencePattern.Fortnightly)?.weekParity
+            ?: fortnightlyWeekParityFor(anchorDate)) }
     var monthDay by remember { mutableStateOf(
         (existingPattern as? RecurrencePattern.MonthlyByDate)?.dayOfMonth ?: anchorDate.day) }
     var monthlyOrdinal by remember { mutableStateOf(
@@ -530,7 +595,7 @@ fun CalendarRepeatPicker(
         "Daily" -> RecurrencePattern.EveryNDays(1, anchorDate)
         "Every N Days" -> RecurrencePattern.EveryNDays(nDays.toIntOrNull()?.coerceAtLeast(2) ?: 2, anchorDate)
         "Weekly" -> RecurrencePattern.Weekly(weeklyDays)
-        "Fortnightly" -> RecurrencePattern.Fortnightly(fortnightlyDay, isoWeekNumber(anchorDate) % 2)
+        "Fortnightly" -> RecurrencePattern.Fortnightly(fortnightlyDay, fortnightlyWeekParity)
         "Monthly by Date" -> RecurrencePattern.MonthlyByDate(monthDay)
         "Monthly by Weekday" -> RecurrencePattern.MonthlyByWeekday(monthlyOrdinal, monthlyOrdinalDay)
         "Yearly by Date" -> RecurrencePattern.YearlyByDate(yearlyMonth, yearlyDay)
@@ -588,7 +653,16 @@ fun CalendarRepeatPicker(
                 )
             }
             "Weekly" -> MultiDayOfWeekPicker(selected = weeklyDays) { weeklyDays = it; emit() }
-            "Fortnightly" -> DayOfWeekPicker(selected = fortnightlyDay) { fortnightlyDay = it; emit() }
+            "Fortnightly" -> {
+                DayOfWeekPicker(selected = fortnightlyDay) { fortnightlyDay = it; emit() }
+                Spacer(Modifier.height(8.dp))
+                FortnightlyWeekToggle(
+                    dayOfWeek = fortnightlyDay,
+                    referenceDate = anchorDate,
+                    weekParity = fortnightlyWeekParity,
+                    onWeekParityChange = { fortnightlyWeekParity = it; emit() }
+                )
+            }
             "Monthly by Date" -> {
                 NumberScrollPicker(range = 1..31, selected = monthDay, onSelected = { monthDay = it; emit() })
                 Text(
