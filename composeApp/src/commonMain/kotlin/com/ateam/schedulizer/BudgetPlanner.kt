@@ -39,6 +39,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
+import cafe.adriel.voyager.navigator.internal.BackHandler
 import kotlin.math.round
 
 class Expense() {
@@ -116,7 +118,7 @@ enum class Frequency {
     Weekly, Fortnightly,Monthly, Yearly
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, InternalVoyagerApi::class)
 @Composable
 @Preview
 fun BudgetPlanner() {
@@ -127,7 +129,9 @@ fun BudgetPlanner() {
     var calculated by remember { mutableStateOf(false) }
     Column (modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         var amountEarned by remember { mutableStateOf("0") }
-     if (!calculated) {
+        BackHandler(calculated, onBack = {calculated = false})
+
+        if (!calculated) {
 
          ExposedDropdownMenuBox(modifier = Modifier.fillMaxWidth(0.5f).padding(bottom = 20.dp) ,expanded = expanded, onExpandedChange = { expanded = it }) {
              OutlinedTextField(
@@ -228,110 +232,4 @@ fun BudgetPlanner() {
           }
       }
     }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun DisplayTaxResult(totalPay : Float, studentLoan : Float, hours: Int, kiwisaverPerc: Float) {
-    val kiwiSaverCost = totalPay * (kiwisaverPerc/100f)
-    val acc = totalPay * 1.75/100
-    val takeHomeAmount = totalPay - kiwiSaverCost
-    Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            Box(modifier = Modifier.weight(1f)) {
-                OutlinedCard(modifier = Modifier.fillMaxWidth().fillMaxHeight(),colors = CardDefaults.cardColors()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = "Hours: $hours", textAlign = TextAlign.Center)
-                    }                }
-
-            }
-            Box(modifier = Modifier.weight(0.2f))
-            Box(modifier = Modifier.weight(1f)) {
-                OutlinedCard(modifier = Modifier.fillMaxWidth().fillMaxHeight(),colors = CardDefaults.cardColors()) {
-Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-    Text(text = "Weekly ", textAlign = TextAlign.Center)
-}
-                }
-            }
-        }
-
-        Row (modifier = Modifier.fillMaxWidth().weight(1f)) {
-            OutlinedCard(modifier = Modifier.weight(0.65f).fillMaxHeight(),colors = CardDefaults.cardColors()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "Gross Pay:", textAlign = TextAlign.Center)
-                }
-            }
-                OutlinedCard(modifier = Modifier.weight(0.35f).fillMaxHeight(),colors = CardDefaults.cardColors()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = "$$totalPay", textAlign = TextAlign.Center)
-                    }                }
-        }
-        Row (modifier = Modifier.fillMaxWidth().weight(1f)) {
-            OutlinedCard(modifier = Modifier.weight(0.65f).fillMaxHeight().fillMaxHeight(),colors = CardDefaults.cardColors()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "PAYE:", textAlign = TextAlign.Center)
-                }
-            }
-                OutlinedCard(modifier = Modifier.weight(0.35f).fillMaxHeight(),colors = CardDefaults.cardColors()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = "", textAlign = TextAlign.Center)
-                    }                }
-        }
-
-//        Row (modifier = Modifier.fillMaxWidth().weight(1f)) {
-//            OutlinedCard(modifier = Modifier.weight(0.65f).fillMaxHeight(),colors = CardDefaults.cardColors()) {
-//                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-//                    Text(text = "ACC:", textAlign = TextAlign.Center)
-//                }
-//            }
-//            OutlinedCard(modifier = Modifier.weight(0.35f).fillMaxHeight(),colors = CardDefaults.cardColors()) {
-//                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-//                    Text(text = "$$acc", textAlign = TextAlign.Center)
-//                }                }
-//        }
-
-        Row (modifier = Modifier.fillMaxWidth().weight(1f)) {
-            OutlinedCard(modifier = Modifier.weight(0.65f).fillMaxHeight(),colors = CardDefaults.cardColors()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "Kiwisaver:", textAlign = TextAlign.Center)
-                }
-            }
-            OutlinedCard(modifier = Modifier.weight(0.35f).fillMaxHeight(),colors = CardDefaults.cardColors()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "$$kiwiSaverCost", textAlign = TextAlign.Center)
-                }                }
-        }
-
-        Row (modifier = Modifier.fillMaxWidth().weight(1f)) {
-            OutlinedCard(modifier = Modifier.weight(0.65f).fillMaxHeight(),colors = CardDefaults.cardColors()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "Student Loan:", textAlign = TextAlign.Center)
-                }
-            }
-            OutlinedCard(modifier = Modifier.weight(0.35f).fillMaxHeight(),colors = CardDefaults.cardColors()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "", textAlign = TextAlign.Center)
-                }                }
-        }
-
-        Row (modifier = Modifier.fillMaxWidth().weight(1f)) {
-            OutlinedCard(modifier = Modifier.weight(0.65f).fillMaxHeight(),colors = CardDefaults.cardColors()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "Take Home Pay:", textAlign = TextAlign.Center)
-                }
-            }
-            OutlinedCard(modifier = Modifier.weight(0.35f).fillMaxHeight(), colors = CardDefaults.cardColors()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "$$takeHomeAmount", textAlign = TextAlign.Center)
-                }                }
-        }
-
-        OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick ={}, colors = ButtonDefaults.buttonColors()) {
-            Text("Done")
-        }
-    }
-}
-
-enum class WeekOptions {
-Weekly
 }

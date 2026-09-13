@@ -19,7 +19,7 @@ sealed class Routes(var route: String) {
     data object Home : Routes("home")
     data object Tasks : Routes("tasks")
     data object Calendar : Routes("Calendar")
-    data object Money : Routes("Money")
+    data object Budget : Routes("Budget")
     data object HomeDetail : Routes("homeDetail")
     data object SettingDetail : Routes("settingDetail")
 }
@@ -44,10 +44,10 @@ val navigationItemsLists = listOf(
         route = Routes.Tasks.route,
     ),
     NavigationItem(
-        unSelectedIcon = Icons.Outlined.Money,
-        selectedIcon = Icons.Filled.Money,
+        unSelectedIcon = Icons.Outlined.AttachMoney,
+        selectedIcon = Icons.Filled.AttachMoney,
         title = "Money",
-        route = Routes.Money.route,
+        route = Routes.Budget.route,
     ),
     NavigationItem(
         unSelectedIcon = Icons.Outlined.Settings,
