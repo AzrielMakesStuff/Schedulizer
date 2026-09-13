@@ -3,13 +3,17 @@ package com.ateam.schedulizer.data
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.*
-import androidx.core.content.FileProvider
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import java.io.File
 
 @Composable
-actual fun rememberIcsExporter(onResult: (Boolean) -> Unit): (String, String) -> Unit {
+actual fun rememberIcsExporter(onResult: (Boolean) -> Unit): (filename: String, content: String) -> Unit {
     val context = LocalContext.current
     var pendingContent by remember { mutableStateOf<String?>(null) }
 
@@ -34,7 +38,7 @@ actual fun rememberIcsExporter(onResult: (Boolean) -> Unit): (String, String) ->
 }
 
 @Composable
-actual fun rememberIcsImporter(onResult: (String?) -> Unit): () -> Unit {
+actual fun rememberIcsImporter(onResult: (content: String?) -> Unit): () -> Unit {
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) { onResult(null); return@rememberLauncherForActivityResult }
@@ -49,7 +53,7 @@ actual fun rememberIcsImporter(onResult: (String?) -> Unit): () -> Unit {
 }
 
 @Composable
-actual fun rememberIcsSharer(): (String, String) -> Unit {
+actual fun rememberIcsSharer(): (filename: String, content: String) -> Unit {
     val context = LocalContext.current
     return { fileName, content ->
         try {

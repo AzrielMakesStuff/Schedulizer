@@ -85,7 +85,9 @@ private data class DatedOccurrence(
 
 private fun Task.occurrencesInRange(rangeStart: LocalDate, rangeEnd: LocalDate): List<DatedOccurrence> = when (this) {
     is Task.Set -> {
-        val spanDays = end.date.toEpochDays() - start.date.toEpochDays()
+        val exclusiveEndDate = if (end.hour == 0 && end.minute == 0 && end > start) end.date.minus(1, DateTimeUnit.DAY)
+            else end.date
+        val spanDays = exclusiveEndDate.toEpochDays() - start.date.toEpochDays()
         occurrencesBetween(rangeStart, rangeEnd).map { occStart ->
             val occStartDate = occStart.date
             val occEndDate = occStartDate.plus(spanDays.toInt(), DateTimeUnit.DAY)

@@ -185,6 +185,12 @@ private fun computeLanes(occurrences: List<TaskOccurrence>): Pair<Map<TaskOccurr
     return Pair(laneOf, totalLanesOf)
 }
 
+private fun TaskOccurrence.lastOccupiedDate(): LocalDate {
+    val end = occurrenceEnd ?: return occurrenceStart.date
+    return if (end.hour == 0 && end.minute == 0 && end > occurrenceStart) end.date.minus(1, DateTimeUnit.DAY)
+    else end.date
+}
+
 /** Filters [occurrences] to those visible on [date] (spanning multi-day occurrences included), positioned via [laneOf]/[totalLanesOf]. */
 private fun occurrencesForDate(
     occurrences: List<TaskOccurrence>,
@@ -193,7 +199,7 @@ private fun occurrencesForDate(
     totalLanesOf: Map<TaskOccurrence, Int>
 ): List<PositionedTask> = occurrences
     .filter { occ ->
-        if (occ.occurrenceEnd != null) occ.occurrenceStart.date <= date && occ.occurrenceEnd.date >= date
+        if (occ.occurrenceEnd != null) occ.occurrenceStart.date <= date && occ.lastOccupiedDate() >= date
         else occ.occurrenceStart.date == date
     }
     .map {

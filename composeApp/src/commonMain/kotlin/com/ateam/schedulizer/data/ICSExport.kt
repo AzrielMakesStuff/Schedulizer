@@ -4,9 +4,12 @@ import com.ateam.schedulizer.CalendarRepeatSchedule
 import com.ateam.schedulizer.RecurrenceEnd
 import com.ateam.schedulizer.RecurrencePattern
 import com.ateam.schedulizer.entities.Task
-import kotlinx.datetime.*
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 
 fun CalendarRepeatSchedule.toRRule(occurrenceIndex: Int): String? {
     if (end is RecurrenceEnd.AfterOccurrences) {
@@ -64,7 +67,7 @@ private fun icsEscape(text: String): String =
 fun Task.Set.toIcsEvent(dtStamp: LocalDateTime = start): String {
     val uid = "schedulizer-set-$id@ateam"
     val dtStart = start.toIcsDateTimeUtc()
-    val dtEnd = end?.toIcsDateTimeUtc()
+    val dtEnd = end.toIcsDateTimeUtc()
     val rrule = repeatFrequency?.toRRule(occurrenceIndex)
 
     val lines = mutableListOf(
@@ -73,7 +76,7 @@ fun Task.Set.toIcsEvent(dtStamp: LocalDateTime = start): String {
         "DTSTAMP:${dtStamp.toIcsDateTimeUtc()}",
         "DTSTART:$dtStart"
     )
-    if (dtEnd != null) lines += "DTEND:$dtEnd"
+    lines += "DTEND:$dtEnd"
     if (rrule != null) lines += "RRULE:$rrule"
     lines += "SUMMARY:${icsEscape(title)}"
     if (description.isNotBlank()) lines += "DESCRIPTION:${icsEscape(description)}"

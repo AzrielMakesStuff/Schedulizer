@@ -1,8 +1,16 @@
 package com.ateam.schedulizer.data
 
 import com.ateam.schedulizer.entities.Task
-import kotlinx.datetime.*
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
+
 data class BusyBlock(val start: LocalDateTime, val durationMinutes: Int)
 
 fun BusyBlock.endDateTime(): LocalDateTime {
@@ -48,7 +56,7 @@ object BusyBlockCodec {
     fun fromTasks(tasks: List<Task.Set>): List<BusyBlock> {
         val zone = TimeZone.currentSystemDefault()
         return tasks.mapNotNull { task ->
-            val end = task.end ?: return@mapNotNull null
+            val end = task.end
             val minutes = (end.toInstant(zone) - task.start.toInstant(zone)).inWholeMinutes.toInt()
             if (minutes <= 0) null else BusyBlock(task.start, minutes)
         }
