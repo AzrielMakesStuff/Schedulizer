@@ -46,7 +46,7 @@ val navigationItemsLists = listOf(
     NavigationItem(
         unSelectedIcon = Icons.Outlined.Money,
         selectedIcon = Icons.Filled.Money,
-        title = "Money",
+        title = "Budget",
         route = Routes.Money.route,
     ),
     NavigationItem(
