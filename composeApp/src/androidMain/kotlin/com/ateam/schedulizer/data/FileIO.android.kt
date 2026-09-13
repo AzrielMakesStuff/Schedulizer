@@ -13,7 +13,7 @@ import androidx.core.content.FileProvider
 import java.io.File
 
 @Composable
-actual fun rememberIcsExporter(onResult: (Boolean) -> Unit): (filename: String, content: String) -> Unit {
+actual fun rememberIcsExporter(onResult: (Boolean) -> Unit): (fileName: String, content: String) -> Unit {
     val context = LocalContext.current
     var pendingContent by remember { mutableStateOf<String?>(null) }
 
@@ -53,7 +53,7 @@ actual fun rememberIcsImporter(onResult: (content: String?) -> Unit): () -> Unit
 }
 
 @Composable
-actual fun rememberIcsSharer(): (filename: String, content: String) -> Unit {
+actual fun rememberIcsSharer(): (fileName: String, content: String) -> Unit {
     val context = LocalContext.current
     return { fileName, content ->
         try {
