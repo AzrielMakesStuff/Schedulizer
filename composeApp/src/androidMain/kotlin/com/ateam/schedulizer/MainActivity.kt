@@ -27,9 +27,9 @@ class MainActivity : ComponentActivity() {
 
         val smallestWidthDp = resources.configuration.smallestScreenWidthDp
 
-        if (smallestWidthDp < 600) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
+//        if (smallestWidthDp < 600) {
+//            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+//        }
 
         val notificationChannel = NotificationChannel(Constants.NOTIF_CHANNEL_ID, Constants.NOTIF_CHANNEL_NAME,
             NotificationManager.IMPORTANCE_DEFAULT)

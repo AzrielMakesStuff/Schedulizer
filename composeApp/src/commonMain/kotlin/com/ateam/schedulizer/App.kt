@@ -76,7 +76,7 @@ fun App() {
                     composable(Routes.Calendar.route) {
                         Calendar()
                     }
-                    composable(Routes.Money.route) {
+                    composable(Routes.Budget.route) {
                         BudgetPlanner()
                     }
                     composable(Routes.SettingDetail.route)
