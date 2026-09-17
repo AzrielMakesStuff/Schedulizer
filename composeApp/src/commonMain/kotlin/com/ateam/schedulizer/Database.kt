@@ -12,8 +12,10 @@ import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
+import com.ateam.schedulizer.dao.ExpenseDao
 import com.ateam.schedulizer.dao.TaskDao
 import com.ateam.schedulizer.entities.CalendarSubscription
+import com.ateam.schedulizer.entities.Expense
 import com.ateam.schedulizer.entities.Settings
 import com.ateam.schedulizer.entities.Streak
 import com.ateam.schedulizer.entities.Task
@@ -42,11 +44,13 @@ class Migration10 : AutoMigrationSpec
         Task.Daily::class,
         Streak::class,
         Settings::class,
-        CalendarSubscription::class
+        CalendarSubscription::class,
+        Expense::class
     ],
-    version = 14,
+    version = 15,
     autoMigrations = [
-        AutoMigration(from = 9, to = 10, spec = Migration10::class)
+        AutoMigration(from = 9, to = 10, spec = Migration10::class),
+                AutoMigration(from = 14, to = 15)
     ]
 )
 @TypeConverters(Converters::class)
@@ -60,7 +64,8 @@ abstract class AppDatabase : RoomDatabase() {
     val settings: StateFlow<Settings?> = _settings.asStateFlow()
     private val _subscriptions = MutableStateFlow<List<CalendarSubscription>>(emptyList())
     val subscriptions: StateFlow<List<CalendarSubscription>> = _subscriptions.asStateFlow()
-
+    private val _expenses = MutableStateFlow<List<com.ateam.schedulizer.entities.Expense>>(emptyList())
+    val expenses: StateFlow<List<com.ateam.schedulizer.entities.Expense>> = _expenses.asStateFlow()
     data class StreakStatus(val lost: Boolean, val completedToday: Boolean)
 
     suspend fun checkStreak(): StreakStatus {
@@ -88,11 +93,15 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     abstract fun taskDao(): TaskDao
-
-    suspend fun getAll(): List<Task> {
+    abstract fun expenseDao(): ExpenseDao
+    suspend fun getAllTasks(): List<Task> {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val sets = taskDao().getAllSet().map { advanceIfStale(it, now) as Task.Set }
         return sets + taskDao().getAllPool() + taskDao().getAllDaily()
+    }
+
+    suspend fun getAllExpenses(): List<com.ateam.schedulizer.entities.Expense> {
+        return expenseDao().getAll()
     }
 
     suspend fun getTask(id: Long, type: String) = when (type) {
@@ -103,10 +112,11 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     suspend fun refresh() {
-        _tasks.value = getAll()
+        _tasks.value = getAllTasks()
         _subscriptions.value = taskDao().getAllSubscriptions()
         _streak.value = (taskDao().getStreak() ?: Streak().also { taskDao().upsert(it) }).streakLength
         _settings.value = taskDao().getSettings() ?: Settings()
+        _expenses.value = expenseDao().getAll()
         WidgetManager.updateWidgets() // Refresh widgets
         NotificationSystem.recheckNotifPerm()
     }
@@ -151,6 +161,15 @@ abstract class AppDatabase : RoomDatabase() {
         refresh()
     }
 
+    suspend fun upsertExpense(expense: com.ateam.schedulizer.entities.Expense) {
+      expenseDao().addExpense(expense)
+        refresh()
+    }
+
+    suspend fun deleteExpense(expense: com.ateam.schedulizer.entities.Expense) {
+       expenseDao().deleteExpense(expense.id)
+        refresh()
+    }
     suspend fun deleteTask(task: Task) {
         NotificationSystem.clearNotification(task)
         when (task) {
@@ -169,7 +188,7 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     suspend fun rescheduleAllNotifications() {
-        val tasks = getAll()
+        val tasks = getAllTasks()
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val zone = TimeZone.currentSystemDefault()
 
