@@ -29,6 +29,7 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -126,8 +127,8 @@ class ExpenseBudget(val onDelete : () -> Unit) {
                 Button(onClick = {
                     delete = true
                    deleteT = true
-                    onDelete()
-                    id?.let { removeExpense(it) }
+                    id?.let { removeExpense(it)
+                    onDelete()}
                 }) {
                     Icon(Icons.Filled.Delete,"Delete")
 
@@ -149,23 +150,24 @@ fun BudgetPlanner() {
     var paidFrequency by remember { mutableStateOf(Frequency.Weekly) }
     var expanded by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(true) }
-
     val expenses = remember { mutableStateListOf(ExpenseBudget(onDelete = {refresh = true})) }
     var calculated by remember { mutableStateOf(false) }
-    CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-        var cleared = false
-        val expensesT = databaseInstance.getAllExpenses()
-        expensesT.forEach {
-            if (!cleared) {
-                expenses.clear()
-                cleared = true;
+    var cleared =false
+    LaunchedEffect(Unit) {
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            val expensesT = databaseInstance.getAllExpenses()
+            expensesT.forEach {
+                if (!cleared) {
+                    expenses.clear()
+                    cleared = true;
+                }
+                val expenseBudget = ExpenseBudget(onDelete = { refresh = true});
+                expenseBudget.id = it.id
+                expenseBudget.name = it.name
+                expenseBudget.cost = it.cost.toString()
+                expenseBudget.frequency = it.frequency
+                expenses.add(expenseBudget)
             }
-            val expenseBudget = ExpenseBudget(onDelete = { refresh = true});
-            expenseBudget.id = it.id
-            expenseBudget.name = it.name
-            expenseBudget.cost = it.cost.toString()
-            expenseBudget.frequency = it.frequency
-            expenses.add(expenseBudget)
         }
     }
     Column (modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -225,6 +227,7 @@ fun BudgetPlanner() {
             }
      }
       else {
+          println(expenses.size)
             var totalExpenses = 0f
             saveExpenses(expenses)
             LazyColumn (horizontalAlignment = Alignment.CenterHorizontally){
