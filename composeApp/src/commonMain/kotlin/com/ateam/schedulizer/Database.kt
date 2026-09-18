@@ -166,8 +166,8 @@ abstract class AppDatabase : RoomDatabase() {
         refresh()
     }
 
-    suspend fun deleteExpense(expense: com.ateam.schedulizer.entities.Expense) {
-       expenseDao().deleteExpense(expense.id)
+    suspend fun deleteExpense(id: Long) {
+       expenseDao().deleteExpense(id)
         refresh()
     }
     suspend fun deleteTask(task: Task) {

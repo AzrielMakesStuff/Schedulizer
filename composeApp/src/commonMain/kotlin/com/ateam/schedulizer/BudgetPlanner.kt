@@ -1,5 +1,6 @@
 package com.ateam.schedulizer
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,13 +11,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -37,26 +43,29 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
 import cafe.adriel.voyager.navigator.internal.BackHandler
 import com.ateam.schedulizer.entities.Expense
-import io.ktor.util.logging.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlin.math.exp
 import kotlin.math.round
 
-class ExpenseBudget() {
+class ExpenseBudget(val onDelete : () -> Unit) {
     var name = "Expense Name"
     var frequency = Frequency.Weekly
     var cost = "0"
     var id : Long? = null;
-    @OptIn(ExperimentalMaterial3Api::class)
+    var delete = false
+
+
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
     @Composable
     fun Build() {
         var nameT by remember { mutableStateOf(name) }
         var costT by remember { mutableStateOf(cost) }
         var expanded by remember { mutableStateOf(false) }
+        var deleteT by remember { mutableStateOf(false)}
+
         Card(
             modifier = Modifier
                 .fillMaxSize()
@@ -113,6 +122,18 @@ class ExpenseBudget() {
                     },
                     label = { Text("Cost") })
             }
+            Row( modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Button(onClick = {
+                    delete = true
+                   deleteT = true
+                    onDelete()
+                    id?.let { removeExpense(it) }
+                }) {
+                    Icon(Icons.Filled.Delete,"Delete")
+
+                }
+            }
+
         }
     }
 }
@@ -127,8 +148,9 @@ enum class Frequency {
 fun BudgetPlanner() {
     var paidFrequency by remember { mutableStateOf(Frequency.Weekly) }
     var expanded by remember { mutableStateOf(false) }
+    var refresh by remember { mutableStateOf(true) }
 
-    val expenses = remember { mutableStateListOf(ExpenseBudget()) }
+    val expenses = remember { mutableStateListOf(ExpenseBudget(onDelete = {refresh = true})) }
     var calculated by remember { mutableStateOf(false) }
     CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
         var cleared = false
@@ -138,7 +160,7 @@ fun BudgetPlanner() {
                 expenses.clear()
                 cleared = true;
             }
-            val expenseBudget = ExpenseBudget();
+            val expenseBudget = ExpenseBudget(onDelete = { refresh = true});
             expenseBudget.id = it.id
             expenseBudget.name = it.name
             expenseBudget.cost = it.cost.toString()
@@ -174,14 +196,14 @@ fun BudgetPlanner() {
              }
          }
          Text("Expenses:")
+
          LazyColumn (modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally){
              items(expenses.size) { index ->
                  expenses[index].Build()
              }
              item {
                  OutlinedButton(onClick = {
-                     saveExpenses(expenses)
-                     expenses.add(ExpenseBudget())
+                     expenses.add(ExpenseBudget(onDelete = {refresh = true}))
                  }) {
                      Text("Add Expense")
                  }
@@ -195,6 +217,12 @@ fun BudgetPlanner() {
                  }
              }
          }
+            if (refresh) {
+                expenses.forEachIndexed { index, budget ->
+                    if (budget.delete) expenses.removeAt(index)
+                }
+                refresh = false
+            }
      }
       else {
             var totalExpenses = 0f
@@ -269,5 +297,11 @@ fun saveExpenses(expenses : List<ExpenseBudget>) {
              databaseInstance.upsertExpense(expense)
          }
      }
+    }
+}
+
+fun removeExpense(id : Long) {
+    CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        databaseInstance.deleteExpense(id)
     }
 }
