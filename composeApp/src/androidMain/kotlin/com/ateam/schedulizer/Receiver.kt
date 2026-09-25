@@ -82,7 +82,7 @@ class Receiver : BroadcastReceiver() {
 
                 if (stillAtRisk && NotificationManagerCompat.from(ContextHolder.context).areNotificationsEnabled()) {
                     val notification = createNotification(
-                        "Don't lost your streak!",
+                        "Don't lose your streak!",
                         "You still have daily tasks to complete for today."
                     )
                     notificationManager.notify(slot.requestCode, notification)
