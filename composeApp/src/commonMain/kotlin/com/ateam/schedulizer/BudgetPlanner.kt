@@ -3,6 +3,7 @@ package com.ateam.schedulizer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -231,7 +232,11 @@ fun BudgetPlanner() {
           println(expenses.size)
             var totalExpenses = 0f
             saveExpenses(expenses)
-            LazyColumn (horizontalAlignment = Alignment.CenterHorizontally){
+            LazyColumn (
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ){
               item {
                   Text( text = "Disclaimer: some results may have small inaccuracies, always verify the results",
                       textAlign = TextAlign.Center,
