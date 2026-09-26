@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -232,7 +233,11 @@ fun BudgetPlanner() {
             saveExpenses(expenses)
             LazyColumn (horizontalAlignment = Alignment.CenterHorizontally){
               item {
-                  Text( text = "Disclaimer: some results may have small inaccuracies, always verify the results",textAlign = TextAlign.Center, fontSize = 11.sp)
+                  Text( text = "Disclaimer: some results may have small inaccuracies, always verify the results",
+                      textAlign = TextAlign.Center,
+                      fontSize = 11.sp,
+                      modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                  )
 
               }
               items(expenses.size) { index ->
@@ -254,32 +259,42 @@ fun BudgetPlanner() {
                   }
                   cost = ((round((cost.toFloat() * 100f))/ 100f).toString())
                   totalExpenses += cost.toFloat()
-                  Row(Modifier.fillMaxWidth()) {
-                      OutlinedCard(modifier = Modifier.weight(1.2f)) {
-
-                          Box(
-                              modifier = Modifier.fillMaxSize(),
-                              contentAlignment = Alignment.Center
-                          ) {
-                              Text(expense.name)
-                          }
+                  Card(
+                      modifier = Modifier
+                          .fillMaxWidth()
+                          .padding(horizontal = 20.dp),
+                      colors = CardDefaults.cardColors(
+                          containerColor = MaterialTheme.colorScheme.surfaceVariant
+                      ),
+                      elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                      shape = RoundedCornerShape(12.dp)
+                  ) {
+                      Row(
+                          modifier = Modifier
+                              .fillMaxWidth()
+                              .padding(horizontal = 16.dp, vertical = 14.dp),
+                          verticalAlignment = Alignment.CenterVertically
+                      ) {
+                          Text(
+                              text = expense.name,
+                              modifier = Modifier.weight(1.2f),
+                              textAlign = TextAlign.Start
+                          )
+                          Text(
+                              text = "$$cost",
+                              modifier = Modifier.weight(0.8f),
+                              textAlign = TextAlign.End,
+                              fontWeight = FontWeight.Medium
+                          )
                       }
-
-
-                          OutlinedCard(modifier = Modifier.weight(0.8f)) {
-                              Box(
-                                  modifier = Modifier.fillMaxSize(),
-                                  contentAlignment = Alignment.Center
-                              ) {
-                                  Text("$$cost")
-                              }
-                          }
-
                   }
               }
-              item {
-                  Text("Total Cost: $$totalExpenses")
-              }
+                item {
+                    Text(
+                        "Total Cost: $$totalExpenses",
+                        modifier = Modifier.padding(top = 8.dp, bottom = 20.dp)
+                    )
+                }
           }
       }
     }
