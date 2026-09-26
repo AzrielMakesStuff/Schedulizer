@@ -50,7 +50,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlin.math.round
-
+// thing
 class ExpenseBudget(val onDelete : () -> Unit) {
     var name = "Expense Name"
     var frequency = Frequency.Weekly
