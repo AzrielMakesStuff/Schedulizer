@@ -29,6 +29,7 @@ import navigationItemsLists
 fun App() {
     LaunchedEffect(Unit) {
         databaseInstance.refresh()
+        SubscriptionSyncScheduler.schedulePeriodicSync()
     }
 
     val rootNavController = rememberNavController()

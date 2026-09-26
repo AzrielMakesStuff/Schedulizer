@@ -23,8 +23,8 @@ class ICSSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 }
 
 actual object SubscriptionSyncScheduler {
-    actual fun schedulePeriodicSync(context: Any?) {
-        val ctx = context as Context
+    actual fun schedulePeriodicSync() {
+        val ctx = ContextHolder.context
         val request = PeriodicWorkRequestBuilder<ICSSyncWorker>(6.hours.inWholeMilliseconds, java.util.concurrent.TimeUnit.MILLISECONDS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
