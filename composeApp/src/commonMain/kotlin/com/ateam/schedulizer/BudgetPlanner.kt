@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
 import cafe.adriel.voyager.navigator.internal.BackHandler
 import com.ateam.schedulizer.entities.Expense
+import com.ateam.schedulizer.entities.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -166,6 +167,12 @@ fun BudgetPlanner() {
     LaunchedEffect(Unit) {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             val expensesT = databaseInstance.getAllExpenses()
+            val settings = databaseInstance.settings.value
+
+            if (settings != null) {
+                paidFrequency = settings.paidFrequency
+                println(settings.paidFrequency.toString())
+            }
             expensesT.forEach {
                 if (!cleared) {
                     expenses.clear()
@@ -237,9 +244,8 @@ fun BudgetPlanner() {
             }
      }
       else {
-          println(expenses.size)
             var totalExpenses = 0f
-            saveExpenses(expenses)
+            saveExpenses(expenses,paidFrequency)
             LazyColumn (
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -313,11 +319,18 @@ fun BudgetPlanner() {
     }
 }
 
-fun saveExpenses(expenses : List<ExpenseBudget>) {
+fun saveExpenses(expenses : List<ExpenseBudget>, paidFrequency: Frequency) {
 
     CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        val settingsT = databaseInstance.settings.value
+        if (settingsT != null) {
+            val newSettings = Settings(1,settingsT.colourMode,paidFrequency)
+            databaseInstance.saveSettings(newSettings)
+        }
 
      expenses.forEach {
+
+
          if (it.id != null) {
              val expense = Expense(id = it.id!!,name = it.name,it.cost.toInt(), frequency = it.frequency)
              databaseInstance.upsertExpense(expense)
