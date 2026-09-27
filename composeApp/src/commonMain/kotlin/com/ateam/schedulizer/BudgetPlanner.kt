@@ -54,6 +54,8 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlin.math.round
+import kotlin.random.Random
+
 // thing
 class ExpenseBudget(val onDelete : () -> Unit) {
     var name = "Expense Name"
@@ -163,21 +165,15 @@ fun BudgetPlanner() {
     var refresh by remember { mutableStateOf(true) }
     val expenses = remember { mutableStateListOf(ExpenseBudget(onDelete = {refresh = true})) }
     var calculated by remember { mutableStateOf(false) }
-    var cleared =false
+    var cleared by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             val expensesT = databaseInstance.getAllExpenses()
-            val settings = databaseInstance.settings.value
-
-            if (settings != null) {
-                paidFrequency = settings.paidFrequency
-                println(settings.paidFrequency.toString())
+            if (expensesT.isNotEmpty() && !cleared) {
+                expenses.clear()
+                cleared = true;
             }
             expensesT.forEach {
-                if (!cleared) {
-                    expenses.clear()
-                    cleared = true;
-                }
                 val expenseBudget = ExpenseBudget(onDelete = { refresh = true});
                 expenseBudget.id = it.id
                 expenseBudget.name = it.name
@@ -185,6 +181,12 @@ fun BudgetPlanner() {
                 expenseBudget.frequency = it.frequency
                 expenses.add(expenseBudget)
             }
+            val settings = databaseInstance.settings.value
+            if (settings != null) {
+                paidFrequency = settings.paidFrequency
+            }
+
+            println(expenses.size)
         }
     }
     Column (modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -217,7 +219,11 @@ fun BudgetPlanner() {
          Text("Expenses:")
 
          LazyColumn (modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally){
-             items(items = expenses, key = { it.hashCode() }) { expense ->
+             items(items = expenses, key = {
+                 (if (it.id != null) {
+                     it.id
+                 } else Random.nextInt(0,999999999))!!
+             }) { expense ->
                  expense.Build()
              }
              item {
@@ -230,6 +236,7 @@ fun BudgetPlanner() {
 
              item {
                  OutlinedButton(onClick = {
+                     saveExpenses(expenses,paidFrequency)
                      calculated = true
                  }) {
                      Text("Calculate")
@@ -245,12 +252,11 @@ fun BudgetPlanner() {
      }
       else {
             var totalExpenses = 0f
-            saveExpenses(expenses,paidFrequency)
             LazyColumn (
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 8.dp)
-            ){
+            ) {
               item {
                   Text( text = "Disclaimer: some results may have small inaccuracies, always verify the results",
                       textAlign = TextAlign.Center,
@@ -320,27 +326,31 @@ fun BudgetPlanner() {
 }
 
 fun saveExpenses(expenses : List<ExpenseBudget>, paidFrequency: Frequency) {
-
+    var saved = false
     CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+
+
+     if (!saved) {
+         expenses.forEach {
+
+
+             if (it.id != null) {
+                 val expense = Expense(id = it.id!!,name = it.name,it.cost.toInt(), frequency = it.frequency)
+                 databaseInstance.upsertExpense(expense)
+             }
+
+             else {
+                 val expense = Expense(cost = it.cost.toInt(), frequency = it.frequency,name = it.name)
+                 databaseInstance.upsertExpense(expense)
+             }
+         }
+         saved = true
+     }
         val settingsT = databaseInstance.settings.value
         if (settingsT != null) {
             val newSettings = Settings(1,settingsT.colourMode,paidFrequency)
             databaseInstance.saveSettings(newSettings)
         }
-
-     expenses.forEach {
-
-
-         if (it.id != null) {
-             val expense = Expense(id = it.id!!,name = it.name,it.cost.toInt(), frequency = it.frequency)
-             databaseInstance.upsertExpense(expense)
-         }
-
-       else {
-             val expense = Expense(cost = it.cost.toInt(), frequency = it.frequency,name = it.name)
-             databaseInstance.upsertExpense(expense)
-         }
-     }
     }
 }
 
