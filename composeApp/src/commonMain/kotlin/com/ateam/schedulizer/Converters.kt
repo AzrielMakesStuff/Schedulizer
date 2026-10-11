@@ -8,6 +8,11 @@ import kotlinx.datetime.LocalTime
 import kotlin.time.Duration
 
 class Converters {
+    @TypeConverter fun fromFrequency(value: Frequency?): String? = value?.name
+    @TypeConverter fun toFrequency(value: String?): Frequency? = value?.let {
+        try { Frequency.valueOf(it) } catch (_: Exception) { Frequency.Weekly }
+    }
+
     @TypeConverter fun fromLocalDateTime(value: LocalDateTime?): String? = value?.toString()?.replace("T", " ")
     @TypeConverter fun toLocalDateTime(value: String?): LocalDateTime? = value?.let { LocalDateTime.parse(it.replace(" ", "T")) }
 

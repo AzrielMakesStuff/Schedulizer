@@ -14,6 +14,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import com.ateam.schedulizer.dao.TaskDao
 import com.ateam.schedulizer.entities.CalendarSubscription
+import com.ateam.schedulizer.entities.Expense
 import com.ateam.schedulizer.entities.Settings
 import com.ateam.schedulizer.entities.Streak
 import com.ateam.schedulizer.entities.Task
@@ -42,9 +43,10 @@ class Migration10 : AutoMigrationSpec
         Task.Daily::class,
         Streak::class,
         Settings::class,
-        CalendarSubscription::class
+        CalendarSubscription::class,
+        Expense::class
     ],
-    version = 14,
+    version = 15,
     autoMigrations = [
         AutoMigration(from = 9, to = 10, spec = Migration10::class)
     ]
@@ -60,6 +62,8 @@ abstract class AppDatabase : RoomDatabase() {
     val settings: StateFlow<Settings?> = _settings.asStateFlow()
     private val _subscriptions = MutableStateFlow<List<CalendarSubscription>>(emptyList())
     val subscriptions: StateFlow<List<CalendarSubscription>> = _subscriptions.asStateFlow()
+    private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
+    val expenses: StateFlow<List<Expense>> = _expenses.asStateFlow()
 
     data class StreakStatus(val lost: Boolean, val completedToday: Boolean)
 
@@ -107,8 +111,21 @@ abstract class AppDatabase : RoomDatabase() {
         _subscriptions.value = taskDao().getAllSubscriptions()
         _streak.value = (taskDao().getStreak() ?: Streak().also { taskDao().upsert(it) }).streakLength
         _settings.value = taskDao().getSettings() ?: Settings()
+        _expenses.value = taskDao().getAllExpenses()
         WidgetManager.updateWidgets() // Refresh widgets
         NotificationSystem.recheckNotifPerm()
+    }
+
+    suspend fun getAllExpenses(): List<Expense> = taskDao().getAllExpenses()
+
+    suspend fun upsertExpense(expense: Expense) {
+        taskDao().upsert(expense)
+        refresh()
+    }
+
+    suspend fun deleteExpense(id: Long) {
+        taskDao().deleteExpense(id)
+        refresh()
     }
 
     suspend fun saveSettings(settings: Settings) {
@@ -314,13 +331,27 @@ val MIGRATION14 = object : Migration(13, 14) {
     }
 }
 
+val MIGRATION15 = object : Migration(14, 15) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("""
+            CREATE TABLE IF NOT EXISTS Expense (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                cost INTEGER NOT NULL,
+                frequency TEXT NOT NULL
+            )
+        """)
+        connection.execSQL("ALTER TABLE Settings ADD COLUMN paidFrequency TEXT NOT NULL DEFAULT 'Weekly'")
+    }
+}
+
 fun getRoomDatabase(
     builder: RoomDatabase.Builder<AppDatabase>
 ): AppDatabase {
     return builder
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION11, MIGRATION12, MIGRATION13, MIGRATION14)
+        .addMigrations(MIGRATION11, MIGRATION12, MIGRATION13, MIGRATION14, MIGRATION15)
         .fallbackToDestructiveMigrationOnDowngrade(true)
         .build()
 }

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
 import com.ateam.schedulizer.entities.CalendarSubscription
+import com.ateam.schedulizer.entities.Expense
 import com.ateam.schedulizer.entities.Settings
 import com.ateam.schedulizer.entities.Streak
 import com.ateam.schedulizer.entities.Task
@@ -63,4 +64,12 @@ interface TaskDao {
     suspend fun getSubscription(id: Long): CalendarSubscription?
     @Query("SELECT * FROM SetTask WHERE subscriptionId = :subscriptionId")
     suspend fun getSetTasksForSubscription(subscriptionId: Long): List<Task.Set>
+
+    // Expenses
+    @Upsert
+    suspend fun upsert(expense: Expense)
+    @Query("DELETE FROM Expense WHERE id = :id")
+    suspend fun deleteExpense(id: Long)
+    @Query("SELECT * FROM Expense")
+    suspend fun getAllExpenses(): List<Expense>
 }
