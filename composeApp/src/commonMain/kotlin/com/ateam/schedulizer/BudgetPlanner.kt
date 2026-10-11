@@ -95,7 +95,7 @@ class ExpenseBudget(val onDelete: () -> Unit) {
                         value = frequency.toString(),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Occurance") },
+                        label = { Text("Occurrence") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                         modifier = Modifier
                             .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
