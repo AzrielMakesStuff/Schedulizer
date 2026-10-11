@@ -172,7 +172,7 @@ fun BudgetPlanner() {
     var paidFrequency by remember { mutableStateOf(Frequency.Weekly) }
     var expanded by remember { mutableStateOf(false) }
 
-    val expenses = remember { mutableStateListOf(ExpenseBudget()) }
+    val expenses = remember { mutableStateListOf<ExpenseBudget>() }
     var calculated by remember { mutableStateOf(false) }
     var expenseToDelete by remember { mutableStateOf<ExpenseBudget?>(null) }
 
@@ -211,6 +211,8 @@ fun BudgetPlanner() {
                     )
                 )
             }
+        } else {
+            expenses.add(ExpenseBudget())
         }
     }
 
