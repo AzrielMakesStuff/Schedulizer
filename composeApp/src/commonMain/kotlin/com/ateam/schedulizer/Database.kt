@@ -46,7 +46,7 @@ class Migration10 : AutoMigrationSpec
         CalendarSubscription::class,
         Expense::class
     ],
-    version = 16,
+    version = 17,
     autoMigrations = [
         AutoMigration(from = 9, to = 10, spec = Migration10::class)
     ]
@@ -116,7 +116,7 @@ abstract class AppDatabase : RoomDatabase() {
         NotificationSystem.recheckNotifPerm()
     }
 
-    suspend fun getAllExpenses(): List<Expense> = taskDao().getAllExpenses()
+    // suspend fun getAllExpenses(): List<Expense> = taskDao().getAllExpenses() Redundant
 
     suspend fun upsertExpense(expense: Expense) {
         taskDao().upsert(expense)
@@ -176,6 +176,23 @@ abstract class AppDatabase : RoomDatabase() {
             is Task.Daily -> taskDao().deleteDaily(task.id)
         }
         refresh()
+    }
+
+    suspend fun removeSubscriptionTasks(subscriptionId: Long) {
+        taskDao().getSetTasksForSubscription(subscriptionId).forEach { task ->
+            NotificationSystem.clearNotification(task)
+            taskDao().deleteSet(task.id)
+        }
+        refresh()
+    }
+
+    suspend fun setSubscriptionEnabled(subscription: CalendarSubscription, enabled: Boolean): CalendarSubscription {
+        if (!enabled) removeSubscriptionTasks(subscription.id)
+        val latest = taskDao().getSubscription(subscription.id) ?: subscription
+        val updated = latest.copy(enabled = enabled)
+        taskDao().upsert(updated)
+        refresh()
+        return updated
     }
 
     suspend fun advanceIfStale(task: Task, now: LocalDateTime): Task {
@@ -364,13 +381,19 @@ val MIGRATION16 = object : Migration(15, 16) {
     }
 }
 
+val MIGRATION17 = object : Migration(16, 17) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE CalendarSubscription ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1")
+    }
+}
+
 fun getRoomDatabase(
     builder: RoomDatabase.Builder<AppDatabase>
 ): AppDatabase {
     return builder
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION11, MIGRATION12, MIGRATION13, MIGRATION14, MIGRATION15, MIGRATION16)
+        .addMigrations(MIGRATION11, MIGRATION12, MIGRATION13, MIGRATION14, MIGRATION15, MIGRATION16, MIGRATION17)
         .fallbackToDestructiveMigrationOnDowngrade(true)
         .build()
 }

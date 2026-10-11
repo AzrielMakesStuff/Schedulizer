@@ -538,6 +538,8 @@ fun TaskScreen() {
             }
         }
 
+        LazyListScrollbar(listState, Modifier.matchParentSize())
+
         editingTask?.let { taskToEdit ->
             TaskDialog(task = taskToEdit, onDismiss = { editingTask = null })
         }

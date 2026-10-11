@@ -6,16 +6,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -50,95 +52,90 @@ enum class ThemeMode {
 fun SettingsScreen() {
     val settings by databaseInstance.settings.collectAsState()
     val currentMode = ThemeMode.entries.getOrElse(settings?.colourMode?.toInt() ?: 0) { ThemeMode.AUTO }
-    val coroutineScope = rememberCoroutineScope();
+    val coroutineScope = rememberCoroutineScope()
     val openAlertDialog = remember { mutableStateOf(false) }
 
-    when {
-        openAlertDialog.value -> {
-            alertDialogBuilder("Purge Data", "Are you sure you want to purge the app database?", confirmationRequest = { coroutineScope.launch { purgeData()  }; openAlertDialog.value = false}, onDismissRequest = { openAlertDialog.value = false})
-
-        }
+    if (openAlertDialog.value) {
+        alertDialogBuilder(
+            "Purge Data",
+            "Are you sure you want to purge the app database?",
+            confirmationRequest = {
+                coroutineScope.launch { purgeData() }
+                openAlertDialog.value = false
+            },
+            onDismissRequest = { openAlertDialog.value = false }
+        )
     }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(15.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(15.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.25f)
-                    .padding(15.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally)
-                {
-                    Text(
-                        text = "Theme",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            SettingsCard(title = "Theme") {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ThemeButton(
+                        selected = currentMode == ThemeMode.AUTO,
+                        onClick = { setTheme(ThemeMode.AUTO) },
+                        color = MaterialTheme.colorScheme.outline,
+                        label = "A"
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(24.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    ThemeButton(
+                        selected = currentMode == ThemeMode.DARK,
+                        onClick = { setTheme(ThemeMode.DARK) },
+                        color = Color.Black,
+                        border = Color.Gray
                     )
-                    {
-                        ThemeButton(
-                            selected = currentMode == ThemeMode.AUTO,
-                            onClick = { setTheme(ThemeMode.AUTO) },
-                            color = MaterialTheme.colorScheme.outline,
-                            label = "A"
-                        )
-                        ThemeButton(
-                            selected = currentMode == ThemeMode.DARK,
-                            onClick = { setTheme(ThemeMode.DARK) },
-                            color = Color.Black,
-                            border = Color.Gray
-                        )
-                        ThemeButton(
-                            selected = currentMode == ThemeMode.LIGHT,
-                            onClick = { setTheme(ThemeMode.LIGHT) },
-                            color = Color.White,
-                            border = Color.LightGray
-                        )
-                    }
+                    ThemeButton(
+                        selected = currentMode == ThemeMode.LIGHT,
+                        onClick = { setTheme(ThemeMode.LIGHT) },
+                        color = Color.White,
+                        border = Color.LightGray
+                    )
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.25f)
-                    .padding(15.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-                contentAlignment = Alignment.Center
-            )
-            {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Data",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(24.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(onClick = { openAlertDialog.value = true }) {
-                            Text("Purge Database Data")
-                        }
-                    }
+            SettingsCard(title = "Data") {
+                Button(onClick = { openAlertDialog.value = true }) {
+                    Text("Purge Database Data")
                 }
             }
+        }
+    }
+}
+
+/** A rounded card that sizes to its content instead of a fraction of the screen. */
+@Composable
+private fun SettingsCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            content()
         }
     }
 }
@@ -186,4 +183,3 @@ fun saveSettings(settings: Settings) {
         databaseInstance.saveSettings(settings)
     }
 }
-

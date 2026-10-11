@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
@@ -76,6 +78,7 @@ fun ImportDialog(
 
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     // Friend's busy blocks, parsed from a pasted string. Preview-only — never turned
     // into Task entries, since there's no title/content to give them meaning as tasks.
@@ -93,161 +96,174 @@ fun ImportDialog(
                 .clickable { onDismiss() },
             contentAlignment = Alignment.Center
         ) {
-            Column(
+            Box(
                 modifier = Modifier
+                    .padding(vertical = 16.dp)
                     .fillMaxWidth(0.95f)
-                    .shadow(12.dp, shape = RoundedCornerShape(24.dp))
+                    .shadow(12.dp, shape = RoundedCornerShape(16.dp))
                     .background(
                         MaterialTheme.colorScheme.surface,
-                        shape = RoundedCornerShape(24.dp)
+                        shape = RoundedCornerShape(16.dp)
                     )
                     .clickable(enabled = false) { }
-                    .padding(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Compare Schedules",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close"
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Box(
+                Column(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .pointerInput(Unit) {
-                            detectVerticalDragGestures(
-                                onDragEnd = {
-                                    dragAccumulator = 0f
-                                    weekChangedThisDrag = false
-                                },
-                                onDragCancel = {
-                                    dragAccumulator = 0f
-                                    weekChangedThisDrag = false
-                                },
-                                onVerticalDrag = { _, dragAmount ->
-                                    if (weekChangedThisDrag) return@detectVerticalDragGestures
-                                    dragAccumulator += dragAmount
-                                    if (dragAccumulator < -300f) {
-                                        weekAnchor = weekAnchor.plus(7, DateTimeUnit.DAY)
-                                        weekChangedThisDrag = true
-                                    } else if (dragAccumulator > 300f) {
-                                        weekAnchor = weekAnchor.minus(7, DateTimeUnit.DAY)
-                                        weekChangedThisDrag = true
-                                    }
-                                }
+                        .verticalScroll(scrollState)
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Compare Schedules",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close"
                             )
                         }
-                ) {
-                    AnimatedContent(
-                        targetState = weekAnchor,
-                        transitionSpec = {
-                            if (targetState > initialState) {
-                                (slideInVertically { it } + fadeIn()) togetherWith
-                                        (slideOutVertically { -it } + fadeOut())
-                            } else {
-                                (slideInVertically { -it } + fadeIn()) togetherWith
-                                        (slideOutVertically { it } + fadeOut())
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .pointerInput(Unit) {
+                                detectVerticalDragGestures(
+                                    onDragEnd = {
+                                        dragAccumulator = 0f
+                                        weekChangedThisDrag = false
+                                    },
+                                    onDragCancel = {
+                                        dragAccumulator = 0f
+                                        weekChangedThisDrag = false
+                                    },
+                                    onVerticalDrag = { _, dragAmount ->
+                                        if (weekChangedThisDrag) return@detectVerticalDragGestures
+                                        dragAccumulator += dragAmount
+                                        if (dragAccumulator < -300f) {
+                                            weekAnchor = weekAnchor.plus(7, DateTimeUnit.DAY)
+                                            weekChangedThisDrag = true
+                                        } else if (dragAccumulator > 300f) {
+                                            weekAnchor = weekAnchor.minus(7, DateTimeUnit.DAY)
+                                            weekChangedThisDrag = true
+                                        }
+                                    }
+                                )
                             }
+                    ) {
+                        AnimatedContent(
+                            targetState = weekAnchor,
+                            transitionSpec = {
+                                if (targetState > initialState) {
+                                    (slideInVertically { it } + fadeIn()) togetherWith
+                                            (slideOutVertically { -it } + fadeOut())
+                                } else {
+                                    (slideInVertically { -it } + fadeIn()) togetherWith
+                                            (slideOutVertically { it } + fadeOut())
+                                }
+                            },
+                            label = "weekTransition"
+                        ) { anchor ->
+                            val dates = remember(anchor) { weekDatesFor(anchor, firstDayOfWeek) }
+                            WeeklyScheduleGrid(
+                                visibleDates = dates,
+                                now = now(),
+                                today = today(),
+                                selectedDateOne = null,
+                                onCellTapped = { _, _, _ -> },
+                                onTaskTapped = { _, _ -> },
+                                overlayBusyBlocks = friendBlocks.orEmpty()
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = when {
+                            friendBlocks == null ->
+                                "Paste a schedule string from a friend to overlay their busy times, " +
+                                        "or export yours to share with them."
+                            friendBlocks!!.isEmpty() -> "No busy times in that data."
+                            else -> "Showing ${friendBlocks!!.size} busy block(s) overlaid above (hatched)."
                         },
-                        label = "weekTransition"
-                    ) { anchor ->
-                        val dates = remember(anchor) { weekDatesFor(anchor, firstDayOfWeek) }
-                        WeeklyScheduleGrid(
-                            visibleDates = dates,
-                            now = now(),
-                            today = today(),
-                            selectedDateOne = null,
-                            onCellTapped = { _, _, _ -> },
-                            onTaskTapped = { _, _ -> },
-                            overlayBusyBlocks = friendBlocks.orEmpty()
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        textAlign = TextAlign.Center,
+                    )
+
+                    statusMessage?.let {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 8.dp)
                         )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                Text(
-                    text = when {
-                        friendBlocks == null ->
-                            "Paste a schedule string from a friend to overlay their busy times, " +
-                                    "or export yours to share with them."
-                        friendBlocks!!.isEmpty() -> "No busy times in that data."
-                        else -> "Showing ${friendBlocks!!.size} busy block(s) overlaid above (hatched)."
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    textAlign = TextAlign.Center,
-                )
-
-                statusMessage?.let {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                val clip = clipboard.getClipEntry()
-                                val text = clip?.readPlainText() ?: readClipboardText()
-                                val decoded = text?.let { BusyBlockCodec.decode(it) }
-                                if (decoded == null) {
-                                    statusMessage = "Couldn't read a schedule from the clipboard."
-                                } else {
-                                    friendBlocks = decoded
-                                    statusMessage = "Loaded ${decoded.size} busy block(s)."
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val clip = clipboard.getClipEntry()
+                                    val text = clip?.readPlainText() ?: readClipboardText()
+                                    val decoded = text?.let { BusyBlockCodec.decode(it) }
+                                    if (decoded == null) {
+                                        statusMessage = "Couldn't read a schedule from the clipboard."
+                                    } else {
+                                        friendBlocks = decoded
+                                        statusMessage = "Loaded ${decoded.size} busy block(s)."
+                                    }
                                 }
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Paste & Preview")
-                    }
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                val weekDates = weekDatesFor(weekAnchor, firstDayOfWeek)
-                                val myTasks = databaseInstance.tasks.value
-                                    .filterIsInstance<Task.Set>()
-                                    .filter { it.start.date in weekDates }
-                                val blocks = BusyBlockCodec.fromTasks(myTasks)
-                                val encoded = BusyBlockCodec.encode(blocks)
-                                clipboard.setClipEntry(clipEntryOf(encoded) as androidx.compose.ui.platform.ClipEntry)
-                                statusMessage = "Copied this week's busy times to clipboard."
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Export This Week")
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Paste & Preview")
+                        }
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val weekDates = weekDatesFor(weekAnchor, firstDayOfWeek)
+                                    val myTasks = databaseInstance.tasks.value
+                                        .filterIsInstance<Task.Set>()
+                                        .filter { it.start.date in weekDates }
+                                    val blocks = BusyBlockCodec.fromTasks(myTasks)
+                                    val encoded = BusyBlockCodec.encode(blocks)
+                                    clipboard.setClipEntry(clipEntryOf(encoded) as androidx.compose.ui.platform.ClipEntry)
+                                    statusMessage = "Copied this week's busy times to clipboard."
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Export This Week")
+                        }
                     }
                 }
+
+                ScrollStateScrollbar(
+                    scrollState,
+                    Modifier.matchParentSize().padding(vertical = 20.dp)
+                )
             }
         }
     }
