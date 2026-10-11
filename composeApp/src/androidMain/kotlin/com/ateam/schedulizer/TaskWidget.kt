@@ -60,7 +60,7 @@ class ToggleTaskAction : ActionCallback {
     ) {
         val id = parameters[taskIdKey] ?: return
         val type = parameters[taskTypeKey] ?: return
-        val allTasks = databaseInstance.getAll()
+        val allTasks = databaseInstance.getAllTasks()
         val task = allTasks.findByIdAndType(id, type) ?: return
         val updated = when (task) {
             is Task.Daily -> {

@@ -28,6 +28,7 @@ import navigationItemsLists
 @Composable
 fun App() {
     LaunchedEffect(Unit) {
+
         databaseInstance.refresh()
         SubscriptionSyncScheduler.schedulePeriodicSync()
     }
@@ -35,7 +36,6 @@ fun App() {
     val rootNavController = rememberNavController()
     val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-
     AppTheme {
         Scaffold(
             bottomBar = {
