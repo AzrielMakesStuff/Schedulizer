@@ -33,16 +33,19 @@ actual object WidgetManager {
     }
 }
 
-actual fun clipEntryOf(text: String): ClipEntry {
+actual fun clipEntryOf(text: String): Any {
     val clipData = ClipData.newPlainText("text", text)
     return clipData.toClipEntry()
 }
 
-actual suspend fun ClipEntry.readPlainText(): String? {
-    val data = clipData
+actual suspend fun Any.readPlainText(): String? {
+    val entry = this as? ClipEntry ?: return null
+    val data = entry.clipData
     if (data.itemCount == 0) return null
     return data.getItemAt(0).text?.toString()
 }
+
+actual suspend fun readClipboardText(): String? = null
 
 actual suspend fun purgeData() {
     databaseInstance.close()
