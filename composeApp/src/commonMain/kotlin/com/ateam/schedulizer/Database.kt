@@ -46,7 +46,7 @@ class Migration10 : AutoMigrationSpec
         CalendarSubscription::class,
         Expense::class
     ],
-    version = 15,
+    version = 16,
     autoMigrations = [
         AutoMigration(from = 9, to = 10, spec = Migration10::class)
     ]
@@ -337,11 +337,30 @@ val MIGRATION15 = object : Migration(14, 15) {
             CREATE TABLE IF NOT EXISTS Expense (
                 id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                cost INTEGER NOT NULL,
+                cost REAL NOT NULL,
                 frequency TEXT NOT NULL
             )
         """)
         connection.execSQL("ALTER TABLE Settings ADD COLUMN paidFrequency TEXT NOT NULL DEFAULT 'Weekly'")
+    }
+}
+
+val MIGRATION16 = object : Migration(15, 16) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("""
+            CREATE TABLE IF NOT EXISTS Expense_new (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                cost REAL NOT NULL,
+                frequency TEXT NOT NULL
+            )
+        """)
+        connection.execSQL("""
+            INSERT INTO Expense_new (id, name, cost, frequency)
+            SELECT id, name, CAST(cost AS REAL), frequency FROM Expense
+        """)
+        connection.execSQL("DROP TABLE IF EXISTS Expense")
+        connection.execSQL("ALTER TABLE Expense_new RENAME TO Expense")
     }
 }
 
@@ -351,7 +370,7 @@ fun getRoomDatabase(
     return builder
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION11, MIGRATION12, MIGRATION13, MIGRATION14, MIGRATION15)
+        .addMigrations(MIGRATION11, MIGRATION12, MIGRATION13, MIGRATION14, MIGRATION15, MIGRATION16)
         .fallbackToDestructiveMigrationOnDowngrade(true)
         .build()
 }

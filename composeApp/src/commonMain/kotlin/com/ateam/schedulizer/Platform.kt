@@ -51,3 +51,8 @@ fun alertDialogBuilder(title : String, description: String, confirmationRequest 
 expect fun clipEntryOf(text: String): ClipEntry
 
 expect suspend fun ClipEntry.readPlainText(): String?
+
+expect fun supportsDynamicColor(): Boolean
+
+@Composable
+expect fun getDynamicColorScheme(isDark: Boolean): androidx.compose.material3.ColorScheme?

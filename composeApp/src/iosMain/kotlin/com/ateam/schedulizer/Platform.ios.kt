@@ -4,10 +4,6 @@ package com.ateam.schedulizer
 import com.russhwolf.settings.ExperimentalSettingsImplementation
 import com.russhwolf.settings.KeychainSettings
 import com.russhwolf.settings.Settings
-import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.usePinned
-import platform.posix.arc4random_buf
 
 @OptIn(ExperimentalSettingsImplementation::class)
 fun createIosSecureSettings(): Settings = KeychainSettings(service = "SecureKeyTasks")
@@ -19,3 +15,8 @@ actual val databaseInstance: AppDatabase by lazy {
 actual object WidgetManager {
     actual fun updateWidgets() { /* no-op */ }
 }
+
+actual fun supportsDynamicColor(): Boolean = false
+
+@androidx.compose.runtime.Composable
+actual fun getDynamicColorScheme(isDark: Boolean): androidx.compose.material3.ColorScheme? = null

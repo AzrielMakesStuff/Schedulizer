@@ -2,9 +2,9 @@ package com.ateam.schedulizer
 
 import android.app.Application
 import android.content.ClipData
+import android.widget.Toast
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.toClipEntry
-import android.widget.Toast
 import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,4 +49,16 @@ actual suspend fun purgeData() {
     ContextHolder.context.deleteDatabase("my_room.db")
     privateInstance = getRoomDatabase(getDatabaseBuilder(ContextHolder.context));
     Toast.makeText(ContextHolder.context,"Database has been purged", Toast.LENGTH_SHORT).show()
+}
+
+actual fun supportsDynamicColor(): Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+
+@androidx.compose.runtime.Composable
+actual fun getDynamicColorScheme(isDark: Boolean): androidx.compose.material3.ColorScheme? {
+    val context = ContextHolder.context
+    return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        if (isDark) androidx.compose.material3.dynamicDarkColorScheme(context) else androidx.compose.material3.dynamicLightColorScheme(context)
+    } else {
+        null
+    }
 }

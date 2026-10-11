@@ -17,9 +17,15 @@ fun AppTheme(content: @Composable () -> Unit) {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
-    MaterialTheme(
-        colorScheme = if (isDarkMode) darkColorScheme() else lightColorScheme()
-    ) {
-        content()
+    val dynamicColor = supportsDynamicColor()
+    val colorScheme = if (dynamicColor) {
+        getDynamicColorScheme(isDarkMode) ?: if (isDarkMode) darkColorScheme() else lightColorScheme()
+    } else {
+        if (isDarkMode) darkColorScheme() else lightColorScheme()
     }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        content = content,
+    )
 }

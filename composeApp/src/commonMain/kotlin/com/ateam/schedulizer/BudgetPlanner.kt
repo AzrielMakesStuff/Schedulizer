@@ -24,6 +24,7 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,10 +32,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,62 +49,115 @@ import cafe.adriel.voyager.core.annotation.InternalVoyagerApi
 import cafe.adriel.voyager.navigator.internal.BackHandler
 import com.ateam.schedulizer.entities.Expense
 import com.ateam.schedulizer.entities.Settings
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.math.round
-import kotlin.random.Random
 
-class ExpenseBudget(
-    var id: Long? = null,
-    var name: String = "Expense Name",
-    var frequency: Frequency = Frequency.Weekly,
-    var cost: String = "0"
+enum class Frequency {
+    Weekly, Fortnightly, Monthly, Yearly
+}
+
+fun formatCost(amount: Float): String {
+    val rounded = round(amount * 100f) / 100f
+    val dollars = rounded.toLong()
+    val cents = round((rounded - dollars) * 100f).toInt()
+    val centsStr = if (cents < 10) "0$cents" else "$cents"
+    return "$dollars.$centsStr"
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FormatExpense(
+    expense: Expense,
+    onUpdate: (Expense) -> Unit,
+    onDelete: () -> Unit
 ) {
-    private val localId: Long = Random.nextLong()
-    val key: Any get() = id ?: localId
+    var nameT by remember(expense.id, expense.name) { mutableStateOf(expense.name) }
+    var costT by remember(expense.id, expense.cost) {
+        mutableStateOf(if (expense.cost == 0f) "" else formatCost(expense.cost))
+    }
+    var frequencyT by remember(expense.id, expense.frequency) { mutableStateOf(expense.frequency) }
+    var expanded by remember { mutableStateOf(false) }
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun Build(onDelete: () -> Unit) {
-        var nameT by remember(name) { mutableStateOf(name) }
-        var costT by remember(cost) { mutableStateOf(cost) }
-        var expanded by remember { mutableStateOf(false) }
-
-        Card(
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            shape = RoundedCornerShape(12.dp)
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 OutlinedTextField(
-                    modifier = Modifier.weight(1.1f),
+                    modifier = Modifier.weight(1f),
                     value = nameT,
-                    onValueChange = { nameT = it; name = nameT },
-                    label = { Text("Name") }
+                    onValueChange = { newName ->
+                        nameT = newName
+                        onUpdate(expense.copy(name = newName))
+                    },
+                    label = { Text("Expense Name") },
+                    placeholder = { Text("e.g. Rent, Groceries") },
+                    singleLine = true
                 )
                 Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = "Delete expense",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    modifier = Modifier.weight(1f),
+                    value = costT,
+                    onValueChange = { newVal ->
+                        var filtered = newVal.filter { it.isDigit() || it == '.' }
+                        if (filtered.count { it == '.' } > 1) {
+                            val firstDot = filtered.indexOf('.')
+                            filtered = filtered.substring(0, firstDot + 1) + filtered.substring(firstDot + 1).replace(".", "")
+                        }
+                        costT = filtered
+                        val newCost = costT.toFloatOrNull() ?: 0f
+                        onUpdate(expense.copy(cost = newCost))
+                    },
+                    label = { Text("Cost") },
+                    placeholder = { Text("0.00") },
+                    prefix = { Text("$") },
+                    singleLine = true
+                )
+
                 ExposedDropdownMenuBox(
                     modifier = Modifier.weight(1f),
                     expanded = expanded,
                     onExpandedChange = { expanded = it }
                 ) {
                     OutlinedTextField(
-                        value = frequency.toString(),
+                        value = frequencyT.toString(),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Occurrence") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                         modifier = Modifier
-                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        singleLine = true
                     )
 
                     ExposedDropdownMenu(
@@ -112,34 +167,18 @@ class ExpenseBudget(
                         Frequency.entries.forEach { payFre ->
                             DropdownMenuItem(
                                 text = { Text(payFre.toString()) },
-                                onClick = { expanded = false; frequency = payFre }
+                                onClick = {
+                                    expanded = false
+                                    frequencyT = payFre
+                                    onUpdate(expense.copy(frequency = payFre))
+                                }
                             )
                         }
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 20.dp)) {
-                OutlinedTextField(
-                    modifier = Modifier.weight(0.6f),
-                    value = "$$costT",
-                    onValueChange = { newVal ->
-                        costT = newVal.filter { it.isDigit() }
-                        cost = costT
-                    },
-                    label = { Text("Cost") }
-                )
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Button(onClick = onDelete) {
-                    Icon(Icons.Filled.Delete, "Delete")
-                }
-            }
         }
     }
-}
-
-enum class Frequency {
-    Weekly, Fortnightly, Monthly, Yearly
 }
 
 @Composable
@@ -169,19 +208,26 @@ fun DeleteExpenseDialog(
 @Composable
 @Preview
 fun BudgetPlanner() {
-    var paidFrequency by remember { mutableStateOf(Frequency.Weekly) }
-    var expanded by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val expenses by databaseInstance.expenses.collectAsState()
+    val settings by databaseInstance.settings.collectAsState()
+    val paidFrequency = settings?.paidFrequency ?: Frequency.Weekly
 
-    val expenses = remember { mutableStateListOf<ExpenseBudget>() }
+    var expanded by remember { mutableStateOf(false) }
     var calculated by remember { mutableStateOf(false) }
-    var expenseToDelete by remember { mutableStateOf<ExpenseBudget?>(null) }
+    var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
+
+    LaunchedEffect(Unit) {
+        databaseInstance.refresh()
+    }
 
     expenseToDelete?.let { expense ->
         DeleteExpenseDialog(
             expenseName = expense.name,
             onConfirm = {
-                expense.id?.let { removeExpense(it) }
-                expenses.remove(expense)
+                coroutineScope.launch {
+                    databaseInstance.deleteExpense(expense.id)
+                }
                 expenseToDelete = null
             },
             onDismiss = {
@@ -190,38 +236,25 @@ fun BudgetPlanner() {
         )
     }
 
-    LaunchedEffect(Unit) {
-        databaseInstance.refresh()
-        val dbExpenses = withContext(Dispatchers.IO) {
-            databaseInstance.getAllExpenses()
-        }
-        val settings = databaseInstance.settings.value
-        if (settings != null) {
-            paidFrequency = settings.paidFrequency
-        }
-        if (dbExpenses.isNotEmpty()) {
-            expenses.clear()
-            dbExpenses.forEach { item ->
-                expenses.add(
-                    ExpenseBudget(
-                        id = item.id,
-                        name = item.name,
-                        frequency = item.frequency,
-                        cost = item.cost.toString()
-                    )
-                )
-            }
-        } else {
-            expenses.add(ExpenseBudget())
-        }
-    }
-
-    Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         BackHandler(calculated, onBack = { calculated = false })
+
+        Text(
+            text = "Budget Planner",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 8.dp)
+        )
 
         if (!calculated) {
             ExposedDropdownMenuBox(
-                modifier = Modifier.fillMaxWidth(0.5f).padding(bottom = 20.dp),
+                modifier = Modifier.fillMaxWidth(),
                 expanded = expanded,
                 onExpandedChange = { expanded = it }
             ) {
@@ -232,6 +265,7 @@ fun BudgetPlanner() {
                     label = { Text("How often are you paid?") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                     modifier = Modifier
+                        .fillMaxWidth()
                         .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                 )
                 ExposedDropdownMenu(
@@ -243,66 +277,148 @@ fun BudgetPlanner() {
                             text = { Text(payFre.toString()) },
                             onClick = {
                                 expanded = false
-                                paidFrequency = payFre
+                                coroutineScope.launch {
+                                    val currentSettings = settings ?: Settings()
+                                    databaseInstance.saveSettings(currentSettings.copy(paidFrequency = payFre))
+                                }
                             }
                         )
                     }
                 }
             }
-            Text("Expenses:")
-            LazyColumn(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+
+            Text(
+                text = "Your Expenses",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.align(Alignment.Start)
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
                 items(
                     items = expenses,
-                    key = { it.key }
+                    key = { it.id }
                 ) { expense ->
-                    expense.Build(
+                    FormatExpense(
+                        expense = expense,
+                        onUpdate = { updatedExpense ->
+                            coroutineScope.launch {
+                                databaseInstance.upsertExpense(updatedExpense)
+                            }
+                        },
                         onDelete = {
                             expenseToDelete = expense
                         }
                     )
                 }
-                item {
-                    OutlinedButton(onClick = {
-                        expenses.add(ExpenseBudget())
-                    }) {
-                        Text("Add Expense")
-                    }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            databaseInstance.upsertExpense(
+                                Expense(
+                                    name = "",
+                                    cost = 0f,
+                                    frequency = Frequency.Weekly
+                                )
+                            )
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Add Expense")
                 }
 
-                item {
-                    OutlinedButton(onClick = {
-                        saveExpenses(expenses, paidFrequency)
+                Button(
+                    onClick = {
                         calculated = true
-                    }) {
-                        Text("Calculate")
-                    }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Calculate Budget")
                 }
             }
         } else {
-            var totalExpenses = 0f
+            val timesBy = when (paidFrequency) {
+                Frequency.Weekly -> 1f
+                Frequency.Fortnightly -> 2f
+                Frequency.Monthly -> 4.33f
+                Frequency.Yearly -> 52f
+            }
+            val totalExpenses = expenses.sumOf { expense ->
+                val expenseCost = expense.cost
+                val rawCost = when (expense.frequency) {
+                    Frequency.Weekly -> expenseCost * timesBy
+                    Frequency.Fortnightly -> (expenseCost / 2f) * timesBy
+                    Frequency.Monthly -> (expenseCost / 4.33f) * timesBy
+                    Frequency.Yearly -> (expenseCost / 52f) * timesBy
+                }
+                (round(rawCost * 100f) / 100f).toDouble()
+            }.toFloat()
 
-            LazyColumn(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 8.dp)
+            Text(
+                text = "Budget Summary",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
-                        text = "Disclaimer: some results may have small inaccuracies, always verify the results",
-                        textAlign = TextAlign.Center,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                        text = "Total Projected Expenses ($paidFrequency)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "$${formatCost(totalExpenses)}",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
-                items(expenses.size) { index ->
-                    val expense = expenses[index]
-                    val timesBy = when (paidFrequency) {
-                        Frequency.Weekly -> 1f
-                        Frequency.Fortnightly -> 2f
-                        Frequency.Monthly -> 4.33f
-                        Frequency.Yearly -> 52f
-                    }
-                    val expenseCost = expense.cost.toFloatOrNull() ?: 0f
+            }
+
+            Text(
+                text = "Breakdown",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.align(Alignment.Start)
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(expenses) { expense ->
+                    val expenseCost = expense.cost
                     val rawCost = when (expense.frequency) {
                         Frequency.Weekly -> expenseCost * timesBy
                         Frequency.Fortnightly -> (expenseCost / 2f) * timesBy
@@ -310,17 +426,14 @@ fun BudgetPlanner() {
                         Frequency.Yearly -> (expenseCost / 52f) * timesBy
                     }
                     val roundedCost = round(rawCost * 100f) / 100f
-                    totalExpenses += roundedCost
 
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(1.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -328,50 +441,48 @@ fun BudgetPlanner() {
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Column(modifier = Modifier.weight(1.2f)) {
+                                Text(
+                                    text = expense.name.ifBlank { "Unnamed Expense" },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "${expense.frequency} ($${formatCost(expense.cost)})",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             Text(
-                                text = expense.name,
-                                modifier = Modifier.weight(1.2f),
-                                textAlign = TextAlign.Start
-                            )
-                            Text(
-                                text = "$$roundedCost",
+                                text = "$${formatCost(roundedCost)}",
                                 modifier = Modifier.weight(0.8f),
                                 textAlign = TextAlign.End,
-                                fontWeight = FontWeight.Medium
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
                 }
                 item {
                     Text(
-                        "Total Cost: $$totalExpenses",
-                        modifier = Modifier.padding(top = 8.dp, bottom = 20.dp)
+                        text = "Disclaimer: some results may have small inaccuracies, always verify the results.",
+                        textAlign = TextAlign.Center,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
                     )
                 }
             }
-        }
-    }
-}
 
-fun saveExpenses(expenses: List<ExpenseBudget>, paidFrequency: Frequency) {
-    val snapshot = expenses.toList()
-    CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-        snapshot.forEach { item ->
-            val expenseEntity = Expense(
-                id = item.id ?: 0L,
-                name = item.name,
-                cost = item.cost.toIntOrNull() ?: 0,
-                frequency = item.frequency
-            )
-            databaseInstance.upsertExpense(expenseEntity)
+            OutlinedButton(
+                onClick = { calculated = false },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Edit Expenses")
+            }
         }
-        val currentSettings = databaseInstance.settings.value ?: Settings()
-        databaseInstance.saveSettings(currentSettings.copy(paidFrequency = paidFrequency))
-    }
-}
-
-fun removeExpense(id: Long) {
-    CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-        databaseInstance.deleteExpense(id)
     }
 }
