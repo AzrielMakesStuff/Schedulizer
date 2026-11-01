@@ -127,7 +127,6 @@ object ICSParser {
             val second = if (timePart.length >= 6) timePart.substring(4, 6).toInt() else 0
             LocalDateTime(year, month, day, hour, minute, second)
         } else {
-            // DATE-only value (e.g. an all-day event) — treat as midnight.
             LocalDateTime(clean.take(4).toInt(), clean.substring(4, 6).toInt(), clean.substring(6, 8).toInt(), 0, 0, 0)
         }
 
@@ -164,8 +163,7 @@ object ICSParser {
     }
 
     /**
-     * Parses an RRULE value into a [RecurrencePattern] + [RecurrenceEnd], or null if
-     * it's a shape this app doesn't model — see [fromICS] doc for how that's handled.
+     * Parses an RRULE value into a [RecurrencePattern] + [RecurrenceEnd].
      */
     private fun parseRRule(rrule: String, dtStart: LocalDateTime): Pair<RecurrencePattern, RecurrenceEnd>? {
         val fields = rrule.split(";").mapNotNull { f ->

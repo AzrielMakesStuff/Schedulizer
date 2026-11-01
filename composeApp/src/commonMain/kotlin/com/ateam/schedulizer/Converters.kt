@@ -149,7 +149,7 @@ class Converters {
                     ordinal = patternParts.getOrNull(2)?.toIntOrNull() ?: 1,
                     dayOfWeek = patternParts.getOrNull(3)?.toIntOrNull() ?: 1
                 )
-                else -> return null // unrecognized pattern tag — don't guess, drop the schedule
+                else -> return null // unrecognized pattern tag - drop the schedule
             }
 
             val end: RecurrenceEnd = when (endParts[0]) {

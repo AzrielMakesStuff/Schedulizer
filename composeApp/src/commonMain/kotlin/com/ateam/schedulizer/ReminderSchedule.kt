@@ -62,8 +62,6 @@ fun ReminderSchedule.displayName(): String {
 
 /**
  * Returns the next date on or after [from] that this schedule's day-pattern fires.
- * Does NOT consider time-of-day or "now" — use [nextFireDateTime] for that.
- * Returns null for [ReminderSchedule.None].
  */
 fun ReminderSchedule.nextFireDate(from: LocalDate): LocalDate? = toPattern()?.nextFireDate(from)
 

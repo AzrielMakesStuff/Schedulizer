@@ -8,9 +8,7 @@ import kotlinx.datetime.number
 import kotlinx.datetime.plus
 
 /**
- * A pure day-of-week/day-of-month/day-of-year recurrence pattern — no notion of
- * time-of-day, start/end bounds, or occurrence limits. Shared by [ReminderSchedule]
- * and [CalendarRepeatSchedule] so the date math lives in exactly one place.
+ * Shared by [ReminderSchedule] and [CalendarRepeatSchedule] so the date math lives in exactly one place.
  */
 sealed class RecurrencePattern {
 
@@ -21,7 +19,7 @@ sealed class RecurrencePattern {
         init { require(daysOfWeek.isNotEmpty()) { "Weekly needs at least one day" } }
     }
 
-    /** [dayOfWeek] 1-7. [weekParity] 0 or 1. Single weekday only — see note on [ICSParser.fromICS] for the multi-day import caveat. */
+    /** [dayOfWeek] 1-7. [weekParity] 0 or 1. */
     data class Fortnightly(val dayOfWeek: Int, val weekParity: Int) : RecurrencePattern()
 
     /** Clamped to last day when the month is shorter. */
@@ -49,22 +47,18 @@ fun RecurrencePattern.displayName(): String = when (this) {
     is RecurrencePattern.MonthlyByDate -> "Monthly on the ${ordinalSuffix(dayOfMonth)}"
     is RecurrencePattern.MonthlyByWeekday -> {
         val ord = if (ordinal == -1) "last" else ordinalSuffix(ordinal)
-        "Monthly — $ord ${isoDayName(dayOfWeek)}"
+        "Monthly - $ord ${isoDayName(dayOfWeek)}"
     }
     is RecurrencePattern.YearlyByDate -> "Annually on ${monthName(month)} ${ordinalSuffix(day)}"
     is RecurrencePattern.YearlyByWeekday -> {
         val ord = if (ordinal == -1) "last" else ordinalSuffix(ordinal)
-        "Annually — $ord ${isoDayName(dayOfWeek)} of ${monthName(month)}"
+        "Annually - $ord ${isoDayName(dayOfWeek)} of ${monthName(month)}"
     }
 }
 
 /**
  * The [RecurrencePattern.Fortnightly.weekParity] value whose "on" weeks include the
- * ISO week containing [date]. Use this whenever deriving a fortnightly pattern's
- * parity from a concrete date (a task's start/anchor date, an imported DTSTART,
- * etc.) instead of computing `isoWeekNumber(date) % 2` inline — that expression is
- * the *inverse* of the convention [RecurrencePattern.nextFireDate] uses to evaluate
- * parity and will make the pattern fire on the wrong alternating week.
+ * ISO week containing [date].
  */
 fun fortnightlyWeekParityFor(date: LocalDate): Int {
     var reference = date
@@ -117,9 +111,7 @@ fun RecurrencePattern.nextFireDate(from: LocalDate): LocalDate = when (this) {
     }
 
     is RecurrencePattern.MonthlyByWeekday -> {
-        // Every month has at least 4 occurrences of each weekday, and always has a
-        // "last" occurrence, so ordinal in {1,2,3,4,-1} always resolves — either this
-        // month or (guaranteed) next month.
+        // Every month has at least 4 occurrences of each weekday
         nthWeekdayOfMonth(from.year, from.month.number, ordinal, dayOfWeek)
             ?.takeIf { it >= from }
             ?: run {

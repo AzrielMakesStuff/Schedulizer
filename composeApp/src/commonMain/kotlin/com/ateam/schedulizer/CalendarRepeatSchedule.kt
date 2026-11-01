@@ -12,12 +12,6 @@ sealed class RecurrenceEnd {
 /**
  * A repeat schedule for calendar tasks: a day-[pattern] (shared with [ReminderSchedule])
  * plus an [end] condition.
- *
- * Deliberately does NOT store its own start date or time — the owning task (e.g.
- * [com.ateam.schedulizer.entities.Task.Set]) is the single source of truth for "when
- * is the currently-active occurrence", via its own start/end fields plus an
- * `occurrenceIndex` tracking how many times the series has fired. This schedule is
- * just the recurrence rule, projected forward from wherever the caller currently is.
  */
 data class CalendarRepeatSchedule(
     val pattern: RecurrencePattern,

@@ -80,8 +80,6 @@ fun ImportDialog(
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
-    // Friend's busy blocks, parsed from a pasted string. Preview-only — never turned
-    // into Task entries, since there's no title/content to give them meaning as tasks.
     var friendBlocks by remember { mutableStateOf<List<BusyBlock>?>(null) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
 

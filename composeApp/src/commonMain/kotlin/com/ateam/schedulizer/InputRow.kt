@@ -1,14 +1,10 @@
 package com.ateam.schedulizer
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
@@ -22,8 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
@@ -40,7 +34,7 @@ class InputRow(val title : String, val toggleable : Boolean, vararg tInputTypes 
     @Composable
     fun BuildRow() {
         if (results.isEmpty()) {
-            for (listIndex in 0..<inputTypes.size) {
+            for (listIndex in inputTypes.indices) {
                 results.add("0")
                 uncheckedReturnVal.add("0")
             }
@@ -81,9 +75,9 @@ class InputRow(val title : String, val toggleable : Boolean, vararg tInputTypes 
 
           }
            Row (modifier = Modifier.weight(1.5f), verticalAlignment = Alignment.CenterVertically){
-               for (listIndex in 0..<inputTypes.size) {
+               for ((listIndex, element) in inputTypes.withIndex()) {
                    var input by remember { mutableStateOf("0") }
-                   if (inputTypes[listIndex] == InputType.int) {
+                   if (element == InputType.int) {
                        TextField(modifier = Modifier.weight(1f),value = input, onValueChange = { newVal -> input = newVal.filter { it.isDigit()}; results[listIndex] = input; input = "$$input" })
                    }
                    else {
@@ -94,12 +88,5 @@ class InputRow(val title : String, val toggleable : Boolean, vararg tInputTypes 
         }
     }
 
-    fun getResult() : List<String> {
-        return if (checked) {
-            results
-        } else {
-            uncheckedReturnVal
-        }
-    }
 }
 

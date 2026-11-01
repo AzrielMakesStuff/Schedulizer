@@ -303,10 +303,7 @@ fun ReminderSchedulePicker(
         (schedule as? ReminderSchedule.EveryNDays)?.anchor ?: LocalDate.now()
     }
 
-    // Which of the two alternating weeks a Fortnightly schedule fires on. Derived
-    // from the existing schedule's own parity when editing, or from `anchor` (via
-    // fortnightlyWeekParityFor, NOT a bare isoWeekNumber % 2) for a brand-new one —
-    // see the doc on fortnightlyWeekParityFor for why that distinction matters.
+    // Which of the two alternating weeks a Fortnightly schedule fires on.
     var fortnightlyWeekParity by remember { mutableStateOf(
         (schedule as? ReminderSchedule.Fortnightly)?.weekParity ?: fortnightlyWeekParityFor(anchor)
     ) }

@@ -576,9 +576,7 @@ fun WeeklyScheduleGrid(
     val rangeStart = visibleDates.first()
     val rangeEnd = visibleDates.last()
 
-    // Project every task (repeating Set tasks included) into concrete occurrences
-    // within the visible week, then lay THOSE out — not the raw tasks — so a
-    // repeating task gets an independently-positioned pill per occurrence.
+    // Project every task (repeating Set tasks included) into set occurrences within the visible week.
     val occurrences = remember(tasks, rangeStart, rangeEnd) {
         tasks.flatMap { it.occurrencesInRange(rangeStart, rangeEnd) }
     }
@@ -673,12 +671,6 @@ fun WeeklyScheduleGrid(
                             .width(totalWidth)
                             .height(dayHeight)
                     ) {
-                        // Tappable cells — previously 48 Box composables per day (336 for
-                        // the whole week), each carrying its own clickable/background/
-                        // drawWithContent. That's what made scrolling this row back into
-                        // view expensive. A single Canvas draws every hour/half-hour line
-                        // and selection highlight in one pass, and one pointerInput resolves
-                        // taps by math instead of 48 separate click targets.
                         Canvas(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -766,7 +758,7 @@ fun WeeklyScheduleGrid(
                             )
                         }
 
-                        // Task pills — one per occurrence, not one per task
+                        // Task pills - one per occurrence
                         dayTasks.forEach { positioned ->
                             val task = positioned.task
                             val occStart = positioned.occurrenceStart
